@@ -1749,18 +1749,6 @@ func TestHideToTrayClosesEveryOpenSheet(t *testing.T) {
 		}
 	}
 
-	// The Solana connect sheet keeps its designed dismissal: closed mid-link, its
-	// create call may still land, so the page reloads the payout wallet. Closed is
-	// raised by a programmatic Hide() as by Cancel.
-	solana := stripLineComments(readAppSource(t, "SolanaWalletSheets.cpp"))
-	if !strings.Contains(handlerSource(t, "SolanaWalletSheets.cpp", solana, "dialog_.Closed("), "onAbandonedLink_()") {
-		t.Error("the Solana connect sheet no longer reports an abandoned link from its Closed handler, so a hide mid-link would not reload the payout wallet")
-	}
-	wallet := stripLineComments(readAppSource(t, "WalletPage.cpp"))
-	if !strings.Contains(definitionBody(t, "WalletPage.cpp", wallet, "winrt::fire_and_forget WalletPage::OpenConnectSolanaSheet() {"), "LoadLegacyWallets(/*reset=*/true)") {
-		t.Error("the Earnings page no longer reloads the payout wallet when the Solana connect sheet is dismissed mid-link")
-	}
-
 	// The one sheet a hide leaves open: the seedphrase sheet refuses every close
 	// but its confirm, the sweep's included, because it shows the only copy of the
 	// credential of a network the server has already created.

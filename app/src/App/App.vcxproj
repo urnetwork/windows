@@ -274,13 +274,12 @@
     <ClCompile Include="WalletPage.cpp" />
     <ClCompile Include="EarningsSheets.cpp" />
     <ClCompile Include="Top200SignSheet.cpp" />
-    <!-- The Solana payout wallet's decisions (address check, payout wallet,
-         USDC waiting, the connect sheet's state machine) are WinRT-free (no
-         pch) so tools/solana-wallet-tests.cpp runs them on any host; the page
-         and the sheet that draw them use the pch. -->
+    <!-- WinRT-free (no pch), so tools/sn-payout-tests.cpp and
+         tools/solana-wallet-tests.cpp run them on any host: the SN payout
+         line's and settlement v2's decisions, and the words for the Solana
+         wallet bridge page's failures. Their callers use the pch. -->
     <ClCompile Include="SnPayoutPresentation.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="SolanaWalletPresentation.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
-    <ClCompile Include="SolanaWalletSheets.cpp" />
     <ClCompile Include="AppController.cpp" />
     <ClCompile Include="AuthSheets.cpp" />
     <ClCompile Include="BrowserApprovalSheet.cpp" />
@@ -447,7 +446,6 @@
     <!-- header-only and WinRT-free: tools/sn-consent-tests.cpp runs it -->
     <ClInclude Include="SnConsentPresentation.h" />
     <ClInclude Include="SolanaWalletPresentation.h" />
-    <ClInclude Include="SolanaWalletSheets.h" />
     <ClInclude Include="AppController.h" />
     <!-- header-only and WinRT-free: tools/auth-link-tests.cpp runs it -->
     <ClInclude Include="AuthLink.h" />

@@ -102,13 +102,11 @@ std::string Base64Url(const std::string& s) {
 }
 
 // The words for a failure the bridge page handed back: this app's own for a
-// code it knows (solana::BridgeErrorTextFor, or solana::PayoutBridgeErrorTextFor
-// for a connect that also takes a typed address), with the wallet's name where
-// the string takes it, else the page's text.
+// code it knows (solana::BridgeErrorTextFor), with the wallet's name where the
+// string takes it, else the page's text.
 std::string LocalizedBridgeError(WalletConnect::Provider p, const std::string& code,
-                                 const std::string& pageText, bool offersManualEntry = false) {
-  const solana::BridgeErrorText text = offersManualEntry ? solana::PayoutBridgeErrorTextFor(code)
-                                                         : solana::BridgeErrorTextFor(code);
+                                 const std::string& pageText) {
+  const solana::BridgeErrorText text = solana::BridgeErrorTextFor(code);
   if (text.key.empty()) return pageText;
   if (!text.takesWalletName) return Narrow(Localized(text.key));
   const std::wstring walletName =
@@ -271,12 +269,11 @@ void WalletConnect::OpenThroughTrampoline(const std::string& url) {
   }).detach();
 }
 
-void WalletConnect::Connect(Provider p, bool offersManualEntry) {
+void WalletConnect::Connect(Provider p) {
   connectedPublicKey_.reset();
   walletEncryptionPublicKey_.reset();
   session_.reset();
   currentProvider_ = p;
-  connectOffersManualEntry_ = offersManualEntry;
   if (!NewKeyPair()) {
     if (on_error) on_error("failed to generate wallet keypair");
     return;
@@ -422,7 +419,7 @@ void WalletConnect::HandleConnect(Provider p, const std::string& query) {
     if (on_error) {
       const std::string pageText =
           params.count("errorMessage") ? params["errorMessage"] : "wallet connect error";
-      on_error(LocalizedBridgeError(p, params["errorCode"], pageText, connectOffersManualEntry_));
+      on_error(LocalizedBridgeError(p, params["errorCode"], pageText));
     }
     return;
   }

@@ -29,7 +29,6 @@ func buildSnPayoutTests(t *testing.T, extra ...string) string {
 	arguments = append(arguments,
 		filepath.Join(root, "app", "tools", "sn-payout-tests.cpp"),
 		filepath.Join(appDir, "SnPayoutPresentation.cpp"),
-		filepath.Join(appDir, "SolanaWalletPresentation.cpp"),
 		"-o", program)
 	if output, err := exec.Command(compiler, arguments...).CombinedOutput(); err != nil {
 		t.Fatalf("build sn payout tests: %v\n%s", err, output)
@@ -50,11 +49,11 @@ func runSnPayoutTests(t *testing.T, program string) {
 // provider payouts moved to the UR subnet, and Earnings says how and when a
 // provider is paid under the points figure, with the current epoch's times
 // from the SDK's epoch schedule, Claim while something is claimable and the
-// coldkey prompt while none is set. The final USDC payout line shows only while
-// USDC is pending. The same program is settlement v2's spec (APPS-SPEC.md, the
-// UX rules): the section for every state of the read, configured or not,
-// pending as pending and unavailable never as a zero, and the v2 claim
-// dialog's progress (TestSettlementV2Wiring reads the page that draws it).
+// coldkey prompt while none is set. The same program is settlement v2's spec
+// (APPS-SPEC.md, the UX rules): the section for every state of the read,
+// configured or not, pending as pending and unavailable never as a zero, and
+// the v2 claim dialog's progress (TestSettlementV2Wiring reads the page that
+// draws it).
 func TestSnPayoutLine(t *testing.T) {
 	root := repositoryRoot(t)
 	appDir := filepath.Join(root, "app", "src", "App")
@@ -95,8 +94,8 @@ func TestSnPayoutLine(t *testing.T) {
 		t.Error("App.vcxproj does not compile SnPayoutPresentation.cpp")
 	}
 
-	// the en resources: the line's strings, the USDC line labeled as the final
-	// USDC payout, and no payout string that fixes the claim window
+	// the en resources: the line's strings, and no payout string that fixes the
+	// claim window
 	resw := read(filepath.Join(appDir, "Strings", "en", "Resources.resw"))
 	value := func(key string) string {
 		match := regexp.MustCompile(`<data name="` + key + `" xml:space="preserve">\s*<value>([^<]*)</value>`).FindStringSubmatch(resw)
@@ -108,9 +107,6 @@ func TestSnPayoutLine(t *testing.T) {
 	}
 	if got, want := value("sn_payout_schedule_times"), "This epoch ends {0}. Claim your share from {1} until {2}."; got != want {
 		t.Errorf("sn_payout_schedule_times = %q, want %q", got, want)
-	}
-	if got, want := value("usdc_waiting"), "Final USDC payout: {} USDC waiting"; got != want {
-		t.Errorf("usdc_waiting = %q, want %q", got, want)
 	}
 	duration := regexp.MustCompile(`\d+ (hours?|days?|weeks?|epochs?)`)
 	for _, key := range []string{"sn_payout_schedule", "set_coldkey_to_get_paid", "set_coldkey", "claims_open_after_finalization"} {

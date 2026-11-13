@@ -10,14 +10,14 @@ import (
 	"testing"
 )
 
-// The Solana payout wallet (App/SolanaWalletPresentation.h): the C++ spec, and
-// what the Earnings pane says when removing the payout wallet.
+// The Solana wallet bridge that signing in with Phantom or Solflare uses: the
+// C++ spec, and the words for the bridge page's failures. And the Earnings
+// Solana payout wallet, which stays gone.
 
-// Compile and execute the Solana payout wallet spec
-// (App/SolanaWalletPresentation.h): the address check, the short form, which
-// account wallet is the payout wallet, the USDC waiting, how the three reads
-// commit, the connect sheet's state machine, the wallet bridge routing, and
-// which wallet a removal promoted in the payout wallet's place.
+// Compile and execute the Solana wallet bridge spec
+// (tools/solana-wallet-tests.cpp): the words for the bridge page's failure
+// codes (App/SolanaWalletPresentation.h), and where the bridge's returns go and
+// when a late challenge may still open it (App/WalletBridgeRoute.h).
 func TestSolanaWalletPresentation(t *testing.T) {
 	compiler, err := exec.LookPath("c++")
 	if err != nil {
@@ -41,112 +41,25 @@ func TestSolanaWalletPresentation(t *testing.T) {
 	}
 }
 
-// Removing the payout wallet makes another active Solana or Polygon wallet of
-// the network the payout wallet when there is one (server
-// fix/remove-wallet-promote). The Earnings pane then says "Payouts now go to
-// <short address>." (payouts_now_go_to) once the reload after the removal
-// commits.
-func TestRemovalNamesThePromotedPayoutWallet(t *testing.T) {
-	root := repositoryRoot(t)
-	appDir := filepath.Join(root, "app", "src", "App")
-	source, err := os.ReadFile(filepath.Join(appDir, "WalletPage.cpp"))
-	if err != nil {
-		t.Fatal(err)
+// USDC provider payouts ended on 2026-11-12, and the Earnings Solana payout
+// wallet went with them (owner decision 2026-11-13): no connect, no payout
+// wallet card, no USDC waiting line. The sdk drops its payout wallet api, so
+// no app source may name it.
+func TestNoUsdcPayoutWallet(t *testing.T) {
+	retired := []string{
+		"setPayoutWallet",
+		"getPayoutWallet",
+		"SetPayoutWalletArgs",
+		"SetPayoutWalletResult",
+		"GetPayoutWalletIdResult",
+		"pending_payout_usd_nano_cents",
 	}
-	page := string(source)
-
-	remove := functionBody(page, "void WalletPage::ApplyRemoveResult(")
-	if !strings.Contains(remove, "payoutRemoval_ = removal;") ||
-		strings.Index(remove, "payoutRemoval_ = removal;") > strings.Index(remove, "LoadLegacyWallets(/*reset=*/true);") {
-		t.Error("ApplyRemoveResult does not keep the removal for the reload it starts")
-	}
-	commit := functionBody(page, "void WalletPage::ApplyLegacyAnswer(")
-	if !strings.Contains(commit, "NotifyPromotedPayoutWallet();") {
-		t.Error("the reload's commit does not look for a promoted payout wallet")
-	}
-	notify := functionBody(page, "void WalletPage::NotifyPromotedPayoutWallet(")
-	for _, want := range []string{
-		"solana::PromotedPayoutWallet(removal, legacy_)",
-		`urnw::Format("payouts_now_go_to"`,
-		"solana::ShortAddress(promoted->address)",
-	} {
-		if !strings.Contains(notify, want) {
-			t.Errorf("NotifyPromotedPayoutWallet: missing %s", want)
-		}
-	}
-
-	english := reswValue(t, root, "en", "payouts_now_go_to")
-	if english != "Payouts now go to {}." {
-		t.Fatalf("en/Resources.resw payouts_now_go_to = %q", english)
-	}
-	entries, err := os.ReadDir(filepath.Join(appDir, "Strings"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "en" {
-			continue
-		}
-		value := reswValue(t, root, entry.Name(), "payouts_now_go_to")
-		if value == "" || value == english || !strings.Contains(value, "{}") {
-			t.Errorf("%s payouts_now_go_to = %q", entry.Name(), value)
-		}
-	}
-}
-
-// Before the removal, the confirmation covers both outcomes of removing the
-// payout wallet: another of the network's Solana or Polygon wallets takes over
-// (the server picks it, and the line above names it afterwards), or USDC
-// payouts are held while there is none (remove_wallet_moves_or_holds_payouts).
-// The retired remove_wallet_holds_payouts said they were always held, so no app
-// source may show it again.
-func TestRemoveConfirmationSaysPayoutsMoveOrAreHeld(t *testing.T) {
-	root := repositoryRoot(t)
-	appDir := filepath.Join(root, "app", "src", "App")
-	confirm := functionBody(readAppSource(t, "WalletPage.cpp"), "winrt::fire_and_forget WalletPage::ConfirmRemoveSolanaWallet(")
-	if !strings.Contains(confirm, `dialog.Content(winrt::box_value(Loc("remove_wallet_moves_or_holds_payouts")));`) {
-		t.Error("the remove confirmation does not show remove_wallet_moves_or_holds_payouts")
-	}
-	sources, err := os.ReadDir(appDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range sources {
-		ext := filepath.Ext(entry.Name())
-		if entry.IsDir() || (ext != ".cpp" && ext != ".h" && ext != ".xaml") {
-			continue
-		}
-		if strings.Contains(readAppSource(t, entry.Name()), `"remove_wallet_holds_payouts"`) {
-			t.Errorf("%s shows remove_wallet_holds_payouts; payouts move to another wallet when there is one", entry.Name())
-		}
-	}
-
-	const confirmation = "USDC payouts move to another of your Solana or Polygon wallets, or are held until you connect one."
-	if english := reswValue(t, root, "en", "remove_wallet_moves_or_holds_payouts"); english != confirmation {
-		t.Fatalf("en/Resources.resw remove_wallet_moves_or_holds_payouts = %q", english)
-	}
-	locales, err := os.ReadDir(filepath.Join(appDir, "Strings"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range locales {
-		if !entry.IsDir() {
-			continue
-		}
-		if reswValue(t, root, entry.Name(), "remove_wallet_holds_payouts") != "" {
-			t.Errorf("%s keeps the retired remove_wallet_holds_payouts", entry.Name())
-		}
-		if entry.Name() == "en" {
-			continue
-		}
-		value := reswValue(t, root, entry.Name(), "remove_wallet_moves_or_holds_payouts")
-		if value == "" || value == confirmation {
-			t.Errorf("%s remove_wallet_moves_or_holds_payouts = %q", entry.Name(), value)
-			continue
-		}
-		for _, name := range []string{"USDC", "Solana", "Polygon"} {
-			if !strings.Contains(value, name) {
-				t.Errorf("%s remove_wallet_moves_or_holds_payouts drops %s: %q", entry.Name(), name, value)
+	files := appSourceFiles(t, ".cpp", ".h")
+	for _, name := range sortedNames(files) {
+		code := stripComments(files[name])
+		for _, symbol := range retired {
+			if strings.Contains(code, symbol) {
+				t.Errorf("%s names %s, the sdk's retired USDC payout wallet api", name, symbol)
 			}
 		}
 	}
@@ -171,10 +84,8 @@ func TestSolanaBridgeErrorCodes(t *testing.T) {
 			t.Errorf("WalletConnect.cpp LocalizedBridgeError: missing %s", want)
 		}
 	}
-	// (the connect step also says whether its Connect offered manual entry:
-	// TestPayoutNoExtensionPointsAtManualEntry)
 	for _, handler := range []string{"void WalletConnect::HandleConnect(", "void WalletConnect::HandleSignMessage("} {
-		if !strings.Contains(functionBody(bridge, handler), `on_error(LocalizedBridgeError(p, params["errorCode"], pageText`) {
+		if !strings.Contains(functionBody(bridge, handler), `on_error(LocalizedBridgeError(p, params["errorCode"], pageText));`) {
 			t.Errorf("WalletConnect.cpp %s: the bridge page's code does not reach the error text", handler)
 		}
 	}
@@ -238,73 +149,6 @@ func TestSolanaBridgeCodesMatchTheSdkHeader(t *testing.T) {
 		}
 		if !strings.Contains(presentationSource, `if (code == "`+code+`")`) {
 			t.Errorf("SolanaWalletPresentation.cpp: BridgeErrorTextFor does not know the sdk's %q", code)
-		}
-	}
-}
-
-// The payout wallet's connect sheet when the bridge finds no extension of the
-// chosen wallet in the browser (extension_not_found). The sheet also takes a
-// typed address, which works with any wallet (a Brave Wallet user on android
-// was told only to install a wallet, although entering the address worked), so
-// its line points at the sheet's Enter address manually control, named in the
-// control's own words in every language (App/SolanaWalletPresentation.h
-// PayoutBridgeErrorTextFor, run by TestSolanaWalletPresentation). Signing in
-// and a sign-in method's signature have no manual entry and keep the shared
-// words.
-func TestPayoutNoExtensionPointsAtManualEntry(t *testing.T) {
-	host := stripLineComments(readAppSource(t, "SdkHost.cpp"))
-	if !strings.Contains(functionBody(host, "void SdkHost::ConnectSolanaWallet("), "wallet_.Connect(provider, /*offersManualEntry=*/true);") {
-		t.Error("SdkHost::ConnectSolanaWallet: the payout sheet's connect does not offer manual entry")
-	}
-	for _, signIn := range []string{"void SdkHost::SignInWithSolana(", "void SdkHost::SignWithSolanaWallet("} {
-		body := functionBody(host, signIn)
-		if !strings.Contains(body, "wallet_.Connect(provider);") || strings.Contains(body, "offersManualEntry") {
-			t.Errorf("%s: a sign-in connect must keep the shared words", signIn)
-		}
-	}
-	bridge := stripLineComments(readAppSource(t, "WalletConnect.cpp"))
-	if !strings.Contains(functionBody(bridge, "void WalletConnect::Connect("), "connectOffersManualEntry_ = offersManualEntry;") {
-		t.Error("WalletConnect::Connect does not keep whether it offered manual entry")
-	}
-	if !strings.Contains(functionBody(bridge, "std::string LocalizedBridgeError("), "offersManualEntry ? solana::PayoutBridgeErrorTextFor(code)") {
-		t.Error("LocalizedBridgeError does not read a payout connect's failure in the payout words")
-	}
-	if !strings.Contains(functionBody(bridge, "void WalletConnect::HandleConnect("),
-		`on_error(LocalizedBridgeError(p, params["errorCode"], pageText, connectOffersManualEntry_));`) {
-		t.Error("WalletConnect::HandleConnect: the connect step's failure ignores whether its Connect offered manual entry")
-	}
-	if !strings.Contains(functionBody(bridge, "void WalletConnect::HandleSignMessage("),
-		`on_error(LocalizedBridgeError(p, params["errorCode"], pageText));`) {
-		t.Error("WalletConnect::HandleSignMessage: the sign step must keep the shared words")
-	}
-
-	const key = "solana_wallet_error_extension_not_found"
-	const english = "The {} extension was not found in this browser. Install it and try again, or choose “Enter address manually” to paste your wallet address."
-	root := repositoryRoot(t)
-	if value := reswValue(t, root, "en", key); value != english {
-		t.Fatalf("en/Resources.resw %s = %q", key, value)
-	}
-	entries, err := os.ReadDir(filepath.Join(root, "app", "src", "App", "Strings"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		value := reswValue(t, root, entry.Name(), key)
-		label := reswValue(t, root, entry.Name(), "enter_address_manually")
-		switch {
-		case value == "":
-			t.Errorf("%s/Resources.resw has no %s", entry.Name(), key)
-		case label == "":
-			t.Errorf("%s/Resources.resw has no enter_address_manually", entry.Name())
-		case !strings.Contains(value, label):
-			t.Errorf("%s/Resources.resw %s does not name %q: %q", entry.Name(), key, label, value)
-		case !strings.Contains(value, "{}"):
-			t.Errorf("%s/Resources.resw %s drops the wallet name: %q", entry.Name(), key, value)
-		case entry.Name() != "en" && value == english:
-			t.Errorf("%s/Resources.resw %s is English", entry.Name(), key)
 		}
 	}
 }

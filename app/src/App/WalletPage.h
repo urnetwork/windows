@@ -3,10 +3,7 @@
 //
 //   pane A  the net points figure and its breakdown; the protocol note; the
 //           Bittensor wallet (connected through the ur.io wallet bridge with
-//           purpose "connect", or a pasted address that is still signed) with
-//           its overflow, "Connect Solana wallet" (SolanaWalletSheets); the
-//           Solana payout wallet that USDC payouts go to until the Bittensor
-//           migration completes, and the USDC still waiting for one; the
+//           purpose "connect", or a pasted address that is still signed); the
 //           unclaimed SN25a tile and the claim dialog; beside it settlement
 //           v2's section, the coldkey's v2 accounts, and their claim dialog;
 //           the Top 200 head-spot tile (GET /sn/top/me, the Protocol board's
@@ -53,7 +50,6 @@
 #include "ProviderStatusPresentation.h"
 #include "SnConsentPresentation.h"
 #include "SnPayoutPresentation.h"
-#include "SolanaWalletPresentation.h"
 #include "Top200SignSheet.h"
 
 namespace urnw {
@@ -72,7 +68,6 @@ namespace urnw {
 
 class EmojiTagSheet;
 class TransportSettingsSheet;
-class ConnectSolanaWalletSheet;
 
 class WalletPage {
  public:
@@ -144,12 +139,6 @@ class WalletPage {
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
   void OnConnectWalletAddress(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // the three-dot overflows: beside the Bittensor action in both of its states
-  // ("Connect Solana wallet"), and on the Solana payout wallet's card ("Remove")
-  void OnWalletMore(winrt::Windows::Foundation::IInspectable const&,
-                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnSolanaWalletMore(winrt::Windows::Foundation::IInspectable const&,
-                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   winrt::fire_and_forget OnClaimAlpha(winrt::Windows::Foundation::IInspectable const&,
                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // settlement v2's Claim: the v2 claim dialog, on the claim in flight while
@@ -178,8 +167,9 @@ class WalletPage {
   // The ledger header's "Earnings actions" overflow, shown while pane A is
   // folded (the fold-doors design note's COMMAND-DOOR DUPLICATION): one menu
   // whose items call the SAME member handlers the rail's buttons call - claim,
-  // settlement v2's claim, wallet connect/change, the Solana menu and upgrade -
-  // so the door survives the fold without any element being built twice.
+  // settlement v2's claim, the payout consent, wallet connect/change and
+  // upgrade - so the door survives the fold without any element being built
+  // twice.
   void ShowEarningsActionsMenu(winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor);
 
   void RefreshAfterWalletChange();
@@ -321,36 +311,6 @@ class WalletPage {
                              std::function<void(std::optional<AddressVerdict>)> done);
   void ApplyManualVerdict(uint32_t generation, std::optional<AddressVerdict> verdict);
   void ShowManualPanel(bool show);
-
-  // ---- the Solana payout wallet (legacy USDC payouts until the migration)
-  // The account's wallets, the payout wallet id and the payments: three
-  // independent reads, committed together by solana::LegacyLoad so the card and
-  // the waiting line never render from part of them. `reset` (after a write)
-  // hides both until the new answers commit; a plain reload keeps what is on
-  // screen meanwhile; another network is cleared at once.
-  void LoadLegacyWallets(bool reset = false);
-  void ApplyLegacyAnswer(uint32_t generation, solana::LegacyRead which, bool ok,
-                         solana::LegacyAnswer answer);
-  void RebuildSolanaPanel();
-  void ShowWalletMenu(winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor);
-  winrt::fire_and_forget OpenConnectSolanaSheet();
-  // The sheet linked `walletId`: made the payout wallet here when a fresh read of
-  // the payout wallet says it is not yet (ApplyFreshPayoutWallet).
-  void OnSolanaConnected(std::string const& walletId);
-  void ApplyFreshPayoutWallet(uint32_t generation, std::string const& walletId,
-                              std::string const& payoutWalletId);
-  void SwitchPayoutWallet(std::string const& walletId);
-  // the payout read and the switch share one watchdog (legacyFlow_)
-  uint32_t BeginPayoutFlow();
-  void ApplyPayoutSwitchResult(uint32_t generation, bool ok, std::string const& error);
-  void ShowSolanaCardMenu(winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor);
-  winrt::fire_and_forget ConfirmRemoveSolanaWallet();
-  void RemoveSolanaWallet(std::string const& walletId);
-  void ApplyRemoveResult(uint32_t generation, bool ok, std::string const& error,
-                         solana::PayoutRemoval const& removal);
-  // the reload after a removal committed: name the wallet the server promoted
-  void NotifyPromotedPayoutWallet();
-  void SetLegacyBusy(bool busy);
 
   // ---- history, claims, gas
   void ApplyEpochs(std::vector<EpochRow> const& epochs, Fetch state);
@@ -747,20 +707,6 @@ class WalletPage {
 
   std::shared_ptr<urnw::ClaimAlphaSheet> claimSheet_;
   std::shared_ptr<urnw::ClaimLedgerSheet> v2ClaimSheet_;
-
-  // the Solana payout wallet: the view last committed from the three reads, and
-  // the load whose answers are still coming in
-  solana::LegacyCommitted legacy_;
-  solana::LegacyLoad legacyLoad_;
-  uint32_t legacyGeneration_ = 0;
-  // a payout switch or a removal is out: every door to another Solana write is
-  // shut (SetLegacyBusy)
-  bool legacyBusy_ = false;
-  Flow legacyFlow_;  // the payout read and switch after a link
-  Flow removeFlow_;  // the removal, on its own flow: a link must never drop its answer
-  // a removal that landed, until the reload after it commits
-  std::optional<solana::PayoutRemoval> payoutRemoval_;
-  std::shared_ptr<urnw::ConnectSolanaWalletSheet> solanaSheet_;
 
   struct PointsStatTile {
     winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};

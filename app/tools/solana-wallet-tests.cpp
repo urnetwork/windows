@@ -1,16 +1,13 @@
-// Executable spec for the Solana payout wallet's pure logic (the restored
-// Solana connect option on Earnings): the address check a pasted address
-// passes before it is sent to the server, the short form, which account wallet
-// is the Solana payout wallet, the USDC still waiting, what the pane shows from
-// those, the connect sheet's state machine and the words for the bridge page's
-// failure codes (App/SolanaWalletPresentation.h),
-// plus where the wallet bridge's returns go and when a late challenge may still
-// open the bridge (App/WalletBridgeRoute.h) - run
-// against the SAME sources the app compiles, on any host with a C++20 compiler.
+// Executable spec for the Solana wallet bridge's pure logic, which signing in
+// with Phantom or Solflare and adding either as a sign-in method use: the words
+// for the bridge page's failure codes (App/SolanaWalletPresentation.h), where
+// the wallet bridge's returns go and when a late challenge may still open the
+// bridge (App/WalletBridgeRoute.h) - run against the SAME sources the app
+// compiles, on any host with a C++20 compiler.
 //
-// The WinUI halves (WalletPage's card and overflows, SolanaWalletSheets' dialog)
-// cannot be built off Windows at all; what is verified here is every decision
-// they make before they touch a XAML object.
+// The WinUI halves (WalletConnect.cpp, SdkHost's wallet flows) cannot be built
+// off Windows at all; what is verified here is every decision they make on
+// plain values.
 //
 //   c++ -std=c++20 -I ../src/App solana-wallet-tests.cpp ../src/App/SolanaWalletPresentation.cpp -o /tmp/solana-wallet-tests && /tmp/solana-wallet-tests
 //
@@ -18,9 +15,7 @@
 
 #include <cstdint>
 #include <iostream>
-#include <optional>
 #include <string>
-#include <vector>
 
 #include "SolanaWalletPresentation.h"
 #include "WalletBridgeRoute.h"
@@ -64,849 +59,6 @@ struct Case {
 };
 #define TEST_CASE(name) Case case_##__LINE__(name)
 
-// Real, well-known Solana public keys. The payout rule refuses two of them, as
-// the server does: the USDC mint is a token's address, and the system
-// program's is the all-zero key.
-constexpr const char* kUsdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";      // 44
-constexpr const char* kTokenProgram = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";  // 43
-constexpr const char* kSystemProgram = "11111111111111111111111111111111";            // 32
-// Synthetic keys: base58 of 32 bytes made up here, each checked against the
-// server's decoder (solana-go PublicKeyFromBase58).
-// 0x01 to 0x20
-constexpr const char* kSyntheticKey = "4wBqpZM9xaSheZzJSMawUKKwhdpChKbZ5eu5ky4Vigw";    // 43
-// 32 bytes of 0xff: the longest encoding
-constexpr const char* kLongestKey = "JEKNVnkbo3jma5nREBBJCDoXFVeKkD56V3xKrvRmWxFG";     // 44
-// 31 zero bytes and a 0x01: the shortest encoding, one above the all-zero key
-constexpr const char* kShortestKey = "11111111111111111111111111111112";               // 32
-// a zero byte, then 0x01 to 0x1f: each leading zero byte is a leading '1'
-constexpr const char* kLeadingZeroKey = "1thX6LZfHDZZKUs92febYZhYRcXddmzfzF2NvTkPNE";  // 42
-// a Bittensor coldkey (ss58, 48 characters): not a Solana address
-constexpr const char* kColdkey = "5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repo5EYjQX";
-
-// U+2026 as UTF-8, the SDK's ellipsis
-const std::string kEllipsis = "\xE2\x80\xA6";
-
-LegacyWallet Wallet(const std::string& id, const std::string& chain, const std::string& address,
-                    bool active = true, const std::string& circle = std::string()) {
-  LegacyWallet wallet;
-  wallet.id = id;
-  wallet.blockchain = chain;
-  wallet.address = address;
-  wallet.active = active;
-  wallet.circleWalletId = circle;
-  return wallet;
-}
-
-HeldPayment Payment(int64_t nanoCents, bool completed, bool canceled) {
-  HeldPayment payment;
-  payment.payoutNanoCents = nanoCents;
-  payment.completed = completed;
-  payment.canceled = canceled;
-  return payment;
-}
-
-std::string StateName(ConnectState state) {
-  switch (state) {
-    case ConnectState::Idle: return "Idle";
-    case ConnectState::OpeningBrowser: return "OpeningBrowser";
-    case ConnectState::Checking: return "Checking";
-    case ConnectState::Ready: return "Ready";
-    case ConnectState::Linking: return "Linking";
-    case ConnectState::Failed: return "Failed";
-    case ConnectState::Linked: return "Linked";
-  }
-  return "?";
-}
-
-void CheckState(ConnectState expected, const ConnectMachine& m, const std::string& what) {
-  CheckEq(StateName(expected), StateName(m.state), what);
-}
-
-// A machine whose manual address the server has accepted.
-ConnectMachine ReadyMachine() {
-  ConnectMachine m;
-  Debounced(m, kSyntheticKey, /*askServer=*/true);
-  Verdict(m, ServerVerdict::Valid);
-  return m;
-}
-
-// ---- addresses --------------------------------------------------------------
-
-void AddressTests() {
-  {
-    TEST_CASE("theFixturesAreTheLengthsTheySayTheyAre");
-    CheckEq(44, static_cast<long long>(std::string(kUsdcMint).size()), "the USDC mint");
-    CheckEq(43, static_cast<long long>(std::string(kTokenProgram).size()), "the token program");
-    CheckEq(32, static_cast<long long>(std::string(kSystemProgram).size()), "the system program");
-    CheckEq(43, static_cast<long long>(std::string(kSyntheticKey).size()), "the synthetic key");
-    CheckEq(44, static_cast<long long>(std::string(kLongestKey).size()), "the longest key");
-    CheckEq(32, static_cast<long long>(std::string(kShortestKey).size()), "the shortest key");
-    CheckEq(42, static_cast<long long>(std::string(kLeadingZeroKey).size()),
-            "the leading zero key");
-  }
-  {
-    TEST_CASE("payoutKeysPass");
-    Check(LooksLikeSolanaAddress(kSyntheticKey), "a synthetic key");
-    Check(LooksLikeSolanaAddress(kTokenProgram), "a real key");
-    Check(LooksLikeSolanaAddress(kLeadingZeroKey), "a key with a leading zero byte");
-  }
-  {
-    TEST_CASE("thirtyTwoBytesTakeThirtyTwoToFortyFourCharacters");
-    Check(LooksLikeSolanaAddress(kShortestKey), "32 is the shortest");
-    Check(LooksLikeSolanaAddress(kLongestKey), "44 is the longest");
-    Check(!LooksLikeSolanaAddress(std::string(30, '1') + "2"), "31 characters are 31 bytes");
-    Check(!LooksLikeSolanaAddress(std::string("1") + kLongestKey), "45 characters are 33 bytes");
-    Check(!LooksLikeSolanaAddress(std::string(45, 'z')), "45 'z' are 33 bytes");
-  }
-  {
-    TEST_CASE("theShapeOfAnAddressIsNotEnough");
-    // 32 to 44 base58 characters that are not 32 bytes: only the server refused
-    // these (support inbox 8045)
-    Check(!LooksLikeSolanaAddress(std::string(44, 'z')), "44 'z' are 33 bytes");
-    Check(!LooksLikeSolanaAddress(std::string("1") + kSyntheticKey), "a '1' more is a 33rd byte");
-    Check(!LooksLikeSolanaAddress(std::string(kLeadingZeroKey).substr(1)),
-          "a '1' fewer leaves 31 bytes");
-    Check(!LooksLikeSolanaAddress(std::string(33, '1')), "33 zero bytes");
-    Check(!LooksLikeSolanaAddress(std::string(30, '1') + "22"), "32 characters, 31 bytes");
-    Check(!LooksLikeSolanaAddress("2" + std::string(31, '1')), "32 characters, 23 bytes");
-  }
-  {
-    TEST_CASE("theAllZeroKeyIsRefused");
-    // 32 bytes, all zero: the system program's id, not a wallet
-    Check(!LooksLikeSolanaAddress(kSystemProgram), "32 '1's");
-    Check(!LooksLikeSolanaAddress(std::string(" ") + kSystemProgram + "\n"), "padded");
-    Check(LooksLikeSolanaAddress(kShortestKey), "the key one above it passes");
-  }
-  {
-    TEST_CASE("theUsdcMintIsRefused");
-    // 32 bytes, but a token's address, not a wallet's
-    Check(!LooksLikeSolanaAddress(kUsdcMint), "the mint");
-    Check(!LooksLikeSolanaAddress(std::string("\t") + kUsdcMint + " \r\n"), "padded");
-    std::string next = kUsdcMint;
-    next.back() = 'w';
-    Check(LooksLikeSolanaAddress(next),
-          "refused as the mint, not for its bytes: the key one above it passes");
-  }
-  {
-    TEST_CASE("theFourLookalikesAreNotBase58");
-    for (char lookalike : std::string("0OIl")) {
-      std::string address = kSyntheticKey;
-      address[5] = lookalike;
-      Check(!LooksLikeSolanaAddress(address),
-            std::string("rejects a '") + lookalike + "' inside a key");
-    }
-    for (char other : std::string("+/-_=.")) {
-      std::string address = kSyntheticKey;
-      address[5] = other;
-      Check(!LooksLikeSolanaAddress(address),
-            std::string("rejects a '") + other + "' (base64 and punctuation)");
-    }
-    std::string accented = kSyntheticKey;
-    accented[5] = static_cast<char>(0xE9);
-    Check(!LooksLikeSolanaAddress(accented), "rejects a byte above 0x7f");
-  }
-  {
-    TEST_CASE("surroundingWhitespaceIsTrimmedButInnerIsNot");
-    Check(LooksLikeSolanaAddress(std::string("  ") + kSyntheticKey + "\n"),
-          "a padded paste passes");
-    Check(LooksLikeSolanaAddress(std::string("\t") + kShortestKey + " \r\n"),
-          "trimmed before it is decoded");
-    std::string spaced = kSyntheticKey;
-    spaced[20] = ' ';
-    Check(!LooksLikeSolanaAddress(spaced), "a space inside is not trimmed away");
-    Check(!LooksLikeSolanaAddress(""), "empty");
-    Check(!LooksLikeSolanaAddress("   \t "), "whitespace only");
-    CheckEq("abc", Trim(" \t abc \r\n"), "Trim");
-    CheckEq("", Trim("  "), "Trim of whitespace");
-  }
-  {
-    TEST_CASE("otherChainsAddressesAreNotSolanaOnes");
-    Check(!LooksLikeSolanaAddress(kColdkey), "a Bittensor coldkey (48 characters)");
-    Check(!LooksLikeSolanaAddress("0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
-          "a Polygon address (0x hex)");
-  }
-}
-
-void ShortAddressTests() {
-  // What the card draws: SolanaPanelView::shortAddress is this function (see
-  // theCardDrawsItsShortForm), the SDK's ShortSs58 shape.
-  {
-    TEST_CASE("theCardsShortForm");
-    CheckEq(std::string("EPjF") + kEllipsis + "Dt1v", ShortAddress(kUsdcMint), "the USDC mint");
-    CheckEq(std::string("7Xk9") + kEllipsis + "3fQa",
-            ShortAddress("7Xk9SAMPLEpayoutWALLETnotREAL1111113fQa"), "the preview card's sample");
-    CheckEq(std::string("1111") + kEllipsis + "1111", ShortAddress(kSystemProgram),
-            "the system program");
-  }
-  {
-    TEST_CASE("twelveBytesOrFewerStayWhole");
-    CheckEq("123456789012", ShortAddress("123456789012"), "12 stays whole");
-    CheckEq(std::string("1234") + kEllipsis + "0123", ShortAddress("1234567890123"),
-            "13 is shortened");
-    CheckEq("abc", ShortAddress("abc"), "short");
-    CheckEq("", ShortAddress(""), "empty");
-  }
-  {
-    TEST_CASE("trimmedBeforeItIsShortened");
-    CheckEq(std::string("EPjF") + kEllipsis + "Dt1v",
-            ShortAddress(std::string("  ") + kUsdcMint + "\n"), "padding is not part of it");
-  }
-}
-
-// ---- the payout wallet ------------------------------------------------------
-
-void PayoutWalletTests() {
-  {
-    TEST_CASE("thePayoutIdPicksTheWallet");
-    const std::vector<LegacyWallet> wallets = {
-        Wallet("w1", "SOL", kTokenProgram),
-        Wallet("w2", "SOL", kUsdcMint),
-    };
-    const auto payout = PayoutWalletFor(wallets, "w2");
-    Check(payout.has_value(), "found");
-    if (payout) {
-      CheckEq("w2", payout->id, "the payout wallet's id");
-      CheckEq(kUsdcMint, payout->address, "and its address");
-    }
-  }
-  {
-    TEST_CASE("anEmptyOrUnknownPayoutIdIsNone");
-    const std::vector<LegacyWallet> wallets = {Wallet("w1", "SOL", kUsdcMint)};
-    Check(!PayoutWalletFor(wallets, "").has_value(), "no payout wallet id");
-    Check(!PayoutWalletFor(wallets, "w9").has_value(), "an id no wallet has");
-    Check(!PayoutWalletFor({}, "w1").has_value(), "no wallets");
-    // an empty wallet id never matches an empty payout id
-    Check(!PayoutWalletFor({Wallet("", "SOL", kUsdcMint)}, "").has_value(),
-          "an id-less wallet is never the payout wallet");
-  }
-  {
-    TEST_CASE("custodialBittensorAndInactiveWalletsAreDropped");
-    const std::vector<LegacyWallet> wallets = {
-        Wallet("circle", "SOL", kUsdcMint, true, "circle-wallet-1"),
-        Wallet("tao", "TAO", kColdkey),
-        Wallet("gone", "SOL", kTokenProgram, /*active=*/false),
-    };
-    Check(!PayoutWalletFor(wallets, "circle").has_value(), "a Circle custodial wallet");
-    Check(!PayoutWalletFor(wallets, "tao").has_value(), "an id pointing at a TAO wallet");
-    Check(!PayoutWalletFor(wallets, "gone").has_value(), "an inactive (removed) wallet");
-  }
-  {
-    TEST_CASE("aPolygonPayoutWalletStillCounts");
-    const std::vector<LegacyWallet> wallets = {
-        Wallet("matic", "MATIC", "0x71C7656EC7ab88b098defB751B7401B5f6d8976F")};
-    const auto payout = PayoutWalletFor(wallets, "matic");
-    Check(payout.has_value(), "a legacy Polygon user's USDC goes there");
-  }
-}
-
-void PendingTests() {
-  {
-    TEST_CASE("onlyHeldPaymentsCount");
-    const std::vector<HeldPayment> payments = {
-        Payment(3'000'000'000, false, false),   // held
-        Payment(870'000'000, false, false),     // held
-        Payment(9'000'000'000, true, false),    // paid
-        Payment(5'000'000'000, false, true),    // canceled
-        Payment(7'000'000'000, true, true),     // both
-    };
-    CheckEq(3'870'000'000LL, PendingUsdcNanoCents(payments), "3.87 USDC held");
-    CheckEq(0, PendingUsdcNanoCents({}), "nothing");
-  }
-  {
-    TEST_CASE("twoDecimalsInIntegerArithmetic");
-    CheckEq("3.87", FormatUsd(3'870'000'000), "the email's 3.87");
-    CheckEq("0.00", FormatUsd(0), "zero");
-    CheckEq("0.00", FormatUsd(4'999'999), "just under half a cent rounds down");
-    CheckEq("0.01", FormatUsd(5'000'000), "half a cent rounds up");
-    CheckEq("1234.57", FormatUsd(1'234'567'890'123), "rounded to the cent");
-    CheckEq("100.00", FormatUsd(100'000'000'000), "whole dollars keep two places");
-    CheckEq("-3.87", FormatUsd(-3'870'000'000), "negative");
-    CheckEq("0.00", FormatUsd(-4'999'999), "a negative that rounds to zero has no sign");
-  }
-  {
-    TEST_CASE("subCentTotalsAreNotWaiting");
-    Check(!HasPendingUsd(0), "zero");
-    Check(!HasPendingUsd(1), "one nano cent reads 0.00");
-    Check(!HasPendingUsd(4'999'999), "just under half a cent");
-    Check(HasPendingUsd(5'000'000), "0.01");
-    Check(!HasPendingUsd(-3'870'000'000), "a negative total");
-  }
-}
-
-void PanelTests() {
-  const LegacyWallet wallet = Wallet("w1", "SOL", kUsdcMint);
-  const LegacyReads all{true, true, true};
-  {
-    TEST_CASE("loadingShowsNothing");
-    const auto view = SolanaPanelFor(LegacyState::Loading, all, wallet, 3'870'000'000);
-    Check(!view.showCard && !view.showCardPending && !view.showWaitingLine,
-          "no card and no line until all three reads are in");
-  }
-  {
-    TEST_CASE("aPayoutWalletShowsTheCard");
-    const auto view = SolanaPanelFor(LegacyState::Ready, all, wallet, 3'870'000'000);
-    Check(view.showCard, "the card");
-    Check(view.wallet == wallet, "for the payout wallet");
-    Check(view.showCardPending, "with its waiting line");
-    Check(!view.showWaitingLine, "and no line above the Bittensor action");
-    CheckEq("3.87", view.pendingUsd, "the figure");
-  }
-  {
-    TEST_CASE("theCardDrawsItsShortForm");
-    const auto view = SolanaPanelFor(LegacyState::Ready, all, wallet, 0);
-    CheckEq(std::string("EPjF") + kEllipsis + "Dt1v", view.shortAddress, "the card's address line");
-    const auto sample = SolanaPanelFor(
-        LegacyState::Ready, all, Wallet("s", "SOL", "7Xk9SAMPLEpayoutWALLETnotREAL1111113fQa"), 0);
-    CheckEq(std::string("7Xk9") + kEllipsis + "3fQa", sample.shortAddress, "the preview card's");
-    const auto none = SolanaPanelFor(LegacyState::Ready, all, std::nullopt, 0);
-    CheckEq("", none.shortAddress, "no card, no address");
-  }
-  {
-    TEST_CASE("aPolygonPayoutWalletIsNotCalledASolanaOne");
-    const auto polygon = SolanaPanelFor(
-        LegacyState::Ready, all, Wallet("matic", "MATIC", "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
-        3'870'000'000);
-    Check(polygon.showCard, "its card still shows: hiding it would invite replacing a working wallet");
-    Check(!polygon.solana, "titled Wallet, not Solana wallet");
-    Check(SolanaPanelFor(LegacyState::Ready, all, wallet, 0).solana,
-          "a Solana payout wallet is titled Solana wallet");
-  }
-  {
-    TEST_CASE("theCardHidesItsLineAtZero");
-    const auto view = SolanaPanelFor(LegacyState::Ready, all, wallet, 0);
-    Check(view.showCard, "the card");
-    Check(!view.showCardPending, "no 0.00 USDC waiting");
-    Check(!view.showWaitingLine, "and no line elsewhere");
-  }
-  {
-    TEST_CASE("noPayoutWalletShowsTheWaitingLine");
-    const auto view = SolanaPanelFor(LegacyState::Ready, all, std::nullopt, 3'870'000'000);
-    Check(!view.showCard, "no card");
-    Check(view.showWaitingLine, "the emailed user's line");
-    CheckEq("3.87", view.pendingUsd, "the figure");
-  }
-  {
-    TEST_CASE("noPayoutWalletAndNothingWaitingShowsNothing");
-    const auto none = SolanaPanelFor(LegacyState::Ready, all, std::nullopt, 0);
-    Check(!none.showCard && !none.showWaitingLine, "zero");
-    const auto dust = SolanaPanelFor(LegacyState::Ready, all, std::nullopt, 1);
-    Check(!dust.showWaitingLine, "a sub-cent remainder");
-  }
-  {
-    TEST_CASE("aFailedPaymentsReadKeepsTheCardWithoutItsFigure");
-    const auto view = SolanaPanelFor(LegacyState::Ready, {true, true, false}, wallet, 3'870'000'000);
-    Check(view.showCard, "the card");
-    Check(!view.showCardPending, "without its figure");
-    Check(!view.showWaitingLine, "and no line");
-  }
-  {
-    TEST_CASE("aFailedPayoutReadKeepsTheKnownWallet");
-    const auto view = SolanaPanelFor(LegacyState::Ready, {true, false, true}, wallet, 3'870'000'000);
-    Check(view.showCard, "the card for the last known payout wallet");
-    Check(view.showCardPending, "with its figure");
-  }
-  {
-    TEST_CASE("aFailedPayoutReadWithNoKnownWalletClaimsNothing");
-    const auto view =
-        SolanaPanelFor(LegacyState::Ready, {true, false, true}, std::nullopt, 3'870'000'000);
-    Check(!view.showCard, "no card");
-    Check(!view.showWaitingLine, "and no line saying there is no payout wallet");
-  }
-  {
-    TEST_CASE("aFailedWalletsReadShowsNothing");
-    const auto view = SolanaPanelFor(LegacyState::Ready, {false, true, true}, wallet, 3'870'000'000);
-    Check(!view.showCard && !view.showCardPending && !view.showWaitingLine, "nothing");
-  }
-  {
-    TEST_CASE("aSwitchIsNeededUnlessItIsAlreadyThePayoutWallet");
-    Check(!NeedsPayoutSwitch("", "w1"), "no wallet id: nothing to switch to");
-    Check(!NeedsPayoutSwitch("w1", "w1"), "already the payout wallet");
-    Check(NeedsPayoutSwitch("w2", "w1"), "a second wallet");
-    Check(NeedsPayoutSwitch("w2", ""), "no payout wallet known");
-  }
-  {
-    TEST_CASE("theSwitchIsDecidedOnAFreshRead");
-    // the card still shows w1, but the payout wallet moved to w2 on the web
-    Check(NeedsPayoutSwitch("w1", PayoutIdForSwitch(true, "w2")),
-          "linking w1 again switches back to it");
-    Check(!NeedsPayoutSwitch("w1", PayoutIdForSwitch(true, "w1")),
-          "no switch when the server already adopted it");
-    Check(NeedsPayoutSwitch("w1", PayoutIdForSwitch(true, "")), "no payout wallet: switch");
-    CheckEq("", PayoutIdForSwitch(false, "w1"), "a failed read counts as none");
-    Check(NeedsPayoutSwitch("w1", PayoutIdForSwitch(false, "w1")),
-          "so a failed read switches (idempotent)");
-  }
-}
-
-// ---- the three reads, committed (LegacyLoad) ------------------------------
-
-LegacyAnswer WalletsAnswer(std::vector<LegacyWallet> wallets) {
-  LegacyAnswer answer;
-  answer.wallets = std::move(wallets);
-  return answer;
-}
-
-LegacyAnswer PayoutAnswer(const std::string& payoutId) {
-  LegacyAnswer answer;
-  answer.payoutId = payoutId;
-  return answer;
-}
-
-LegacyAnswer PaymentsAnswer(std::vector<HeldPayment> payments) {
-  LegacyAnswer answer;
-  answer.payments = std::move(payments);
-  return answer;
-}
-
-// A view of `networkId` committed from one load of three ok reads.
-LegacyCommitted CommittedView(const std::string& networkId, const LegacyWallet& wallet,
-                              int64_t pendingNanoCents) {
-  LegacyCommitted view;
-  BeginLegacyLoad(view, networkId, /*reset=*/false);
-  LegacyLoad load(1);
-  load.Answer(1, LegacyRead::Wallets, true, WalletsAnswer({wallet}));
-  load.Answer(1, LegacyRead::Payout, true, PayoutAnswer(wallet.id));
-  load.Answer(1, LegacyRead::Payments, true,
-              PaymentsAnswer({Payment(pendingNanoCents, false, false)}));
-  load.Commit(view, networkId);
-  return view;
-}
-
-void LegacyLoadTests() {
-  const LegacyWallet w1 = Wallet("w1", "SOL", kUsdcMint);
-  const LegacyWallet w2 = Wallet("w2", "SOL", kTokenProgram);
-  {
-    TEST_CASE("nothingCommitsBeforeThreeAnswers");
-    LegacyCommitted view;
-    LegacyLoad load(1);
-    Check(load.Answer(1, LegacyRead::Wallets, true, WalletsAnswer({w1})), "the wallets");
-    Check(load.Answer(1, LegacyRead::Payout, true, PayoutAnswer("w1")), "the payout wallet id");
-    Check(!load.Complete(), "two of three");
-    Check(!load.Commit(view, "net-a"), "no commit");
-    Check(!view.ready && view.wallets.empty() && view.payoutWalletId.empty(), "the view untouched");
-    Check(load.Answer(1, LegacyRead::Payments, true,
-                      PaymentsAnswer({Payment(3'870'000'000, false, false)})),
-          "the payments");
-    Check(load.Complete(), "all three");
-    Check(load.Commit(view, "net-a"), "commits");
-    Check(view.ready, "ready");
-    CheckEq("w1", view.payoutWalletId, "the payout wallet id");
-    CheckEq(3'870'000'000LL, view.pendingNanoCents, "the total");
-    const auto panel = SolanaPanelFor(view);
-    Check(panel.showCard && panel.showCardPending, "the card with its figure");
-  }
-  {
-    TEST_CASE("anAnswerForAnOldLoadIsDropped");
-    LegacyLoad load(2);
-    Check(!load.Answer(1, LegacyRead::Wallets, true, WalletsAnswer({w1})), "the older load's answer");
-    Check(load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer({w2})), "this load's");
-    Check(!load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer({w1})), "a read answers once");
-    load.Answer(2, LegacyRead::Payout, true, PayoutAnswer("w2"));
-    load.Answer(2, LegacyRead::Payments, true);
-    LegacyCommitted view;
-    Check(load.Commit(view, "net-a"), "commits");
-    CheckEq(1, static_cast<long long>(view.wallets.size()), "one wallet");
-    if (!view.wallets.empty()) CheckEq("w2", view.wallets[0].id, "this load's, not the older one's");
-  }
-  {
-    TEST_CASE("anEmptyPayoutIdKeepsTheKnownOne");
-    LegacyCommitted view = CommittedView("net-a", w1, 0);
-    LegacyLoad load(2);
-    load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer({w1}));
-    load.Answer(2, LegacyRead::Payout, true, PayoutAnswer(""));
-    load.Answer(2, LegacyRead::Payments, true);
-    load.Commit(view, "net-a");
-    CheckEq("w1", view.payoutWalletId, "a transient nil keeps the payout wallet");
-    Check(SolanaPanelFor(view).showCard, "and its card");
-  }
-  {
-    TEST_CASE("aFailedReadCommitsNothingOfItsOwn");
-    LegacyCommitted view = CommittedView("net-a", w1, 3'870'000'000);
-    LegacyLoad load(2);
-    load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer({w1}));
-    load.Answer(2, LegacyRead::Payout, false, PayoutAnswer("w9"));
-    load.Answer(2, LegacyRead::Payments, false,
-                PaymentsAnswer({Payment(9'000'000'000, false, false)}));
-    load.Commit(view, "net-a");
-    CheckEq("w1", view.payoutWalletId, "the last known id stands");
-    CheckEq(3'870'000'000LL, view.pendingNanoCents, "a failed read's payload is ignored");
-    Check(view.reads.wallets && !view.reads.payout && !view.reads.payments, "which reads failed");
-    const auto panel = SolanaPanelFor(view);
-    Check(panel.showCard, "the card for the known wallet");
-    Check(!panel.showCardPending, "without its figure");
-  }
-  {
-    TEST_CASE("anotherNetworkClearsTheView");
-    LegacyCommitted view = CommittedView("net-a", w1, 3'870'000'000);
-    BeginLegacyLoad(view, "net-b", /*reset=*/false);
-    Check(!view.ready, "hidden at once, even on a plain reload");
-    Check(view.wallets.empty() && view.payoutWalletId.empty() && view.pendingNanoCents == 0,
-          "net-a's wallets, id and total are gone");
-    CheckEq("net-b", view.networkId, "the view is net-b's");
-    LegacyLoad load(2);
-    load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer({w1}));
-    load.Answer(2, LegacyRead::Payout, true, PayoutAnswer(""));
-    load.Answer(2, LegacyRead::Payments, true);
-    load.Commit(view, "net-b");
-    CheckEq("", view.payoutWalletId, "net-a's id does not survive through the empty-id rule");
-    Check(!SolanaPanelFor(view).showCard, "no card");
-
-    LegacyCommitted late = CommittedView("net-a", w1, 0);
-    LegacyLoad other(3);
-    other.Answer(3, LegacyRead::Wallets, true, WalletsAnswer({w1}));
-    other.Answer(3, LegacyRead::Payout, true, PayoutAnswer(""));
-    other.Answer(3, LegacyRead::Payments, true);
-    other.Commit(late, "net-b");
-    CheckEq("", late.payoutWalletId, "a commit for another network clears the view first");
-    CheckEq("net-b", late.networkId, "and takes it over");
-  }
-  {
-    TEST_CASE("aPlainReloadKeepsTheViewAndAWriteHidesIt");
-    LegacyCommitted view = CommittedView("net-a", w1, 0);
-    BeginLegacyLoad(view, "net-a", /*reset=*/false);
-    Check(view.ready && SolanaPanelFor(view).showCard, "a plain reload keeps the card on screen");
-    BeginLegacyLoad(view, "net-a", /*reset=*/true);
-    Check(!view.ready && !SolanaPanelFor(view).showCard, "a write hides it until the reads commit");
-    CheckEq("w1", view.payoutWalletId, "without forgetting the known id");
-  }
-}
-
-// ---- the connect sheet ------------------------------------------------------
-
-// Removing the payout wallet makes another active Solana or Polygon wallet of
-// the network the payout wallet when there is one (server
-// fix/remove-wallet-promote); the reload after the removal names it.
-void PromotionTests() {
-  const LegacyWallet removed = Wallet("w1", "SOL", kUsdcMint);
-  const LegacyWallet next = Wallet("w2", "SOL", kTokenProgram);
-  const LegacyWallet polygon = Wallet("w3", "MATIC", "0x4b2a9f3e1c7d8a6b5e0f2d1c3b4a596877665544");
-  const PayoutRemoval removal{"net-a", "w1", "w1"};
-  // the reload after the removal: the server's answers for the network
-  auto reload = [&](const std::vector<LegacyWallet>& wallets, const std::string& payoutId,
-                    bool payoutOk = true) {
-    LegacyCommitted view = CommittedView("net-a", removed, 0);
-    BeginLegacyLoad(view, "net-a", /*reset=*/true);
-    LegacyLoad load(2);
-    load.Answer(2, LegacyRead::Wallets, true, WalletsAnswer(wallets));
-    load.Answer(2, LegacyRead::Payout, payoutOk, PayoutAnswer(payoutId));
-    load.Answer(2, LegacyRead::Payments, true);
-    load.Commit(view, "net-a");
-    return view;
-  };
-  {
-    TEST_CASE("removingThePayoutWalletNamesThePromotedOne");
-    const LegacyCommitted view = reload({next, polygon}, "w2");
-    const auto promoted = PromotedPayoutWallet(removal, view);
-    Check(promoted.has_value(), "a promoted wallet");
-    if (promoted) CheckEq("w2", promoted->id, "the new payout wallet");
-    Check(SolanaPanelFor(view).showCard, "its card");
-  }
-  {
-    TEST_CASE("aPromotedPolygonWalletIsNamedToo");
-    const auto promoted = PromotedPayoutWallet(removal, reload({polygon}, "w3"));
-    Check(promoted.has_value() && promoted->id == "w3", "the Polygon wallet");
-  }
-  {
-    TEST_CASE("nothingPromotedNamesNothing");
-    // the server found no other Solana or Polygon wallet: no payout id, and the
-    // empty-id rule keeps the removed one
-    const LegacyCommitted view = reload({polygon}, "");
-    CheckEq("w1", view.payoutWalletId, "the removed id stands");
-    Check(!PromotedPayoutWallet(removal, view).has_value(), "no promotion");
-  }
-  {
-    TEST_CASE("aFailedPayoutReadNamesNothing");
-    Check(!PromotedPayoutWallet(removal, reload({next}, "w2", /*payoutOk=*/false)).has_value(),
-          "an unknown payout wallet is not called promoted");
-  }
-  {
-    TEST_CASE("removingAnotherWalletNamesNothing");
-    const PayoutRemoval notPayout{"net-a", "w9", "w1"};
-    Check(!PromotedPayoutWallet(notPayout, reload({next}, "w2")).has_value(),
-          "the removed wallet was not the payout wallet");
-  }
-  {
-    TEST_CASE("aPayoutWalletTheCardCannotShowNamesNothing");
-    const LegacyWallet tao = Wallet("w4", "TAO", kColdkey);
-    Check(!PromotedPayoutWallet(removal, reload({tao}, "w4")).has_value(), "a TAO payout wallet");
-  }
-  {
-    TEST_CASE("anotherNetworksViewNamesNothing");
-    LegacyCommitted view = reload({next}, "w2");
-    view.networkId = "net-b";
-    Check(!PromotedPayoutWallet(removal, view).has_value(), "the removal was net-a's");
-  }
-}
-
-void BridgeTests() {
-  {
-    TEST_CASE("aProviderOpensTheBrowser");
-    ConnectMachine m;
-    CheckState(ConnectState::Idle, m, "starts idle");
-    Check(ProvidersEnabled(m) && EntryEnabled(m) && !ConnectEnabled(m), "idle controls");
-    CheckEq("", StatusKey(m), "no status");
-    Check(ChooseProvider(m), "accepted");
-    CheckState(ConnectState::OpeningBrowser, m, "opening the browser");
-    CheckEq("opening_wallet_in_browser", StatusKey(m), "says so");
-    Check(!ProvidersEnabled(m), "providers disabled");
-    Check(!ConnectEnabled(m), "Connect disabled");
-    Check(EntryEnabled(m), "the entry stays usable");
-    Check(!ChooseProvider(m), "a second round trip is refused");
-  }
-  {
-    TEST_CASE("thePublicKeyGoesStraightToLinking");
-    ConnectMachine m;
-    ChooseProvider(m);
-    Check(PublicKey(m), "accepted");
-    CheckState(ConnectState::Linking, m, "linking, with no client-side validation");
-    CheckEq("connecting_to_wallet", StatusKey(m), "says so");
-    Check(!ProvidersEnabled(m) && !ConnectEnabled(m) && !EntryEnabled(m),
-          "providers, Connect and the entry disabled");
-  }
-  {
-    TEST_CASE("aBridgeErrorFailsWithItsDetail");
-    ConnectMachine m;
-    ChooseProvider(m);
-    Check(BridgeError(m, "User rejected the request."), "accepted");
-    CheckState(ConnectState::Failed, m, "failed");
-    CheckEq("User rejected the request.", m.detail, "the bridge's words");
-    CheckEq("error_connecting_wallet_with_reason", FailureKey(m.detail),
-            "rendered with its reason");
-    Check(ProvidersEnabled(m) && EntryEnabled(m), "controls re-enabled");
-    CheckEq("", StatusKey(m), "no status line");
-  }
-  {
-    TEST_CASE("theBridgeWatchdogFailsAsATimeout");
-    ConnectMachine m;
-    ChooseProvider(m);
-    Check(Timeout(m), "accepted");
-    CheckState(ConnectState::Failed, m, "failed");
-    CheckEq("", m.detail, "a watchdog has no detail to give");
-    CheckEq("something_went_wrong", FailureKey(m.detail), "the rule's text without a detail");
-    Check(!PublicKey(m), "a key arriving after the give-up is refused");
-  }
-  {
-    TEST_CASE("lateAnswersInIdleAreIgnored");
-    ConnectMachine m;
-    Check(!PublicKey(m), "a late public key");
-    Check(!BridgeError(m, "late"), "a late bridge error");
-    Check(!Timeout(m), "a late watchdog");
-    Check(!CreateResult(m, true, "w1", ""), "a late create result");
-    CheckState(ConnectState::Idle, m, "still idle");
-    CheckEq("", m.detail, "no detail picked up");
-  }
-  {
-    TEST_CASE("anyNewAttemptClearsAFailure");
-    ConnectMachine m;
-    ChooseProvider(m);
-    BridgeError(m, "User rejected the request.");
-    Check(ChooseProvider(m), "a provider again");
-    CheckState(ConnectState::OpeningBrowser, m, "opening again");
-    CheckEq("", m.detail, "the failure is gone");
-  }
-}
-
-void ManualTests() {
-  {
-    TEST_CASE("aLocallyInvalidAddressIsAnsweredWithoutARequest");
-    ConnectMachine m;
-    Check(!Debounced(m, "0OIl0OIl0OIl0OIl0OIl0OIl0OIl0OIl", true), "no request");
-    CheckEq("invalid_solana_address", CheckKey(m), "invalid at once");
-    Check(CheckIsError(m), "as a refusal");
-    CheckState(ConnectState::Idle, m, "idle");
-    Check(!ConnectEnabled(m), "Connect disabled");
-  }
-  {
-    TEST_CASE("anAddressTheServerWouldRefuseNeverReachesIt");
-    // an address's shape, which only the server refused (support inbox 8045):
-    // answered at once, with no check out for a verdict to answer
-    for (const std::string& refused :
-         {std::string(kUsdcMint), std::string(kSystemProgram), std::string(44, 'z')}) {
-      ConnectMachine m;
-      Check(!Debounced(m, refused, /*askServer=*/true), "no request for " + refused);
-      CheckEq("invalid_solana_address", CheckKey(m), "invalid at once: " + refused);
-      Check(CheckIsError(m), "as a refusal: " + refused);
-      CheckState(ConnectState::Idle, m, "idle: " + refused);
-      Check(!Verdict(m, ServerVerdict::Valid), "no check is out: " + refused);
-      Check(!ConnectEnabled(m) && !Submit(m), "nothing to link: " + refused);
-
-      ConnectMachine browsing;
-      ChooseProvider(browsing);
-      Check(!Debounced(browsing, refused, true), "no request while the browser is out: " + refused);
-      CheckState(ConnectState::OpeningBrowser, browsing, "that flow goes on: " + refused);
-      CheckEq("invalid_solana_address", CheckKey(browsing), "invalid there too: " + refused);
-    }
-  }
-  {
-    TEST_CASE("aPlausibleAddressIsCheckedByTheServer");
-    ConnectMachine m;
-    Check(Debounced(m, std::string(" ") + kSyntheticKey + " ", true), "a request");
-    CheckState(ConnectState::Checking, m, "checking");
-    CheckEq(kSyntheticKey, m.address, "the trimmed address is the one asked about");
-    CheckEq("checking_wallet_address", CheckKey(m), "says so");
-    Check(!CheckIsError(m), "as progress");
-    Check(!ConnectEnabled(m), "Connect disabled while checking");
-    Check(ProvidersEnabled(m), "the providers stay usable");
-  }
-  {
-    TEST_CASE("aValidVerdictReadiesConnect");
-    ConnectMachine m;
-    Debounced(m, kSyntheticKey, true);
-    Check(Verdict(m, ServerVerdict::Valid), "accepted");
-    CheckState(ConnectState::Ready, m, "ready");
-    CheckEq("", CheckKey(m), "the line clears");
-    Check(ConnectEnabled(m), "Connect enabled");
-  }
-  {
-    TEST_CASE("anInvalidVerdictSaysSo");
-    ConnectMachine m;
-    Debounced(m, kSyntheticKey, true);  // the server has the last word on what passes here
-    Check(Verdict(m, ServerVerdict::Invalid), "accepted");
-    CheckState(ConnectState::Idle, m, "idle");
-    CheckEq("invalid_solana_address", CheckKey(m), "invalid");
-    Check(CheckIsError(m), "as a refusal");
-    Check(!ConnectEnabled(m), "Connect disabled");
-  }
-  {
-    TEST_CASE("anUnansweredCheckSaysSomethingWentWrong");
-    ConnectMachine m;
-    Debounced(m, kSyntheticKey, true);
-    Check(Verdict(m, ServerVerdict::Unavailable), "accepted");
-    CheckState(ConnectState::Idle, m, "idle");
-    CheckEq("something_went_wrong", CheckKey(m), "the transport failure's key");
-    Check(CheckIsError(m), "as a refusal");
-    Check(!ConnectEnabled(m), "Connect disabled");
-  }
-  {
-    TEST_CASE("typingDropsTheVerdict");
-    ConnectMachine m = ReadyMachine();
-    Check(Typed(m), "accepted");
-    CheckState(ConnectState::Idle, m, "back to idle");
-    CheckEq("", CheckKey(m), "no verdict");
-    CheckEq("", m.address, "and no address it was about");
-    Check(!ConnectEnabled(m), "Connect disabled until the new text is checked");
-    ConnectMachine checking;
-    Debounced(checking, kSyntheticKey, true);
-    Typed(checking);
-    Check(!Verdict(checking, ServerVerdict::Valid), "the old text's verdict is refused");
-    Check(!ConnectEnabled(checking), "and enables nothing");
-  }
-  {
-    TEST_CASE("withoutASessionTheCheckIsLocalOnly");
-    ConnectMachine m;
-    Check(!Debounced(m, kSyntheticKey, /*askServer=*/false), "no request");
-    CheckEq("", CheckKey(m), "no verdict for a plausible address");
-    CheckState(ConnectState::Idle, m, "idle");
-    Check(!ConnectEnabled(m), "Connect disabled");
-    Check(!Debounced(m, "not an address", false), "no request");
-    CheckEq("invalid_solana_address", CheckKey(m), "a local failure still shows");
-    Check(!Debounced(m, kUsdcMint, false), "no request");
-    CheckEq("invalid_solana_address", CheckKey(m), "and so does one of the server's rules");
-  }
-  {
-    TEST_CASE("anEmptyFieldClearsTheVerdict");
-    ConnectMachine m;
-    Debounced(m, "bad", true);
-    Check(!Debounced(m, "   ", true), "no request");
-    CheckEq("", CheckKey(m), "no verdict");
-    CheckState(ConnectState::Idle, m, "idle");
-  }
-  {
-    TEST_CASE("connectLinksTheCheckedAddress");
-    ConnectMachine unchecked;
-    Check(!Submit(unchecked), "Connect without a checked address is refused");
-    ConnectMachine m = ReadyMachine();
-    Check(Submit(m), "accepted");
-    CheckState(ConnectState::Linking, m, "linking");
-    CheckEq(kSyntheticKey, m.address, "the checked address");
-    CheckEq("connecting_to_wallet", StatusKey(m), "says so");
-    Check(!ProvidersEnabled(m) && !ConnectEnabled(m) && !EntryEnabled(m), "all disabled");
-    Check(!Submit(m), "a second press is refused");
-    Check(!Typed(m), "typing while linking changes nothing");
-    Check(!Debounced(m, kTokenProgram, true), "nor does a late debounce");
-    CheckEq(kSyntheticKey, m.address, "the address being linked stays");
-  }
-  {
-    TEST_CASE("typingWhileTheBrowserIsOutKeepsThatFlow");
-    ConnectMachine m;
-    ChooseProvider(m);
-    Check(Debounced(m, kSyntheticKey, true), "the address is still checked");
-    CheckState(ConnectState::OpeningBrowser, m, "the browser round trip goes on");
-    Verdict(m, ServerVerdict::Valid);
-    CheckState(ConnectState::OpeningBrowser, m, "still");
-    Check(!ConnectEnabled(m), "Connect waits for the round trip");
-    BridgeError(m, "closed");
-    Check(ConnectEnabled(m), "a failed round trip keeps the accepted address");
-    Check(Submit(m), "which can still be linked");
-    Check(m.detail.empty(), "the failure cleared");
-  }
-  {
-    TEST_CASE("aNewAddressClearsAFailure");
-    ConnectMachine m;
-    ChooseProvider(m);
-    BridgeError(m, "closed");
-    Check(Debounced(m, kTokenProgram, true), "checked");
-    CheckState(ConnectState::Checking, m, "checking");
-    CheckEq("", m.detail, "the failure is gone");
-    ConnectMachine local;
-    ChooseProvider(local);
-    BridgeError(local, "closed");
-    Debounced(local, "nope", true);
-    CheckState(ConnectState::Idle, local, "a locally invalid address clears it too");
-    CheckEq("", local.detail, "no detail");
-  }
-}
-
-void LinkTests() {
-  {
-    TEST_CASE("aWalletIdLinks");
-    ConnectMachine m = ReadyMachine();
-    Submit(m);
-    Check(CreateResult(m, true, "w1", ""), "accepted");
-    CheckState(ConnectState::Linked, m, "linked");
-    Check(!ProvidersEnabled(m) && !ConnectEnabled(m) && !EntryEnabled(m), "all disabled");
-    Check(!ChooseProvider(m) && !Submit(m) && !Timeout(m), "linked is final");
-  }
-  {
-    TEST_CASE("anEmptyWalletIdIsAFailure");
-    ConnectMachine m = ReadyMachine();
-    Submit(m);
-    Check(CreateResult(m, true, "", ""), "accepted");
-    CheckState(ConnectState::Failed, m, "failed");
-    CheckEq("something_went_wrong", FailureKey(m.detail), "a detail-less failure");
-  }
-  {
-    TEST_CASE("aCreateErrorFailsWithTheServerDetail");
-    ConnectMachine m;
-    ChooseProvider(m);
-    PublicKey(m);
-    Check(CreateResult(m, false, "", "invalid wallet address"), "accepted");
-    CheckState(ConnectState::Failed, m, "failed");
-    CheckEq("invalid wallet address", m.detail, "the server's words");
-    CheckEq("error_connecting_wallet_with_reason", FailureKey(m.detail),
-            "rendered with its reason");
-    Check(ProvidersEnabled(m) && EntryEnabled(m), "controls re-enabled");
-  }
-  {
-    TEST_CASE("theCreateWatchdogFailsAsATimeout");
-    ConnectMachine m = ReadyMachine();
-    Submit(m);
-    Check(Timeout(m), "accepted");
-    CheckEq("something_went_wrong", FailureKey(m.detail), "the rule's text without a detail");
-    Check(!CreateResult(m, true, "w1", ""), "the answer after giving up is dropped");
-    CheckState(ConnectState::Failed, m, "still failed");
-    Check(ConnectEnabled(m), "the checked address can be tried again");
-  }
-  {
-    TEST_CASE("aFailureWithoutADetailSaysSomethingWentWrong");
-    CheckEq("something_went_wrong", FailureKey(""), "no detail, as after a watchdog");
-  }
-  {
-    TEST_CASE("aFailureWithADetailCarriesIt");
-    CheckEq("error_connecting_wallet_with_reason", FailureKey("reason"), "with a detail");
-  }
-}
-
 // ---- the bridge page's failure codes ---------------------------------------
 
 void BridgeErrorTests() {
@@ -939,26 +91,6 @@ void BridgeErrorTests() {
       CheckEq("", BridgeErrorTextFor(code).key, std::string("no key for \"") + code + "\"");
     }
   }
-  {
-    TEST_CASE("thePayoutSheetPointsAMissingExtensionAtManualEntry");
-    // the payout sheet also takes a typed address, which works with any wallet:
-    // its line for a missing extension points at Enter address manually.
-    // Signing in has no manual entry and keeps the shared line.
-    const BridgeErrorText payout = PayoutBridgeErrorTextFor("extension_not_found");
-    CheckEq("solana_wallet_error_extension_not_found", payout.key, "the payout sheet's key");
-    Check(payout.takesWalletName, "the payout sheet's line names the wallet");
-    CheckEq("bittensor_error_extension_not_found", BridgeErrorTextFor("extension_not_found").key,
-            "the shared key");
-    // every other code reads as it does everywhere else
-    for (const char* code : {"no_account", "session_not_found", "user_rejected", "invalid_request",
-                             "wallet_error", "-1", ""}) {
-      const BridgeErrorText other = PayoutBridgeErrorTextFor(code);
-      const BridgeErrorText shared = BridgeErrorTextFor(code);
-      CheckEq(shared.key, other.key, std::string("the payout sheet's key for \"") + code + "\"");
-      Check(other.takesWalletName == shared.takesWalletName,
-            std::string("the payout sheet's wallet name for \"") + code + "\"");
-    }
-  }
 }
 
 // ---- where a wallet-bridge return goes (WalletBridgeRoute.h) -----------------
@@ -966,7 +98,6 @@ void BridgeErrorTests() {
 std::string RouteName(urnw::bridge::PublicKeyRoute route) {
   switch (route) {
     case urnw::bridge::PublicKeyRoute::Drop: return "Drop";
-    case urnw::bridge::PublicKeyRoute::AnswerConnect: return "AnswerConnect";
     case urnw::bridge::PublicKeyRoute::SignForRequest: return "SignForRequest";
     case urnw::bridge::PublicKeyRoute::SignIn: return "SignIn";
   }
@@ -988,27 +119,22 @@ void BridgeRouteTests() {
   using urnw::bridge::RouteSignature;
   {
     TEST_CASE("aConnectReturnNobodyWaitsForIsDropped");
-    // the bridge page's "Return to URnetwork" after the sheet already linked
-    CheckEq("Drop", RouteName(RoutePublicKey(false, false, false, false)), "no flow in flight");
-  }
-  {
-    TEST_CASE("theBareConnectIsAnsweredFirst");
-    CheckEq("AnswerConnect", RouteName(RoutePublicKey(false, true, true, true)),
-            "a waiting connect takes the key before anything else");
+    // the bridge page's "Return to URnetwork" after its flow already ended
+    CheckEq("Drop", RouteName(RoutePublicKey(false, false, false)), "no flow in flight");
   }
   {
     TEST_CASE("aSignatureRequestSignsBeforeASignIn");
-    CheckEq("SignForRequest", RouteName(RoutePublicKey(false, false, true, true)),
+    CheckEq("SignForRequest", RouteName(RoutePublicKey(false, true, true)),
             "an add-sign-in request's own message is signed");
   }
   {
     TEST_CASE("aWalletSignInStillSignsIn");
-    CheckEq("SignIn", RouteName(RoutePublicKey(false, false, false, true)),
+    CheckEq("SignIn", RouteName(RoutePublicKey(false, false, true)),
             "the login page's Solana sign-in fetches its challenge");
   }
   {
     TEST_CASE("aBittensorConnectReturnChainsNothing");
-    CheckEq("Drop", RouteName(RoutePublicKey(true, true, true, true)),
+    CheckEq("Drop", RouteName(RoutePublicKey(true, true, true)),
             "Bittensor has no connect hop, whatever is waiting");
   }
   {
@@ -1021,26 +147,24 @@ void BridgeRouteTests() {
   }
   {
     TEST_CASE("everyPublicKeyCombinationRoutesByPriority");
-    for (int bits = 0; bits < 16; ++bits) {
+    for (int bits = 0; bits < 8; ++bits) {
       const bool bittensor = (bits & 1) != 0;
-      const bool connect = (bits & 2) != 0;
-      const bool sign = (bits & 4) != 0;
-      const bool signIn = (bits & 8) != 0;
+      const bool sign = (bits & 2) != 0;
+      const bool signIn = (bits & 4) != 0;
       const std::string expected = bittensor ? "Drop"
-                                   : connect ? "AnswerConnect"
                                    : sign    ? "SignForRequest"
                                    : signIn  ? "SignIn"
                                              : "Drop";
-      CheckEq(expected, RouteName(RoutePublicKey(bittensor, connect, sign, signIn)),
+      CheckEq(expected, RouteName(RoutePublicKey(bittensor, sign, signIn)),
               "combination " + std::to_string(bits));
     }
   }
   {
     TEST_CASE("supersededIsTheHostsOwnWord");
-    Check(IsSuperseded("superseded by a wallet connect request"), "the connect request's reason");
     Check(!IsSuperseded("User rejected the request."), "the bridge's own error is not");
     Check(!IsSuperseded(""), "an empty error is not");
-    // every reason SdkHost::CancelPendingWalletFlows passes today
+    // reasons SdkHost::CancelPendingWalletFlows passes (TestWalletBridgeReturnsAreRouted
+    // holds every one of them to the prefix)
     for (const char* reason :
          {"superseded by a wallet sign-in", "superseded by a wallet signature request",
           "superseded by wallet network creation", "superseded by a sign-in"}) {
@@ -1054,11 +178,11 @@ void BridgeRouteTests() {
     // the page's Bittensor connect starts and fetches its challenge
     const uint64_t bittensor = flows.Start();
     Check(flows.IsCurrent(bittensor), "its challenge may open the bridge while nothing else started");
-    // meanwhile the Solana sheet's Phantom connect takes the bridge
+    // meanwhile adding a Solana sign-in method takes the bridge
     const uint64_t solana = flows.Start();
     Check(!flows.IsCurrent(bittensor),
           "the late Bittensor challenge is stale: no tab, no message, no session reset");
-    Check(flows.IsCurrent(solana), "the Solana connect still owns the bridge");
+    Check(flows.IsCurrent(solana), "the Solana signature request still owns the bridge");
     CheckEq(static_cast<long long>(solana), static_cast<long long>(flows.Current()),
             "Current is the flow that started last");
   }
@@ -1089,26 +213,6 @@ void BridgeRouteTests() {
 }  // namespace
 
 int main() {
-  std::cout << "addresses\n";
-  AddressTests();
-  std::cout << "short form\n";
-  ShortAddressTests();
-  std::cout << "payout wallet\n";
-  PayoutWalletTests();
-  std::cout << "USDC waiting\n";
-  PendingTests();
-  std::cout << "the pane\n";
-  PanelTests();
-  std::cout << "the three reads\n";
-  LegacyLoadTests();
-  std::cout << "a removal that promotes another payout wallet\n";
-  PromotionTests();
-  std::cout << "connect: wallet app\n";
-  BridgeTests();
-  std::cout << "connect: manual address\n";
-  ManualTests();
-  std::cout << "connect: linking\n";
-  LinkTests();
   std::cout << "the bridge page's failure codes\n";
   BridgeErrorTests();
   std::cout << "wallet bridge routing\n";
