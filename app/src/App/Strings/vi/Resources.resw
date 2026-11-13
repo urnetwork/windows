@@ -930,6 +930,10 @@
     <value>Yêu cầu đã bị từ chối trong ví của bạn. Hãy bắt đầu lại và chấp thuận yêu cầu để tiếp tục.</value>
     <comment>Wallet error in the apps, when a ur.io wallet bridge page returns user_rejected: the user declined the connection or the signature request in the wallet, so nothing was signed. The Bittensor page (Talisman, or a WalletConnect wallet) and the Solana page of the desktop apps (Phantom or Solflare) both return it; on iOS, Phantom and Solflare decline with 4001, which reads the same.</comment>
   </data>
+  <data name="bittensor_error_wallet_failed" xml:space="preserve">
+    <value>Ví {} của bạn không thể hoàn tất yêu cầu. Hãy kiểm tra ví rồi thử lại.</value>
+    <comment>Wallet failure with no more specific message, so nothing was signed: on ur.io's Bittensor wallet flows (Talisman, or a WalletConnect wallet), and on every app's Solana sign-in (sdk SolanaWalletFailureFor wallet_error, including a code the app does not know). The wallet's own English text is only logged. The argument is the wallet product name (Phantom, Solflare, Solana when the app does not know which wallet answered; Talisman or WalletConnect on ur.io's Bittensor page).</comment>
+  </data>
   <data name="bittensor_error_walletconnect_expired" xml:space="preserve">
     <value>Yêu cầu WalletConnect đã hết hạn trước khi ví phản hồi. Hãy bắt đầu lại.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_expired: the WalletConnect pairing or the signature request ran out of time before the wallet answered. WalletConnect is a product name.</comment>
@@ -1994,7 +1998,7 @@ cách đúng đắn</value>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Không thể mở ví. Vui lòng cài đặt và thử lại.</value>
-    <comment>Snackbar shown when the external wallet app could not be opened. Used in Shared/Views/SolanaSignMessageSheet.swift and Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor wallet_app_not_found): the chosen wallet app (Phantom or Solflare) is not installed, or would not open, so nothing was signed.</comment>
   </data>
   <data name="couldnt_parse_public_key" xml:space="preserve">
     <value>Không thể phân tích khóa công khai, vui lòng thử lại sau.</value>
@@ -5975,7 +5979,7 @@ Nhận thưởng bằng cách tạo mạng!</value>
   </data>
   <data name="no_wallets_found_alert_content" xml:space="preserve">
     <value>Không tìm thấy ví Solana nào được cài đặt trên thiết bị này. Vui lòng cài đặt ví và thử lại.</value>
-    <comment>Call to action</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor no_wallet): no Solana wallet answered on this device or in this browser (Android's Mobile Wallet Adapter found no wallet app; ur.io found no wallet extension and no WalletConnect), so nothing was signed.</comment>
   </data>
   <data name="none" xml:space="preserve">
     <value>Không có</value>
@@ -8345,7 +8349,7 @@ nội dung thế giới</value>
   </data>
   <data name="solana_wallet_error_session_not_found" xml:space="preserve">
     <value>Không tìm thấy kết nối ví trong trình duyệt này. Hãy bắt đầu lại để kết nối lại ví của bạn.</value>
-    <comment>Solana wallet error in the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor session_not_found), from the ur.io wallet bridge page's session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
   </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Đã xảy ra sự cố</value>
@@ -8477,7 +8481,7 @@ nội dung thế giới</value>
   </data>
   <data name="sso_browser_open_failed" xml:space="preserve">
     <value>Không thể mở trình duyệt. Vui lòng thử lại.</value>
-    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in).</comment>
+    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in; Windows and Linux: the ur.io wallet bridge page of a Solana sign-in, which the wallet never saw).</comment>
   </data>
   <data name="sso_sign_in_timed_out" xml:space="preserve">
     <value>Đăng nhập đã hết thời gian. Vui lòng thử lại.</value>

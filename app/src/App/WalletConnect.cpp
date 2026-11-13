@@ -101,19 +101,6 @@ std::string Base64Url(const std::string& s) {
   return out;
 }
 
-// The words for a failure the bridge page handed back: this app's own for a
-// code it knows (solana::BridgeErrorTextFor), with the wallet's name where the
-// string takes it, else the page's text.
-std::string LocalizedBridgeError(WalletConnect::Provider p, const std::string& code,
-                                 const std::string& pageText) {
-  const solana::BridgeErrorText text = solana::BridgeErrorTextFor(code);
-  if (text.key.empty()) return pageText;
-  if (!text.takesWalletName) return Narrow(Localized(text.key));
-  const std::wstring walletName =
-      Localized(p == WalletConnect::Provider::Solflare ? "solflare" : "phantom");
-  return Narrow(Format(text.key, walletName));
-}
-
 void SplitUrl(const std::string& url, std::string& host, std::string& query) {
   auto scheme = url.find("://");
   size_t start = (scheme == std::string::npos) ? 0 : scheme + 3;
@@ -177,14 +164,23 @@ std::optional<std::string> WalletConnect::SharedSecretBase58() const {
   }
 }
 
-void WalletConnect::OpenUrl(const std::string& url) {
-  if (bridge::NeedsTrampoline(url)) {
-    OpenThroughTrampoline(url);
-    return;
-  }
+bool WalletConnect::TryOpenUrl(const std::string& url) {
+  if (bridge::NeedsTrampoline(url)) return OpenThroughTrampoline(url);
   std::wstring w = Widen(url);
   HINSTANCE h = ShellExecuteW(nullptr, L"open", w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-  if (reinterpret_cast<INT_PTR>(h) <= 32 && on_error) on_error("failed to open browser");
+  return reinterpret_cast<INT_PTR>(h) > 32;
+}
+
+void WalletConnect::OpenUrl(const std::string& url) {
+  if (!TryOpenUrl(url) && on_error) on_error("failed to open browser");
+}
+
+void WalletConnect::OpenSolanaBridge(Provider p, const std::string& url) {
+  if (TryOpenUrl(url)) return;
+  // not the wallet's failure, so not the sdk's: the browser sign-in sheet's
+  // words for a browser that would not open (BrowserApprovalSheet.cpp)
+  LogError("wallet bridge: the browser would not open the {} bridge page", Host(p));
+  ReportSolanaFailure(Narrow(Localized("sso_browser_open_failed")), std::string());
 }
 
 // A url longer than ShellExecuteW passes on (the payout consent's bridge url):
@@ -192,11 +188,11 @@ void WalletConnect::OpenUrl(const std::string& url) {
 // replaces itself with the url. The browser Windows opens https links with is
 // started on the page's short path, and the page is deleted once the browser
 // has had time to read it; a page an earlier flow left (superseded, or the app
-// quit first) goes with the next.
-void WalletConnect::OpenThroughTrampoline(const std::string& url) {
-  const auto fail = [this](const char* what) {
+// quit first) goes with the next. False, logged, when no browser started.
+bool WalletConnect::OpenThroughTrampoline(const std::string& url) {
+  const auto fail = [](const char* what) {
     LogError("wallet bridge: {}", what);
-    if (on_error) on_error("failed to open browser");
+    return false;
   };
   const std::string page = bridge::TrampolinePage(url);
   if (page.empty()) return fail("not opening a long bridge url that is not a plain https url");
@@ -267,6 +263,7 @@ void WalletConnect::OpenThroughTrampoline(const std::string& url) {
     std::this_thread::sleep_for(bridge::kTrampolineLifetime);
     ::DeleteFileW(path.c_str());
   }).detach();
+  return true;
 }
 
 void WalletConnect::Connect(Provider p) {
@@ -275,7 +272,8 @@ void WalletConnect::Connect(Provider p) {
   session_.reset();
   currentProvider_ = p;
   if (!NewKeyPair()) {
-    if (on_error) on_error("failed to generate wallet keypair");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "failed to generate wallet keypair");
     return;
   }
   const std::string redirect = std::string("urnetwork://") + Host(p) + "-connect";
@@ -284,12 +282,13 @@ void WalletConnect::Connect(Provider p) {
                     "&cluster=" + kCluster + "&app_url=" + PercentEncode(kAppUrl) +
                     "&redirect_link=" + PercentEncode(redirect) +
                     "&method=connect&provider=" + Host(p);
-  OpenUrl(url);
+  OpenSolanaBridge(p, url);
 }
 
 void WalletConnect::SignMessage(const std::string& message) {
   if (!dappKeyPair_ || !session_ || !walletEncryptionPublicKey_) {
-    if (on_error) on_error("wallet not connected");
+    FailSolana(currentProvider_, urnet::SolanaWalletFailureSourceApp,
+               urnet::SolanaWalletFailureWallet, "wallet not connected");
     return;
   }
   const std::string messageB58 = urnet::encodeBase58(
@@ -298,7 +297,8 @@ void WalletConnect::SignMessage(const std::string& message) {
       nlohmann::json{{"message", messageB58}, {"session", *session_}, {"display", "utf8"}}.dump();
   auto sharedB58 = SharedSecretBase58();
   if (!sharedB58) {
-    if (on_error) on_error("failed to derive shared secret");
+    FailSolana(currentProvider_, urnet::SolanaWalletFailureSourceApp,
+               urnet::SolanaWalletFailureWallet, "failed to derive shared secret");
     return;
   }
   const std::string nonce = urnet::generateNonce();
@@ -306,7 +306,8 @@ void WalletConnect::SignMessage(const std::string& message) {
       urnet::encryptData(reinterpret_cast<const uint8_t*>(payload.data()),
                          static_cast<int32_t>(payload.size()), nonce, *sharedB58);
   if (enc.empty()) {
-    if (on_error) on_error("failed to encrypt sign-message payload");
+    FailSolana(currentProvider_, urnet::SolanaWalletFailureSourceApp,
+               urnet::SolanaWalletFailureWallet, "failed to encrypt sign-message payload");
     return;
   }
   const std::string redirect =
@@ -316,7 +317,7 @@ void WalletConnect::SignMessage(const std::string& message) {
                     "&cluster=" + kCluster + "&nonce=" + PercentEncode(nonce) +
                     "&redirect_link=" + PercentEncode(redirect) + "&payload=" + PercentEncode(enc) +
                     "&method=signMessage&provider=" + Host(currentProvider_);
-  OpenUrl(url);
+  OpenSolanaBridge(currentProvider_, url);
 }
 
 void WalletConnect::OpenBittensorBridge(const std::string& bridgeUrl) {
@@ -416,27 +417,28 @@ bool WalletConnect::HandleDeepLink(const std::string& url) {
 void WalletConnect::HandleConnect(Provider p, const std::string& query) {
   auto params = ParseQueryString(query);
   if (params.count("errorCode")) {
-    if (on_error) {
-      const std::string pageText =
-          params.count("errorMessage") ? params["errorMessage"] : "wallet connect error";
-      on_error(LocalizedBridgeError(p, params["errorCode"], pageText));
-    }
+    FailSolana(p, urnet::SolanaWalletFailureSourceBridge, params["errorCode"],
+               "the bridge page handed back a failure of the connect step",
+               params.count("errorMessage") ? params["errorMessage"] : std::string());
     return;
   }
   const std::string keyParam = std::string(Host(p)) + "_encryption_public_key";
   if (!params.count(keyParam) || !params.count("nonce") || !params.count("data") || !dappKeyPair_) {
-    if (on_error) on_error("missing wallet connect parameters");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "missing wallet connect parameters");
     return;
   }
   walletEncryptionPublicKey_ = params[keyParam];
   auto sharedB58 = SharedSecretBase58();
   if (!sharedB58) {
-    if (on_error) on_error("failed to derive shared secret");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "failed to derive shared secret");
     return;
   }
   const auto decrypted = TryDecrypt(params["data"], params["nonce"], *sharedB58);
   if (!decrypted || decrypted->empty()) {
-    if (on_error) on_error("failed to decrypt wallet connection");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "failed to decrypt wallet connection");
     return;
   }
   try {
@@ -445,34 +447,37 @@ void WalletConnect::HandleConnect(Provider p, const std::string& query) {
     session_ = j.at("session").get<std::string>();
     currentProvider_ = p;
     if (on_public_key) on_public_key(*connectedPublicKey_, p);
-  } catch (const std::exception& e) {
-    if (on_error) on_error(std::string("bad connect response: ") + e.what());
+  } catch (const std::exception&) {
+    // not the parser's words: they can quote the decrypted connection
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "bad connect response");
   }
 }
 
 void WalletConnect::HandleSignMessage(Provider p, const std::string& query) {
   auto params = ParseQueryString(query);
   if (params.count("errorCode")) {
-    if (on_error) {
-      const std::string pageText =
-          params.count("errorMessage") ? params["errorMessage"] : "wallet signing error";
-      on_error(LocalizedBridgeError(p, params["errorCode"], pageText));
-    }
+    FailSolana(p, urnet::SolanaWalletFailureSourceBridge, params["errorCode"],
+               "the bridge page handed back a failure of the sign step",
+               params.count("errorMessage") ? params["errorMessage"] : std::string());
     return;
   }
   if (!params.count("nonce") || !params.count("data") || !dappKeyPair_ ||
       !walletEncryptionPublicKey_ || !connectedPublicKey_) {
-    if (on_error) on_error("missing wallet signature parameters");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "missing wallet signature parameters");
     return;
   }
   auto sharedB58 = SharedSecretBase58();
   if (!sharedB58) {
-    if (on_error) on_error("failed to derive shared secret");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "failed to derive shared secret");
     return;
   }
   const auto decrypted = TryDecrypt(params["data"], params["nonce"], *sharedB58);
   if (!decrypted || decrypted->empty()) {
-    if (on_error) on_error("failed to decrypt wallet signature");
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "failed to decrypt wallet signature");
     return;
   }
   try {
@@ -480,14 +485,50 @@ void WalletConnect::HandleSignMessage(Provider p, const std::string& query) {
     const std::string signatureB58 = j.at("signature").get<std::string>();
     auto sigBytes = urnet::decodeBase58(signatureB58);
     if (!sigBytes) {
-      if (on_error) on_error("failed to decode wallet signature");
+      FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+                 "failed to decode wallet signature");
       return;
     }
     // The backend expects a base64 signature for Solana (macOS parity).
     if (on_signature)
       on_signature(*connectedPublicKey_, Base64(sigBytes->data(), sigBytes->size()), p);
+  } catch (const std::exception&) {
+    // not the parser's words: they can quote the decrypted signature
+    FailSolana(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,
+               "bad signature response");
+  }
+}
+
+// ---- a Solana wallet's failure ---------------------------------------------
+
+void WalletConnect::FailSolana(Provider p, const char* source, const std::string& failureCode,
+                               const char* what, const std::string& pageText) {
+  // the sdk names Phantom and Solflare by their ids; no other provider is a
+  // Solana wallet, and its message names none
+  const std::string walletId = p == Provider::Bittensor ? std::string() : Host(p);
+  std::optional<urnet::SolanaWalletFailure> failure;
+  try {
+    failure = urnet::solanaWalletFailureFor(source, failureCode, walletId);
   } catch (const std::exception& e) {
-    if (on_error) on_error(std::string("bad signature response: ") + e.what());
+    LogError("wallet bridge: the sdk did not read a Solana wallet failure: {}", e.what());
+  }
+  // closed words only: the code and the page's text came off a link
+  LogWarn("wallet bridge: {}: {} ({})", walletId, what,
+          failure ? failure->failure : std::string("the sdk named no failure"));
+  // no answer from the sdk is its generic wallet failure (FailureTextFor(""))
+  const solana::FailureText text = solana::FailureTextFor(
+      failure ? failure->message_key : std::string(),
+      failure ? failure->wallet_name.value_or(std::string()) : std::string());
+  std::string message = text.walletName ? Narrow(Format(text.key, Widen(*text.walletName)))
+                                        : Narrow(Localized(text.key));
+  ReportSolanaFailure(std::move(message), pageText);
+}
+
+void WalletConnect::ReportSolanaFailure(std::string message, const std::string& pageText) {
+  if (on_solana_error) {
+    on_solana_error(std::move(message), pageText);
+  } else if (on_error) {
+    on_error(std::move(message));
   }
 }
 

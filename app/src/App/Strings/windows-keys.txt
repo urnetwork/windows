@@ -169,6 +169,7 @@ bittensor_error_invalid_signature
 bittensor_error_message_mismatch
 bittensor_error_no_account
 bittensor_error_user_rejected
+bittensor_error_wallet_failed
 bittensor_error_walletconnect_expired
 bittensor_error_walletconnect_unavailable
 bittensor_funds_disclaimer
@@ -373,6 +374,7 @@ copy_auth_code
 copy_extender_address
 copy_share_text
 copy_to_clipboard
+couldnt_open_wallet
 couldnt_update_preferences
 countries
 country
@@ -950,6 +952,7 @@ no_log_files_found
 no_open_contracts
 no_points_yet
 no_providers_found
+no_wallets_found_alert_content
 none
 now
 of_total

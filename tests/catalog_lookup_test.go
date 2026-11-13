@@ -93,6 +93,9 @@ var catalogLookupFunctionKinds = map[string]catalogLookupKind{
 	// a refusal's line, with the screen's own line as the fallback
 	// (PaymentRefusal.h)
 	"PaymentRefusalTextFor": catalogLookupPlain,
+	// the message the sdk names for a Solana wallet failure, with the generic
+	// wallet failure as the fallback (SolanaWalletPresentation.h)
+	"FailureTextFor": catalogLookupPlain,
 }
 
 // The lookups whose argument after the key is the English they render when the

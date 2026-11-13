@@ -4,14 +4,45 @@
 // this with PrecompiledHeader=NotUsing, like ExtenderPresentation.cpp.
 #include "SolanaWalletPresentation.h"
 
+#include <iterator>
+
 namespace urnw::solana {
 
-BridgeErrorText BridgeErrorTextFor(std::string_view code) {
-  if (code == "extension_not_found") return {"bittensor_error_extension_not_found", true};
-  if (code == "no_account") return {"bittensor_error_no_account", true};
-  if (code == "session_not_found") return {"solana_wallet_error_session_not_found", false};
-  if (code == "user_rejected") return {"bittensor_error_user_rejected", false};
-  return {};
+FailureText FailureTextFor(std::string_view messageKey, std::string_view walletName) {
+  struct Message {
+    std::string_view key;
+    bool takesWalletName = false;
+  };
+  // The sdk's seven messages (urnet::SolanaWalletFailureMessage*), each with
+  // whether its string takes the wallet's name. The generic wallet failure is
+  // last: it is also the message for a key this build does not know.
+  static constexpr Message kMessages[] = {
+      {.key = "bittensor_error_user_rejected", .takesWalletName = false},
+      {.key = "no_wallets_found_alert_content", .takesWalletName = false},
+      {.key = "couldnt_open_wallet", .takesWalletName = false},
+      {.key = "bittensor_error_extension_not_found", .takesWalletName = true},
+      {.key = "bittensor_error_no_account", .takesWalletName = true},
+      {.key = "solana_wallet_error_session_not_found", .takesWalletName = false},
+      {.key = "bittensor_error_wallet_failed", .takesWalletName = true},
+  };
+  Message message = kMessages[std::size(kMessages) - 1];
+  for (const Message& known : kMessages) {
+    if (known.key == messageKey) message = known;
+  }
+  FailureText text{.key = std::string(message.key), .walletName = std::nullopt};
+  if (message.takesWalletName) {
+    text.walletName = std::string(walletName.empty() ? kUnknownWalletName : walletName);
+  }
+  return text;
+}
+
+std::string PageTextLogLine(std::string_view pageText) {
+  std::string line;
+  for (const char c : pageText.substr(0, kPageTextLogBytes)) {
+    line.push_back(0x20 <= c && c <= 0x7e ? c : '?');
+  }
+  if (pageText.size() > kPageTextLogBytes) line += "...";
+  return line;
 }
 
 }  // namespace urnw::solana
