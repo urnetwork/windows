@@ -1,9 +1,10 @@
 // Executable spec for the Solana wallet bridge's pure logic, which signing in
-// with Phantom or Solflare and adding either as a sign-in method use: the words
-// for the bridge page's failure codes (App/SolanaWalletPresentation.h), where
-// the wallet bridge's returns go and when a late challenge may still open the
-// bridge (App/WalletBridgeRoute.h) - run against the SAME sources the app
-// compiles, on any host with a C++20 compiler.
+// with Phantom or Solflare and adding either as a sign-in method use: the
+// message for each of the sdk's Solana wallet failures and the log line of the
+// bridge page's own English (App/SolanaWalletPresentation.h), where the wallet
+// bridge's returns go and when a late challenge may still open the bridge
+// (App/WalletBridgeRoute.h) - run against the SAME sources the app compiles,
+// on any host with a C++20 compiler.
 //
 // The WinUI halves (WalletConnect.cpp, SdkHost's wallet flows) cannot be built
 // off Windows at all; what is verified here is every decision they make on
@@ -59,37 +60,101 @@ struct Case {
 };
 #define TEST_CASE(name) Case case_##__LINE__(name)
 
-// ---- the bridge page's failure codes ---------------------------------------
+// ---- the sdk's Solana wallet failures --------------------------------------
 
-void BridgeErrorTests() {
+// The name a message shows, or "(none)" when it takes none.
+std::string ShownName(const FailureText& text) {
+  return text.walletName ? *text.walletName : std::string("(none)");
+}
+
+void FailureTextTests() {
   {
-    TEST_CASE("theBridgePagesCodesReadInTheAppsWords");
-    // the page's code (urnet::SolanaWalletBridgeError*), the store key, and
-    // whether the string names the wallet (Phantom or Solflare)
+    TEST_CASE("everyOneOfTheSdksSevenMessagesShowsItself");
+    // the sdk's message keys (urnet::SolanaWalletFailureMessage*) and whether
+    // each string takes the wallet's name, which the sdk names as the product
+    // (Phantom, Solflare)
     struct Expected {
-      const char* code;
       const char* key;
       bool takesWalletName;
     };
     for (const Expected& c : {
-             Expected{"extension_not_found", "bittensor_error_extension_not_found", true},
-             Expected{"no_account", "bittensor_error_no_account", true},
-             Expected{"session_not_found", "solana_wallet_error_session_not_found", false},
-             Expected{"user_rejected", "bittensor_error_user_rejected", false},
+             Expected{"bittensor_error_user_rejected", false},
+             Expected{"no_wallets_found_alert_content", false},
+             Expected{"couldnt_open_wallet", false},
+             Expected{"bittensor_error_extension_not_found", true},
+             Expected{"bittensor_error_no_account", true},
+             Expected{"solana_wallet_error_session_not_found", false},
+             Expected{"bittensor_error_wallet_failed", true},
          }) {
-      const BridgeErrorText text = BridgeErrorTextFor(c.code);
-      CheckEq(c.key, text.key, std::string("the key for ") + c.code);
-      Check(text.takesWalletName == c.takesWalletName,
-            std::string("the wallet's name for ") + c.code);
+      const FailureText named = FailureTextFor(c.key, c.takesWalletName ? "Solflare" : "");
+      CheckEq(c.key, named.key, std::string("the message for ") + c.key);
+      CheckEq(c.takesWalletName ? "Solflare" : "(none)", ShownName(named),
+              std::string("the wallet's name in ") + c.key);
     }
   }
   {
-    TEST_CASE("anyOtherCodeShowsThePagesText");
-    // the page's other failures, a code this app does not know, a page before
-    // the codes (-1), and a wallet's own numeric code
-    for (const char* code : {"invalid_request", "wallet_error", "wallet_locked", "-1", "4001", ""}) {
-      CheckEq("", BridgeErrorTextFor(code).key, std::string("no key for \"") + code + "\"");
+    TEST_CASE("aMessageThatTakesTheWalletsNameAlwaysGetsOne");
+    // the sdk names the wallet whenever the message takes it; should it name
+    // none, the "{}" gets the sdk's word for a wallet it does not know
+    for (const char* key : {"bittensor_error_extension_not_found", "bittensor_error_no_account",
+                            "bittensor_error_wallet_failed"}) {
+      CheckEq("Solana", ShownName(FailureTextFor(key, "")),
+              std::string("the wallet's name in ") + key);
     }
+  }
+  {
+    TEST_CASE("aMessageThatTakesNoNameDropsOne");
+    for (const char* key : {"bittensor_error_user_rejected", "no_wallets_found_alert_content",
+                            "couldnt_open_wallet", "solana_wallet_error_session_not_found"}) {
+      CheckEq("(none)", ShownName(FailureTextFor(key, "Phantom")),
+              std::string("the wallet's name in ") + key);
+    }
+  }
+  {
+    TEST_CASE("anyOtherKeyIsTheGenericWalletFailure");
+    // no failure at all (the sdk answered nothing), a failure's name in place
+    // of its message, a store key that is not one of the seven, a key a newer
+    // sdk may add, and a key in other case: the generic message, which names
+    // the wallet, and never the page's English
+    for (const char* key : {"", "wallet_error", "user_rejected",
+                            "bittensor_error_invalid_signature", "solana_wallet_error_future",
+                            "Bittensor_Error_User_Rejected"}) {
+      const FailureText named = FailureTextFor(key, "Phantom");
+      CheckEq("bittensor_error_wallet_failed", named.key,
+              std::string("the message for \"") + key + "\"");
+      CheckEq("Phantom", ShownName(named), std::string("the wallet's name for \"") + key + "\"");
+      CheckEq("Solana", ShownName(FailureTextFor(key, "")),
+              std::string("the unknown wallet's name for \"") + key + "\"");
+    }
+  }
+}
+
+// ---- the bridge page's own English, in the log -----------------------------
+
+void PageTextLogLineTests() {
+  {
+    TEST_CASE("aSentenceIsLoggedAsItIs");
+    CheckEq("User rejected the request.", PageTextLogLine("User rejected the request."),
+            "the page's sentence");
+    CheckEq("", PageTextLogLine(""), "no text");
+  }
+  {
+    TEST_CASE("aLineBreakCannotStartALineOfItsOwn");
+    CheckEq("failed??[ERROR] forged?x", PageTextLogLine("failed\r\n[ERROR] forged\tx"),
+            "control characters");
+    CheckEq("caf??", PageTextLogLine("caf\xc3\xa9"), "a byte outside printable ASCII");
+    CheckEq("?x", PageTextLogLine(std::string("\0x", 2)), "a NUL");
+  }
+  {
+    TEST_CASE("aLongTextIsCut");
+    const std::string exact(kPageTextLogBytes, 'a');
+    CheckEq(exact, PageTextLogLine(exact), "text of the cap's length");
+    const std::string longer(kPageTextLogBytes + 1, 'b');
+    CheckEq(std::string(kPageTextLogBytes, 'b') + "...", PageTextLogLine(longer),
+            "text past the cap");
+    CheckEq(static_cast<long long>(kPageTextLogBytes + 3),
+            static_cast<long long>(PageTextLogLine(std::string(100000, 'c')).size()),
+            "a link written to fill the log");
   }
 }
 
@@ -213,8 +278,10 @@ void BridgeRouteTests() {
 }  // namespace
 
 int main() {
-  std::cout << "the bridge page's failure codes\n";
-  BridgeErrorTests();
+  std::cout << "the sdk's Solana wallet failures\n";
+  FailureTextTests();
+  std::cout << "the bridge page's own English, in the log\n";
+  PageTextLogLineTests();
   std::cout << "wallet bridge routing\n";
   BridgeRouteTests();
 

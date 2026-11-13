@@ -9,7 +9,10 @@
 //     NaCl-box envelope the SDK decodes. Crypto is the SDK's
 //     (generateWalletKeyPair / generateSharedSecret / encrypt|decryptData /
 //     base58), so it is wire-compatible with the Apple CryptoKit path and the
-//     Linux app.
+//     Linux app. Every failure of either step, one the bridge page hands back
+//     or one found here, reads in the message the sdk names for it
+//     (urnet::solanaWalletFailureFor, SolanaWalletPresentation.h), the same
+//     on every app; the page's own English is never shown.
 //   - Bittensor (Talisman, TAO.com, WalletConnect): a single signMessage step
 //     whose url and hand-back are the SDK's (urnet::BittensorWalletSession).
 //     This class only opens the url and hands the raw
@@ -87,6 +90,14 @@ class WalletConnect {
   // Solana, hex sr25519 for Bittensor.
   std::function<void(std::string publicKey, std::string signature, Provider)> on_signature;
   std::function<void(std::string error)> on_error;
+  // A Solana wallet's failure (Phantom or Solflare) on the connect or the sign
+  // step. `message` is what the person sees: the sdk's message for the failure
+  // in the user's language, or that the browser would not open. `pageText` is
+  // the bridge page's own English, "" when the failure was found here: it is
+  // never shown, and it came off a link any program can fire at the app, so
+  // the handler logs it only when a Solana flow takes the answer. Unset, the
+  // message goes to on_error.
+  std::function<void(std::string message, std::string pageText)> on_solana_error;
   // the raw urnetwork://bittensor-* hand-back link
   std::function<void(std::string url)> on_bittensor_return;
   // urnetwork://oauth/<provider>?state=<state>&id_token=<token>, or
@@ -102,9 +113,26 @@ class WalletConnect {
   bool NewKeyPair();
   std::optional<std::string> SharedSecretBase58() const;
   // in the browser: as it is, or through a page of our own when it is longer
-  // than ShellExecuteW passes on (BridgeTrampoline.h)
+  // than ShellExecuteW passes on (BridgeTrampoline.h). False when no browser
+  // started, which the caller reports.
+  bool TryOpenUrl(const std::string& url);
+  bool OpenThroughTrampoline(const std::string& url);
+  // TryOpenUrl for Bittensor, Google and Apple, which report a browser that
+  // would not open as "failed to open browser" (on_error).
   void OpenUrl(const std::string& url);
-  void OpenThroughTrampoline(const std::string& url);
+  // TryOpenUrl for `p`'s bridge page: a browser that would not open is the
+  // Solana flow's failure, in the words the browser sign-in sheet has for it.
+  void OpenSolanaBridge(Provider p, const std::string& url);
+  // A Solana wallet's failure (`p`, Phantom or Solflare) on the connect or the
+  // sign step. The sdk reads `failureCode` in the scheme of `source`
+  // (urnet::SolanaWalletFailureSource*) as one of its failures, and the person
+  // sees the message it names (solana::FailureTextFor). `what` says in closed
+  // words where it failed, for the log; `pageText` is the bridge page's own
+  // English, for on_solana_error.
+  void FailSolana(Provider p, const char* source, const std::string& failureCode,
+                  const char* what, const std::string& pageText = std::string());
+  // `message` to on_solana_error with `pageText`, or to on_error without it.
+  void ReportSolanaFailure(std::string message, const std::string& pageText);
   void HandleConnect(Provider p, const std::string& query);
   void HandleSignMessage(Provider p, const std::string& query);
   // urnetwork://oauth/<apple|google>?state=…&id_token=… (or &error=…)

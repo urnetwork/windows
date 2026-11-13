@@ -411,10 +411,13 @@ func TestCommandLineIsNeverLoggedRaw(t *testing.T) {
 	}
 }
 
-// What a log call, a debugger line or the wallet bridge's error callback may not be given.
+// What a log call, a debugger line or the wallet bridge's error callbacks may not be given.
 // A value that came from a link is a secret until the sign-in it answers consumes it, and the
-// url, the Return, a key of an attempt and the link's query identify one.
-var authLinkLogSink = regexp.MustCompile(`\b(?:Log(?:Info|Warn|Error|Debug)|OutputDebugString[AW]?|on_error)\s*\(`)
+// url, the Return, a key of an attempt and the link's query identify one. The Solana error
+// callback is given the bridge page's own English (pageText) next to the message the person
+// sees: SdkHost logs it as one bounded line only when a Solana flow takes the answer, as the
+// sso callback logs its error once it matched (solana_wallet_test.go).
+var authLinkLogSink = regexp.MustCompile(`\b(?:Log(?:Info|Warn|Error|Debug)|OutputDebugString[AW]?|on_error|on_solana_error)\s*\(`)
 
 // Names that hold a link, or a value taken from one, wherever they stand alone.
 var authLinkSecretNames = map[string]bool{
@@ -519,13 +522,6 @@ func authLinkLogLeaks(code string, extra ...string) []string {
 		if strings.HasPrefix(code[location[0]:], "Log") && len(arguments) > 0 {
 			arguments = arguments[1:]
 		}
-		// The wallet bridges' own error path: the page's error text is shown to the person through
-		// LocalizedBridgeError (a known code gets the app's wording), which is the UI and not a log;
-		// it was there before the approval and stays. Nothing else is given to on_error.
-		if strings.HasPrefix(code[location[0]:], "on_error") && len(arguments) == 1 &&
-			strings.HasPrefix(strings.TrimSpace(arguments[0]), "LocalizedBridgeError(") {
-			continue
-		}
 		for _, argument := range arguments {
 			for _, leak := range authLinkArgumentLeaks(authLinkStringLiteral.ReplaceAllString(argument, `""`), extra...) {
 				leaks = append(leaks, "line "+strconv.Itoa(authLinkLine(code, location[0]))+" passes "+leak)
@@ -579,6 +575,10 @@ func TestNoLogCallReceivesALinkOrASecret(t *testing.T) {
 		`LogInfo("q {}", Narrow(query));`,
 		`if (on_error) on_error("failed: " + query);`,
 		`LogWarn("p {}", params["data"]);`,
+		// the page's code or text reaches neither error callback: the sdk reads the code, and
+		// the text goes only to the Solana callback, held in a name of its own
+		`on_error(LocalizedBridgeError(p, params["errorCode"], pageText));`,
+		`on_solana_error(std::move(message), params["errorMessage"]);`,
 	} {
 		if len(authLinkLogLeaks(bad, authLinkFileSecretNames["App/WalletConnect.cpp"]...)) == 0 {
 			t.Errorf("the check does not flag %q in the wallet bridge's file", bad)
@@ -596,7 +596,7 @@ func TestNoLogCallReceivesALinkOrASecret(t *testing.T) {
 		`LogInfo("a {} b {}", data.size(), url.length());`,
 		`LogInfo("app: launch{}: {}", request.autostart ? " (autostart)" : "", instance::ToString(action));`,
 		`on_error("failed to derive shared secret");`,
-		`on_error(LocalizedBridgeError(p, params["errorCode"], pageText));`,
+		`on_solana_error(std::move(message), pageText);`,
 		`LogInfo("approval: the attempt ended: {}", approval::ToString(reason));`,
 	} {
 		if leaks := authLinkLogLeaks(good); len(leaks) != 0 {
@@ -728,7 +728,8 @@ func TestAuthLinkWalletBridgeFailuresStayInsideTheHandler(t *testing.T) {
 	} {
 		body := definitionBody(t, "WalletConnect.cpp", wallet, handler)
 		guard := `const auto decrypted = TryDecrypt\(params\["data"\], params\["nonce"\], \*sharedB58\);\s*` +
-			`if \(!decrypted \|\| decrypted->empty\(\)\) \{\s*if \(on_error\) on_error\("` + regexp.QuoteMeta(failure) + `"\);\s*return;\s*\}`
+			`if \(!decrypted \|\| decrypted->empty\(\)\) \{\s*FailSolana\(p, urnet::SolanaWalletFailureSourceApp, urnet::SolanaWalletFailureWallet,\s*"` +
+			regexp.QuoteMeta(failure) + `"\);\s*return;\s*\}`
 		signOutRequireInOrder(t, handler, body, guard, regexp.QuoteMeta("decrypted->begin()"))
 		if strings.Contains(body, "urnet::decryptData(") {
 			t.Errorf("%s decrypts without TryDecrypt, which catches what the SDK throws", handler)

@@ -40,6 +40,7 @@
 #include "PeerLocation.h"
 #include "RpcSessionBlob.h"
 #include "SdkErrorId.h"
+#include "SolanaWalletPresentation.h"
 #include "Strings.h"
 #include "SystemProxy.h"
 #include "VlessPresentation.h"
@@ -2100,6 +2101,20 @@ void SdkHost::SetupWalletCallbacks() {
     auto done = std::exchange(walletAuthDone_, nullptr);
     SetAuthState(AuthState::Error, err);
     done({false, false, err});
+  };
+  // A Solana wallet's failure (WalletConnect::FailSolana) is answered as any
+  // other is, by on_error above, with the message the sdk names for it. The
+  // bridge page's own English is never shown. It is logged first, as one
+  // bounded line, but only when a Solana flow takes the answer (the routes of
+  // on_signature): it came off a link any program can fire at the app.
+  wallet_.on_solana_error = [this](std::string message, std::string pageText) {
+    const bool solanaFlowWaiting =
+        bridge::RouteSignature(static_cast<bool>(walletSignDone_),
+                               walletAuthDone_ && !ssoAttempt_) != bridge::SignatureRoute::Drop;
+    if (solanaFlowWaiting && !pageText.empty()) {
+      LogWarn("sdkhost: the Solana wallet bridge page said: {}", solana::PageTextLogLine(pageText));
+    }
+    if (wallet_.on_error) wallet_.on_error(std::move(message));
   };
 }
 

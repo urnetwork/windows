@@ -212,7 +212,7 @@ func TestTrampolineOpensTheHttpsBrowser(t *testing.T) {
 func bridgeTrampolineBrowserMisses(walletConnect string) []string {
 	misses := []string{}
 	source := stripComments(walletConnect)
-	trampoline := functionBody(source, "void WalletConnect::OpenThroughTrampoline(")
+	trampoline := functionBody(source, "bool WalletConnect::OpenThroughTrampoline(")
 	if trampoline == "" {
 		return append(misses, "WalletConnect.cpp: no OpenThroughTrampoline")
 	}
@@ -266,15 +266,20 @@ func bridgeTrampolinePageMisses(walletConnect, project string) []string {
 			misses = append(misses, fmt.Sprintf("%s: %s", where, what))
 		}
 	}
-	// every url opens through OpenUrl, and a long one never reaches ShellExecuteW
-	open := functionBody(source, "void WalletConnect::OpenUrl(")
-	requirePattern("WalletConnect::OpenUrl", open,
-		`^\{\s*if \(bridge::NeedsTrampoline\(url\)\) \{\s*OpenThroughTrampoline\(url\);\s*return;\s*\}\s*`+
+	// every url opens through TryOpenUrl, and a long one never reaches
+	// ShellExecuteW; OpenUrl (Bittensor, Google, Apple) and OpenSolanaBridge
+	// differ only in how they say a browser would not open
+	open := functionBody(source, "bool WalletConnect::TryOpenUrl(")
+	requirePattern("WalletConnect::TryOpenUrl", open,
+		`^\{\s*if \(bridge::NeedsTrampoline\(url\)\) return OpenThroughTrampoline\(url\);\s*`+
 			`std::wstring w = Widen\(url\);\s*HINSTANCE h = ShellExecuteW\(nullptr, L"open", w\.c_str\(\)`,
 		"a url longer than ShellExecuteW passes on is opened as it is")
+	require("WalletConnect::OpenUrl", functionBody(source, "void WalletConnect::OpenUrl("), "TryOpenUrl(url)")
+	require("WalletConnect::OpenSolanaBridge", functionBody(source, "void WalletConnect::OpenSolanaBridge("),
+		"TryOpenUrl(url)")
 	require("WalletConnect::OpenBittensorBridge", functionBody(source, "void WalletConnect::OpenBittensorBridge("),
 		"OpenUrl(bridgeUrl);")
-	trampoline := functionBody(source, "void WalletConnect::OpenThroughTrampoline(")
+	trampoline := functionBody(source, "bool WalletConnect::OpenThroughTrampoline(")
 	if trampoline == "" {
 		return append(misses, "WalletConnect.cpp: no OpenThroughTrampoline")
 	}
@@ -317,8 +322,16 @@ func TestBridgeTrampolineWiringCatchesEachRegression(t *testing.T) {
 	for _, control := range []struct {
 		name, file, old, new, want string
 	}{
-		{"a long url opens as it is", "WalletConnect.cpp", "  if (bridge::NeedsTrampoline(url)) {\n    OpenThroughTrampoline(url);\n    return;\n  }\n", "",
+		{"a long url opens as it is", "WalletConnect.cpp", "  if (bridge::NeedsTrampoline(url)) return OpenThroughTrampoline(url);\n", "",
 			"a url longer than ShellExecuteW passes on is opened as it is"},
+		{"a Bittensor or sign-in url opens around the page", "WalletConnect.cpp",
+			"  if (!TryOpenUrl(url) && on_error) on_error(\"failed to open browser\");\n",
+			"  if (!ShellExecuteW(nullptr, L\"open\", Widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL) && on_error) on_error(\"failed to open browser\");\n",
+			"WalletConnect::OpenUrl: missing TryOpenUrl(url)"},
+		{"a Solana bridge url opens around the page", "WalletConnect.cpp",
+			"  if (TryOpenUrl(url)) return;\n",
+			"  if (ShellExecuteW(nullptr, L\"open\", Widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL)) return;\n",
+			"WalletConnect::OpenSolanaBridge: missing TryOpenUrl(url)"},
 		{"any url gets a page", "WalletConnect.cpp", "  if (page.empty()) return fail(\"not opening a long bridge url that is not a plain https url\");\n", "",
 			"a url that is not a plain https url gets a page"},
 		{"earlier pages stay", "WalletConnect.cpp", "      ::DeleteFileW((directory / found.cFileName).c_str());\n", "",
