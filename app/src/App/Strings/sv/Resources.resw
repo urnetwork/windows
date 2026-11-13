@@ -942,6 +942,10 @@
     <value>Begäran avvisades i din plånbok. Börja om och godkänn den för att fortsätta.</value>
     <comment>Wallet error in the apps, when a ur.io wallet bridge page returns user_rejected: the user declined the connection or the signature request in the wallet, so nothing was signed. The Bittensor page (Talisman, or a WalletConnect wallet) and the Solana page of the desktop apps (Phantom or Solflare) both return it; on iOS, Phantom and Solflare decline with 4001, which reads the same.</comment>
   </data>
+  <data name="bittensor_error_wallet_failed" xml:space="preserve">
+    <value>Din {}-plånbok kunde inte slutföra begäran. Kontrollera plånboken och försök sedan igen.</value>
+    <comment>Wallet failure with no more specific message, so nothing was signed: on ur.io's Bittensor wallet flows (Talisman, or a WalletConnect wallet), and on every app's Solana sign-in (sdk SolanaWalletFailureFor wallet_error, including a code the app does not know). The wallet's own English text is only logged. The argument is the wallet product name (Phantom, Solflare, Solana when the app does not know which wallet answered; Talisman or WalletConnect on ur.io's Bittensor page).</comment>
+  </data>
   <data name="bittensor_error_walletconnect_expired" xml:space="preserve">
     <value>WalletConnect-begäran gick ut innan plånboken svarade. Börja om.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_expired: the WalletConnect pairing or the signature request ran out of time before the wallet answered. WalletConnect is a product name.</comment>
@@ -2014,7 +2018,7 @@ rätt sätt</value>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Kunde inte öppna plånboken. Installera den och försök igen.</value>
-    <comment>Snackbar shown when the external wallet app could not be opened. Used in Shared/Views/SolanaSignMessageSheet.swift and Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor wallet_app_not_found): the chosen wallet app (Phantom or Solflare) is not installed, or would not open, so nothing was signed.</comment>
   </data>
   <data name="couldnt_parse_public_key" xml:space="preserve">
     <value>Kunde inte tolka den publika nyckeln, försök igen senare.</value>
@@ -6039,7 +6043,7 @@ Hämta din bonus genom att skapa ett nätverk!</value>
   </data>
   <data name="no_wallets_found_alert_content" xml:space="preserve">
     <value>Inga installerade Solana-plånböcker hittades på den här enheten. Installera en plånbok och försök igen.</value>
-    <comment>Call to action</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor no_wallet): no Solana wallet answered on this device or in this browser (Android's Mobile Wallet Adapter found no wallet app; ur.io found no wallet extension and no WalletConnect), so nothing was signed.</comment>
   </data>
   <data name="none" xml:space="preserve">
     <value>Ingen</value>
@@ -8485,7 +8489,7 @@ innehåll i världen</value>
   </data>
   <data name="solana_wallet_error_session_not_found" xml:space="preserve">
     <value>Plånboksanslutningen hittades inte i den här webbläsaren. Börja om för att ansluta din plånbok igen.</value>
-    <comment>Solana wallet error in the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
+    <comment>Solana sign-in failure on every app (sdk SolanaWalletFailureFor session_not_found), from the ur.io wallet bridge page's session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
   </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Något gick fel.</value>
