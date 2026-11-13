@@ -267,10 +267,16 @@ struct LedgerSectionView {
 // opens the dialog on the claim's progress, where Claim waits for it (owner,
 // 2026-11-12: a claim in flight is the session's, and a dialog opened again
 // shows it), as Linux's tile does.
+//
+// `fresh`: the accounts on screen are a read's that started after the last v2
+// claim's Done (ClaimReads::Fresh). Between claims Claim waits for one: a read
+// from before the Done may still hold what the claim paid. The accounts show
+// meanwhile, as during any reload.
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable = {},
-                                   int64_t transferFloorRao = 0, bool claimInFlight = false);
+                                   int64_t transferFloorRao = 0, bool claimInFlight = false,
+                                   bool fresh = true);
 
 // The claimable is under a known transfer floor (`transferFloorRao`, 0 when
 // unknown), under which the chain refuses a claim: no claim moves it until it
@@ -304,9 +310,16 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao);
 // and the dialog shows what it answers, as Android's, Linux's and Apple's do:
 // Below the claim minimum only for AmountTooLow, claimable under the funding
 // hint for needs_gas, and Failed with the SDK's message for any other failure.
-// No press takes such an account, whatever the SDK said of it, and a press
-// lists it Below the claim minimum again until the SDK reports on it (Linux's
-// sheet), so the dialog never offers a claim the chain refuses.
+// No press takes such an account, whatever the SDK said of it, so the dialog
+// never offers a claim the chain refuses.
+//
+// A dialog presses once. After its claim's Done it shows what came of the
+// claim and offers no Claim (as Apple's sheets end in Done and Android's
+// dialog in Finished): its rows are a read's from before the claim, and an
+// account the claim reported failed may have been paid all the same, so a
+// press from them could send a transaction the vault reverts. What is left is
+// claimed from the dialog opened again, which opens only over a read that
+// started after the Done (ClaimReads).
 
 // The TAO the funding hint asks for. The SDK sends a v2 claim only when the gas
 // key holds its gas limit (eth_estimateGas, about 2.51M on runtime 475 for
@@ -391,7 +404,7 @@ class LedgerClaimProgress {
   // amount not known yet, they say why rather than a zero (Android's dialog).
   bool TotalKnown() const;
   // Claim's button: actions allowed (a device session), something to claim
-  // above the transfer floor, gas, and no claim out
+  // above the transfer floor, gas, no claim out, and none ended (Done)
   bool CanClaim(bool allowActions) const;
   // Claim's button says Claim both (sn_ledger_claim_both): the rows Claim
   // moves are exactly the operator pool's and capture the flag's
@@ -405,11 +418,9 @@ class LedgerClaimProgress {
   std::string TitleKey(const LedgerClaimRow& row) const;
 
   // Claim pressed: every row Claim moves is Sending; an unavailable pool's,
-  // which the claim's own read reports on again, and one the preflight refused
-  // stay as they are, and one under the dialog's floor by its amount that the
-  // last press left claimable or failed reads Below the claim minimum again
-  // until the SDK reports on it. False, changing nothing, while a claim is out
-  // or with nothing to claim.
+  // which the claim's own read reports on, and one under the floor stay as
+  // they are. False, changing nothing, while a claim is out, once its claim
+  // ended (a dialog presses once) or with nothing to claim.
   bool Start();
   // The callback's events. The SDK claims every account it verified, which can
   // be one the page's read did not list: that account gets a row, or takes the
@@ -418,10 +429,11 @@ class LedgerClaimProgress {
   void Confirmed(int64_t noId, int64_t index, const std::string& txHash, int64_t amountRao);
   void Failed(int64_t noId, int64_t index, const std::string& message);
   // The claim is over: a row the SDK never reported on is not sending any
-  // more. Once the claim's own read answered (an event for an account or a
-  // pool, or nothing to claim), a pool the page could not read that the claim
-  // said nothing of was read and held nothing to claim, and its row goes
-  // (Android's snLedgerClaimSettled).
+  // more, and the dialog offers no Claim from here (CanClaim, Start). Once the
+  // claim's own read answered (an event for an account or a pool, or nothing
+  // to claim), a pool the page could not read that the claim said nothing of
+  // was read and held nothing to claim, and its row goes (Android's
+  // snLedgerClaimSettled).
   void Done();
 
  private:
@@ -440,6 +452,8 @@ class LedgerClaimProgress {
   // no press takes a row under it
   int64_t transferFloorRao_ = 0;
   bool sending_ = false;
+  // the press's claim ended (Done)
+  bool done_ = false;
   bool needsGas_ = false;
   std::string failure_;
   // this claim's own read of the ledger answered
@@ -465,8 +479,10 @@ struct LedgerClaimEvents {
 // a dialog shows it, so a dialog dismissed during the claim drops none of them
 // and misses none of its Done. A dialog opened during the claim draws the same
 // progress, where Claim waits, and the page starts no second claim while one
-// is in flight: the gas key sends one at a time. A dialog pressed again after
-// Done claims on from its own progress. Only the claim's Done and a sign-out
+// is in flight: the gas key sends one at a time. After its Done a dialog
+// offers no Claim from its own progress, whose rows are a read's from before
+// the claim: what is left is claimed from a dialog opened again over a read
+// that started after the Done (ClaimReads). Only the claim's Done and a sign-out
 // end it; after a sign-out the page holds it no more, and its events move
 // only its own progress, which a dialog still up from before the sign-out may
 // show. Linux's snledger::ClaimInFlight is the same. UI thread only.
@@ -513,6 +529,62 @@ class ClaimInFlight {
 
 // The v2 claim in flight.
 using LedgerClaimInFlight = ClaimInFlight<LedgerClaimProgress>;
+
+// ---- the order of the claimable reads (every app, 2026-11-12)
+//
+// The page reads what Claim offers again and again: each Earnings load, a
+// coldkey attached, a claim's Done (the claims or the accounts as the chain
+// now has them, and the gas balance the claim spent) and a dialog that needs
+// the gas balance. The reads overlap and their answers land in any order, so
+// a read that started before a claim's Done could answer after the read at
+// Done and put back what the claim paid, with Claim on it: a v1 claim of an
+// epoch the vault paid already reverts, and its gas is lost.
+//
+// So the page numbers each read of one kind (the v1 epoch claims, the v2
+// accounts, the gas balance) as it starts, and an answer applies only if no
+// read of that kind that started after it has applied. A claim's Done makes
+// every read of its own kind that started before it stale: a v1 claim's the
+// epoch claims reads, a v2 claim's the accounts reads. Each kind on its own,
+// since a v2 claim moves nothing a v1 read shows and a v1 claim nothing a v2
+// read shows, and the SDK checks the gas both spend again before it sends.
+// Claim of a kind is offered only while the page shows a read of that kind
+// that started after its last Done (Fresh); until the read at Done answers it
+// waits, with the last answer still on screen. A claim in flight keeps the
+// Claim that opens it. A failed read is an answer too (the v1 tile's Failed,
+// the v2 section's Unavailable), and offers nothing. Every app follows the
+// same rule. UI thread only.
+class ClaimReads {
+ public:
+  // A read starts: its number, which its answer carries.
+  uint32_t Start() { return ++started_; }
+  // The answer of read `read`: true when it applies, false, changing nothing,
+  // when a read that started after it has applied already, or when it started
+  // before the last Reset.
+  bool Apply(uint32_t read);
+  // A claim of this kind is Done: every read started so far is from before it.
+  void Done() { doneAt_ = started_; }
+  // The page shows the answer of a read that started after this kind's last
+  // claim's Done and after the last Reset: Claim may be offered from it.
+  bool Fresh() const { return shown_ > doneAt_; }
+  // A sign-out, or the coldkey gone: no read from before applies, and nothing
+  // is fresh until a read started since answers.
+  void Reset() { shown_ = doneAt_ = started_; }
+
+ private:
+  uint32_t started_ = 0;  // the newest read's number
+  // the read whose answer the page shows; after a Reset, the newest read from
+  // before it
+  uint32_t shown_ = 0;
+  // the newest read from before this kind's last claim's Done, or the last Reset
+  uint32_t doneAt_ = 0;
+};
+
+// The v1 tile's Claim, which the payout line's Claim and the Earnings actions
+// menu follow: a claim in flight keeps it, to open its dialog; between claims
+// it needs something claimable (`totalClaimableRao`) from a read that started
+// after the last v1 claim's Done (`fresh`, ClaimReads::Fresh) and a device to
+// send from (`canClaim`).
+bool V1ClaimEnabled(bool fresh, int64_t totalClaimableRao, bool canClaim, bool claimInFlight);
 
 // ---- the v1 claim dialog
 
@@ -573,16 +645,25 @@ class ClaimAlphaProgress {
   // The count under the figure ("Claimable epochs: N"): the claimable epochs,
   // and during a claim the epochs it sends, fixed with the figure until Done.
   size_t CaptionCount() const;
+  // Claim's button: actions allowed (a device session), something to claim,
+  // gas, no claim out, and none ended. A dialog presses once: after its
+  // claim's Done it shows what came of the claim and offers no Claim, since
+  // its rows are a read's from before the claim and an epoch the claim
+  // reported failed may have been paid all the same; what is left is claimed
+  // from the dialog opened again, over a read that started after the Done
+  // (ClaimReads), as the v2 dialog does.
+  bool CanClaim(bool allowActions) const;
 
   // Claim pressed: every claimable epoch not confirmed yet is Sending, and
-  // epochs() are the press's. False, changing nothing, while a claim is out
-  // or with no epoch to claim.
+  // epochs() are the press's. False, changing nothing, while a claim is out,
+  // once its claim ended or with no epoch to claim.
   bool Start();
   // The claim's events.
   void Sent(int64_t epoch, std::string const& txHash);
   void Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao);
   void Failed(int64_t epoch, std::string const& message);
-  // The claim is over: a row the SDK never reported on is not sending any more.
+  // The claim is over: a row the SDK never reported on is not sending any
+  // more, and the dialog offers no Claim from here (CanClaim, Start).
   void Done();
 
  private:
@@ -593,6 +674,8 @@ class ClaimAlphaProgress {
   // what the press in flight moves (FigureRao)
   int64_t pressRao_ = 0;
   bool sending_ = false;
+  // the press's claim ended (Done)
+  bool done_ = false;
   bool needsGas_ = false;
 };
 
