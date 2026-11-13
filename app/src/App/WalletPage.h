@@ -355,13 +355,17 @@ class WalletPage {
   // ---- history, claims, gas
   void ApplyEpochs(std::vector<EpochRow> const& epochs, Fetch state);
   void RebuildHistory();
-  // `error` is the SDK's SnError (or one built from a transport error) when
-  // the fetch failed; its stable code picks the store's sentence. `schedule` is
-  // the current epoch's, read with the claims (absent when the SDK could not
-  // read the coordinator's policy).
-  void ApplyClaims(std::vector<EpochClaim> const& claims, int64_t totalClaimableRao,
+  // The answer to claims read number `read` (v1Reads_), dropped when a read
+  // that started after it has applied. `error` is the SDK's SnError (or one
+  // built from a transport error) when the fetch failed; its stable code picks
+  // the store's sentence. `schedule` is the current epoch's, read with the
+  // claims (absent when the SDK could not read the coordinator's policy).
+  void ApplyClaims(uint32_t read, std::vector<EpochClaim> const& claims, int64_t totalClaimableRao,
                    Fetch state, std::optional<urnet::SnError> const& error,
                    std::optional<snpayout::EpochSchedule> const& schedule = std::nullopt);
+  // The v1 tile's Claim (snpayout::V1ClaimEnabled): from the claims read since
+  // the last v1 claim's Done, or to open the claim in flight.
+  void RebuildClaimButton();
   // How and when SN payouts happen, under the points figure
   // (snpayout::PayoutLineFor), from the coldkey, the claims and the schedule.
   void RebuildPayoutLine();
@@ -369,7 +373,9 @@ class WalletPage {
   // operator id, so the first vault read waits for one GET /sn/epoch through
   // the device, which stores them. `then` runs on the UI thread either way.
   void EnsureChainSettings(std::function<void()> then);
-  void ApplyGas(std::optional<GasKeyInfo> gas);
+  // The gas key and its balance from gas read number `read` (gasReads_),
+  // dropped when a read that started after it has applied.
+  void ApplyGas(uint32_t read, std::optional<GasKeyInfo> gas);
   void ApplyLedgerMeta();
   // The v1 dialog's Claim (Device.snClaim): StartV1Claim.
   Claimer MakeClaimer();
@@ -389,9 +395,11 @@ class WalletPage {
   const EpochClaim* ClaimForEpoch(int64_t epoch) const;
 
   // ---- settlement v2
-  // The read's answer: its state and, when Ready, the accounts and the pools
-  // it could not read (a failed read and a missing device session leave none).
-  void ApplyV2Accounts(snpayout::LedgerFetch fetch,
+  // The answer to accounts read number `read` (v2Reads_), dropped when a read
+  // that started after it has applied: its state and, when Ready, the accounts
+  // and the pools it could not read (a failed read and a missing device
+  // session leave none).
+  void ApplyV2Accounts(uint32_t read, snpayout::LedgerFetch fetch,
                        std::vector<snpayout::LedgerAccount> const& accounts,
                        std::vector<snpayout::UnavailablePool> const& unavailable);
   // The section beside the v1 tile (snpayout::LedgerSectionFor), from the
@@ -672,6 +680,13 @@ class WalletPage {
   snpayout::LedgerClaimInFlight v2Claim_;
   // the v1 claim in flight, the same way
   snpayout::ClaimInFlight<ClaimAlphaProgress> v1Claim_;
+  // the reads of the v1 claims, the v2 accounts and the gas balance, each kind
+  // numbered as its reads start: an older read's answer never replaces a newer
+  // one's, and Claim of a kind waits after its claim's Done for a read that
+  // started after it (snpayout::ClaimReads)
+  snpayout::ClaimReads v1Reads_;
+  snpayout::ClaimReads v2Reads_;
+  snpayout::ClaimReads gasReads_;
   // capture the flag: the wins not claimed yet, newest first, as the newest
   // read's good answer gave them (none from a sign-out until the next good
   // read), and the reads' numbers

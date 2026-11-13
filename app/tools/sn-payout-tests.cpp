@@ -501,6 +501,96 @@ struct ClaimPage {
   }
 };
 
+// One finalized epoch's claim in the vault.
+EpochClaim Epoch(int64_t epoch, int64_t amountRao, std::string status) {
+  EpochClaim claim;
+  claim.epoch = epoch;
+  claim.amountRao = amountRao;
+  claim.status = std::move(status);
+  return claim;
+}
+
+// The page's reads of what Claim offers, as WalletPage wires them to
+// snpayout::ClaimReads: each read numbered as it starts (LoadClaims,
+// LoadV2Accounts, LoadGas), its answer the server's as the read started,
+// handed back whenever the SDK gives it (each Load returns its answer's
+// delivery), the Done of each kind's claim (OnV1ClaimDone, OnV2ClaimDone),
+// a sign-out (ResetForSignOut) and every Claim: the v1 tile's and the payout
+// line's (V1ClaimEnabled), the v2 section's (LedgerSectionFor) and the
+// dialogs Claim opens between claims (OnClaimAlpha, OnClaimV2), which keep
+// the rows they open with.
+struct ReadPage {
+  ClaimReads v1Reads;
+  ClaimReads v2Reads;
+  ClaimReads gasReads;
+  std::vector<EpochClaim> claims;  // claims_
+  int64_t totalClaimableRao = 0;
+  std::vector<LedgerAccount> accounts;  // v2Accounts_
+  LedgerFetch fetch = LedgerFetch::Loading;
+  std::optional<double> gasTao;
+  bool v1InFlight = false;
+  bool v2InFlight = false;
+
+  // LoadClaims, then ApplyClaims with its answer (a failed read: none)
+  std::function<void()> LoadClaims(std::vector<EpochClaim> answer) {
+    const uint32_t read = v1Reads.Start();
+    return [this, read, answer] {
+      if (!v1Reads.Apply(read)) return;
+      claims = answer;
+      totalClaimableRao = 0;
+      for (const EpochClaim& claim : claims) {
+        if (claim.status == "claimable") totalClaimableRao += claim.amountRao;
+      }
+    };
+  }
+  // LoadV2Accounts, then ApplyV2Accounts with its answer (none: a failed read)
+  std::function<void()> LoadV2(std::optional<std::vector<LedgerAccount>> answer) {
+    fetch = LedgerFetch::Loading;
+    const uint32_t read = v2Reads.Start();
+    return [this, read, answer] {
+      if (!v2Reads.Apply(read)) return;
+      fetch = answer ? LedgerFetch::Ready : LedgerFetch::Failed;
+      accounts = answer.value_or(std::vector<LedgerAccount>{});
+    };
+  }
+  // LoadGas: the key at once, then the balance read's answer
+  std::function<void()> LoadGas(double tao) {
+    if (gasReads.Apply(gasReads.Start())) gasTao.reset();
+    const uint32_t read = gasReads.Start();
+    return [this, read, tao] {
+      if (gasReads.Apply(read)) gasTao = tao;
+    };
+  }
+  void V1Done() {
+    v1InFlight = false;
+    v1Reads.Done();
+  }
+  void V2Done() {
+    v2InFlight = false;
+    v2Reads.Done();
+  }
+  void SignOut() {
+    v1InFlight = v2InFlight = false;
+    v1Reads.Reset();
+    v2Reads.Reset();
+    gasReads.Reset();
+  }
+  bool V1Claim() const { return V1ClaimEnabled(v1Reads.Fresh(), totalClaimableRao, true, v1InFlight); }
+  bool V2Claim() const {
+    return LedgerSectionFor(true, true, fetch, accounts, true, {}, 0, v2InFlight, v2Reads.Fresh()).claimEnabled;
+  }
+  // OnClaimAlpha and OnClaimV2 between claims: none to open from a read from
+  // before the last Done
+  std::optional<ClaimAlphaProgress> OpenV1() const {
+    if (!v1Reads.Fresh()) return std::nullopt;
+    return ClaimAlphaProgress(claims, 1.0);
+  }
+  std::optional<LedgerClaimProgress> OpenV2() const {
+    if (!v2Reads.Fresh()) return std::nullopt;
+    return LedgerClaimProgress(accounts, 0.5);
+  }
+};
+
 }  // namespace
 
 int main() {
@@ -2171,6 +2261,188 @@ int main() {
     Check(!before.showClaim && !before.claimEnabled, "before vault2 there is no Claim");
     Check(!LedgerSectionFor(false, true, LedgerFetch::Ready, {Account()}, true, {}, 0, true).shown,
           "no section without a coldkey");
+  }
+  {
+    TEST_CASE("reads: an answer applies only if no read that started after it has");
+    ClaimReads reads;
+    const uint32_t first = reads.Start();
+    const uint32_t second = reads.Start();
+    Check(first < second, "numbered as they start");
+    Check(!reads.Fresh(), "nothing read yet: nothing to offer Claim from");
+    Check(reads.Apply(second) && reads.Fresh(), "the newer read answers first and applies");
+    Check(!reads.Apply(first), "the older one, landing after, never replaces it");
+    Check(!reads.Apply(second), "nor does an answer twice");
+    const uint32_t third = reads.Start();
+    const uint32_t fourth = reads.Start();
+    Check(reads.Apply(third), "an older read applies while no newer one has");
+    Check(reads.Apply(fourth) && !reads.Apply(third), "then the newer one");
+  }
+  {
+    TEST_CASE("reads: a v1 claims read from before the Done that answers after the read at Done");
+    // the race: Earnings loads again during the claim, the vault still says
+    // epoch 7 is claimable, the claim's Done reads again, the read at Done
+    // answers first (claimed) and the one from before it lands last
+    ReadPage page;
+    page.LoadClaims({Epoch(7, 1'000'000'000, "claimable")})();
+    Check(page.V1Claim() && page.OpenV1(), "between claims: Claim, and the dialog over the read");
+    page.v1InFlight = true;  // Claim pressed: the claim in flight
+    const auto beforeDone = page.LoadClaims({Epoch(7, 1'000'000'000, "claimable")});
+    Check(page.V1Claim(), "during the claim its Claim opens it");
+    page.V1Done();
+    Check(!page.V1Claim(), "at Done Claim waits: the epochs shown are a read's from before the Done");
+    Check(!page.OpenV1(), "and no dialog opens over them");
+    const auto atDone = page.LoadClaims({Epoch(7, 1'000'000'000, "claimed")});
+    atDone();
+    Check(page.claims.size() == 1 && page.claims[0].status == "claimed" && page.totalClaimableRao == 0,
+          "the read at Done shows epoch 7 claimed");
+    beforeDone();
+    Check(page.claims[0].status == "claimed" && page.totalClaimableRao == 0,
+          "the read from before the Done, landing last, never puts epoch 7 back");
+    Check(!page.V1Claim(), "and no Claim on what the claim paid");
+    const std::optional<ClaimAlphaProgress> dialog = page.OpenV1();
+    Check(dialog && dialog->ClaimableCount() == 0 && dialog->FigureRao() == 0, "a dialog opened now claims nothing");
+  }
+  {
+    TEST_CASE("reads: a v1 claims read from before the Done that answers first offers no Claim");
+    ReadPage page;
+    page.LoadClaims({Epoch(7, 1'000'000'000, "claimable"), Epoch(8, 500'000'000, "claimable")})();
+    page.v1InFlight = true;
+    const auto beforeDone = page.LoadClaims({Epoch(7, 1'000'000'000, "claimable"), Epoch(8, 500'000'000, "claimable")});
+    // the claim paid epoch 7; epoch 8 failed and stays claimable
+    page.V1Done();
+    const auto atDone = page.LoadClaims({Epoch(7, 1'000'000'000, "claimed"), Epoch(8, 500'000'000, "claimable")});
+    beforeDone();
+    Check(page.totalClaimableRao == 1'500'000'000, "the read from before the Done shows, as the last answer");
+    Check(!page.V1Claim() && !page.OpenV1(), "but Claim waits for the read at Done, and no dialog opens");
+    atDone();
+    Check(page.totalClaimableRao == 500'000'000 && page.V1Claim(), "the read at Done: Claim on epoch 8 alone");
+    const std::optional<ClaimAlphaProgress> dialog = page.OpenV1();
+    Check(dialog && dialog->ClaimableCount() == 1 && dialog->FigureRao() == 500'000'000,
+          "the dialog lists epoch 8 claimable, not epoch 7");
+    // a failed read at Done is an answer: no figure, nothing to offer
+    ReadPage failed;
+    failed.LoadClaims({Epoch(7, 1'000'000'000, "claimable")})();
+    const auto stale = failed.LoadClaims({Epoch(7, 1'000'000'000, "claimable")});
+    failed.V1Done();
+    failed.LoadClaims({})();
+    stale();
+    Check(failed.claims.empty() && !failed.V1Claim(), "a failed read at Done, then the stale one: nothing offered");
+  }
+  {
+    TEST_CASE("reads: the v2 section's Claim waits after Done for the read at Done");
+    LedgerAccount paidAccount = Account();
+    paidAccount.claimableRao = 0;
+    paidAccount.paidRao = paidAccount.finalizedRao;
+    ReadPage page;
+    page.LoadV2(std::vector<LedgerAccount>{Account()})();
+    Check(page.V2Claim() && page.OpenV2() && page.OpenV2()->CanClaim(true), "between claims: Claim");
+    page.v2InFlight = true;
+    const auto beforeDone = page.LoadV2(std::vector<LedgerAccount>{Account()});
+    Check(page.V2Claim(), "during the claim its Claim opens it");
+    page.V2Done();
+    // Done comes before the read after it (WithClaimPaid's), which the page
+    // starts next: the accounts on screen are the claim's own read's from before
+    Check(!page.V2Claim() && !page.OpenV2(), "the Done window: no Claim on the accounts the claim paid");
+    const auto atDone = page.LoadV2(std::vector<LedgerAccount>{paidAccount});
+    Check(page.fetch == LedgerFetch::Loading && !page.V2Claim(), "loading after the Done: still none");
+    atDone();
+    beforeDone();
+    Check(page.accounts.size() == 1 && page.accounts[0].claimableRao == 0,
+          "the read from before the Done, landing last, never puts the paid balance back");
+    Check(!page.V2Claim(), "nothing left: no Claim");
+    // an ordinary reload between claims keeps the accounts and their Claim
+    LedgerAccount more = Account();
+    more.claimableRao = 1'000'000'000;
+    page.LoadV2(std::vector<LedgerAccount>{more})();
+    const auto reload = page.LoadV2(std::vector<LedgerAccount>{more});
+    Check(page.fetch == LedgerFetch::Loading && page.V2Claim(), "a reload with no Done since keeps Claim");
+    reload();
+    // a failed read is an answer: unavailable, and no Claim
+    page.LoadV2(std::nullopt)();
+    Check(page.fetch == LedgerFetch::Failed && !page.V2Claim(), "a failed read: unavailable, no Claim");
+
+    // the read after a v2 claim's Done is WithClaimPaid's, which hands the
+    // Done on first: the page marks its reads, then the read starts, and its
+    // answer is fresh
+    ClaimReads reads;
+    reads.Apply(reads.Start());
+    std::vector<std::function<void()>> posted;
+    uint32_t afterDone = 0;
+    LedgerClaimEvents events;
+    events.done = [&] { posted.push_back([&] { reads.Done(); }); };
+    events = WithClaimPaid(std::move(events), [&](bool) { posted.push_back([&] { afterDone = reads.Start(); }); });
+    events.done();
+    for (const std::function<void()>& step : posted) step();
+    Check(afterDone != 0 && !reads.Fresh() && reads.Apply(afterDone) && reads.Fresh(),
+          "the read after the Done answers fresh");
+  }
+  {
+    TEST_CASE("reads: each kind waits for its own claim's Done");
+    // a v2 claim moves nothing a v1 read shows, and back: the SDK checks the
+    // gas both spend again before it sends
+    ReadPage page;
+    page.LoadClaims({Epoch(7, 1'000'000'000, "claimable")})();
+    page.LoadV2(std::vector<LedgerAccount>{Account()})();
+    page.v2InFlight = true;
+    page.V2Done();
+    Check(page.V1Claim() && page.OpenV1(), "a v2 claim's Done leaves the v1 Claim as it was");
+    Check(!page.V2Claim(), "and holds the v2 Claim");
+    page.LoadV2(std::vector<LedgerAccount>{Account()})();
+    page.v1InFlight = true;
+    page.V1Done();
+    Check(page.V2Claim() && page.OpenV2(), "a v1 claim's Done leaves the v2 Claim as it was");
+    Check(!page.V1Claim(), "and holds the v1 Claim");
+  }
+  {
+    TEST_CASE("reads: the v1 Claim and the v2 section's Claim");
+    Check(V1ClaimEnabled(true, 1, true, false), "something claimable from a fresh read, with a device");
+    Check(!V1ClaimEnabled(false, 1, true, false), "a read from before the last Done: none");
+    Check(!V1ClaimEnabled(true, 0, true, false), "nothing claimable: none");
+    Check(!V1ClaimEnabled(true, 1, false, false), "no device: none");
+    Check(V1ClaimEnabled(false, 0, false, true), "a claim in flight keeps it, to open the claim");
+    Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, true, {}, 0, false, false).claimEnabled,
+          "v2: a read from before the last Done: none");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, true, {}, 0, true, false).claimEnabled,
+          "v2: a claim in flight keeps it");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, true, {}, 0, false, true).claimEnabled,
+          "v2: a fresh read with something to claim: Claim");
+    const LedgerSectionView stale = LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, true, {}, 0, false, false);
+    Check(stale.shown && stale.accounts.size() == 1 && stale.showClaim, "the accounts still show, with Claim waiting");
+  }
+  {
+    TEST_CASE("reads: the gas balance's answers in order");
+    ReadPage page;
+    const auto first = page.LoadGas(0.5);
+    const auto second = page.LoadGas(0.1);
+    Check(!page.gasTao, "the key at once, the balance to come");
+    second();
+    first();
+    Check(page.gasTao == 0.1, "the older balance, landing last, never replaces the newer one's");
+    const auto third = page.LoadGas(0.3);
+    Check(!page.gasTao, "a new read: the key again, its balance to come");
+    third();
+    Check(page.gasTao == 0.3, "its balance");
+  }
+  {
+    TEST_CASE("reads: a sign-out drops every read out");
+    ReadPage page;
+    page.LoadClaims({Epoch(7, 1'000'000'000, "claimable")})();
+    page.LoadV2(std::vector<LedgerAccount>{Account()})();
+    const auto departedClaims = page.LoadClaims({Epoch(7, 1'000'000'000, "claimable")});
+    const auto departedAccounts = page.LoadV2(std::vector<LedgerAccount>{Account()});
+    const auto departedGas = page.LoadGas(0.5);
+    page.SignOut();
+    Check(!page.V1Claim() && !page.V2Claim() && !page.OpenV1() && !page.OpenV2(),
+          "the departed account's claims offer nothing");
+    page.claims.clear();
+    page.totalClaimableRao = 0;
+    page.accounts.clear();
+    departedClaims();
+    departedAccounts();
+    departedGas();
+    Check(page.claims.empty() && page.accounts.empty() && !page.gasTao, "its reads' answers apply nowhere");
+    page.LoadClaims({Epoch(9, 2'000'000'000, "claimable")})();
+    Check(page.V1Claim() && page.totalClaimableRao == 2'000'000'000, "the next account's own read: its Claim");
   }
   {
     TEST_CASE("v2 claim: the figure during a claim is what the claim moves, never 0");

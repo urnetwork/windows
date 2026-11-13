@@ -267,10 +267,16 @@ struct LedgerSectionView {
 // opens the dialog on the claim's progress, where Claim waits for it (owner,
 // 2026-11-12: a claim in flight is the session's, and a dialog opened again
 // shows it), as Linux's tile does.
+//
+// `fresh`: the accounts on screen are a read's that started after the last v2
+// claim's Done (ClaimReads::Fresh). Between claims Claim waits for one: a read
+// from before the Done may still hold what the claim paid. The accounts show
+// meanwhile, as during any reload.
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable = {},
-                                   int64_t transferFloorRao = 0, bool claimInFlight = false);
+                                   int64_t transferFloorRao = 0, bool claimInFlight = false,
+                                   bool fresh = true);
 
 // The claimable is under a known transfer floor (`transferFloorRao`, 0 when
 // unknown), under which the chain refuses a claim: no claim moves it until it
@@ -513,6 +519,62 @@ class ClaimInFlight {
 
 // The v2 claim in flight.
 using LedgerClaimInFlight = ClaimInFlight<LedgerClaimProgress>;
+
+// ---- the order of the claimable reads (every app, 2026-11-12)
+//
+// The page reads what Claim offers again and again: each Earnings load, a
+// coldkey attached, a claim's Done (the claims or the accounts as the chain
+// now has them, and the gas balance the claim spent) and a dialog that needs
+// the gas balance. The reads overlap and their answers land in any order, so
+// a read that started before a claim's Done could answer after the read at
+// Done and put back what the claim paid, with Claim on it: a v1 claim of an
+// epoch the vault paid already reverts, and its gas is lost.
+//
+// So the page numbers each read of one kind (the v1 epoch claims, the v2
+// accounts, the gas balance) as it starts, and an answer applies only if no
+// read of that kind that started after it has applied. A claim's Done makes
+// every read of its own kind that started before it stale: a v1 claim's the
+// epoch claims reads, a v2 claim's the accounts reads. Each kind on its own,
+// since a v2 claim moves nothing a v1 read shows and a v1 claim nothing a v2
+// read shows, and the SDK checks the gas both spend again before it sends.
+// Claim of a kind is offered only while the page shows a read of that kind
+// that started after its last Done (Fresh); until the read at Done answers it
+// waits, with the last answer still on screen. A claim in flight keeps the
+// Claim that opens it. A failed read is an answer too (the v1 tile's Failed,
+// the v2 section's Unavailable), and offers nothing. Every app follows the
+// same rule. UI thread only.
+class ClaimReads {
+ public:
+  // A read starts: its number, which its answer carries.
+  uint32_t Start() { return ++started_; }
+  // The answer of read `read`: true when it applies, false, changing nothing,
+  // when a read that started after it has applied already, or when it started
+  // before the last Reset.
+  bool Apply(uint32_t read);
+  // A claim of this kind is Done: every read started so far is from before it.
+  void Done() { doneAt_ = started_; }
+  // The page shows the answer of a read that started after this kind's last
+  // claim's Done and after the last Reset: Claim may be offered from it.
+  bool Fresh() const { return shown_ > doneAt_; }
+  // A sign-out, or the coldkey gone: no read from before applies, and nothing
+  // is fresh until a read started since answers.
+  void Reset() { shown_ = doneAt_ = started_; }
+
+ private:
+  uint32_t started_ = 0;  // the newest read's number
+  // the read whose answer the page shows; after a Reset, the newest read from
+  // before it
+  uint32_t shown_ = 0;
+  // the newest read from before this kind's last claim's Done, or the last Reset
+  uint32_t doneAt_ = 0;
+};
+
+// The v1 tile's Claim, which the payout line's Claim and the Earnings actions
+// menu follow: a claim in flight keeps it, to open its dialog; between claims
+// it needs something claimable (`totalClaimableRao`) from a read that started
+// after the last v1 claim's Done (`fresh`, ClaimReads::Fresh) and a device to
+// send from (`canClaim`).
+bool V1ClaimEnabled(bool fresh, int64_t totalClaimableRao, bool canClaim, bool claimInFlight);
 
 // ---- the v1 claim dialog
 

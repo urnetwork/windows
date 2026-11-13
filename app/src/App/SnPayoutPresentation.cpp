@@ -94,7 +94,7 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao) {
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable,
-                                   int64_t transferFloorRao, bool claimInFlight) {
+                                   int64_t transferFloorRao, bool claimInFlight, bool fresh) {
   LedgerSectionView view;
   if (!hasColdkey) return view;
   bool anyAccount = false;
@@ -156,8 +156,9 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
   }
   view.showClaim = vault2Configured;
   // a claim in flight keeps Claim, which opens its dialog, whatever the read
-  // says since it started
-  view.claimEnabled = vault2Configured && ((canClaim && !movable.empty()) || claimInFlight);
+  // says since it started; between claims it waits for a read that started
+  // after the last v2 claim's Done
+  view.claimEnabled = vault2Configured && ((canClaim && fresh && !movable.empty()) || claimInFlight);
   view.claimBoth = vault2Configured && ClaimsBothPools(movable);
   return view;
 }
@@ -643,6 +644,18 @@ void CtfWinsReadsAfterClaim::Stop() {
   next_ = kCtfWinsReadsAfterClaim.size();
   ++token_;
   ++session_;
+}
+
+bool ClaimReads::Apply(uint32_t read) {
+  // a read that started after this one has applied (or this one started
+  // before the last Reset): its answer would put back an older state
+  if (read <= shown_) return false;
+  shown_ = read;
+  return true;
+}
+
+bool V1ClaimEnabled(bool fresh, int64_t totalClaimableRao, bool canClaim, bool claimInFlight) {
+  return (fresh && totalClaimableRao > 0 && canClaim) || claimInFlight;
 }
 
 bool MentionsGas(std::string const& message) {

@@ -950,6 +950,13 @@ void WalletPage::ResetForSignOut() {
   // its end.
   v1Claim_.Drop();
   v2Claim_.Drop();
+  // No read of that account's claims, accounts or gas still out applies, and
+  // the next account's Claim waits for its own reads (snpayout::ClaimReads).
+  v1Reads_.Reset();
+  v2Reads_.Reset();
+  gasReads_.Reset();
+  RebuildClaimButton();
+  RebuildPayoutLine();
   RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
@@ -1080,19 +1087,22 @@ void WalletPage::LoadSnWallet() {
 
 // The vault, read by the SDK on this device: entitlements, leafClaimed and the
 // published payout artifact, verified against the vault's root. Nothing from a
-// URnetwork API.
+// URnetwork API. Each read is numbered as it starts (v1Reads_), so an older
+// read's answer, which may be from before a claim's Done, never replaces a
+// newer one's.
 void WalletPage::LoadClaims() {
   if (!snWallet_) return;
   if (!Sdk().hasDevice()) {
-    ApplyClaims({}, 0, Fetch::Failed, std::nullopt);
+    ApplyClaims(v1Reads_.Start(), {}, 0, Fetch::Failed, std::nullopt);
     return;
   }
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   w_.ClaimsStatusText().Text(Loc("loading"));
   w_.ClaimsStatusText().Visibility(Visibility::Visible);
-  Sdk().device().snClaims([queue, weak](std::optional<urnet::SnClaimsResult> result,
-                                        std::optional<std::string> err) {
+  const uint32_t read = v1Reads_.Start();
+  Sdk().device().snClaims([queue, weak, read](std::optional<urnet::SnClaimsResult> result,
+                                              std::optional<std::string> err) {
     std::optional<urnet::SnError> error;
     if (err) error = TransportError(*err);
     else if (result && result->error) error = result->error;
@@ -1131,9 +1141,9 @@ void WalletPage::LoadClaims() {
       urnw::LogError("earnings: snClaims failed: {} {}", error->code.value_or(std::string()),
                      error->message);
     }
-    queue.TryEnqueue([weak, claims = std::move(claims), total, ok, error, schedule] {
+    queue.TryEnqueue([weak, read, claims = std::move(claims), total, ok, error, schedule] {
       if (auto self = weak.get())
-        self->wallet().ApplyClaims(claims, total, ok ? Fetch::Ready : Fetch::Failed, error,
+        self->wallet().ApplyClaims(read, claims, total, ok ? Fetch::Ready : Fetch::Failed, error,
                                    schedule);
     });
   });
@@ -1184,10 +1194,12 @@ void WalletPage::EnsureChainSettings(std::function<void()> then) {
 }
 
 // The SDK-held gas key (created on first use, never exported) and its TAO
-// balance on the subtensor EVM.
+// balance on the subtensor EVM. The key and each balance read are numbered as
+// they start (gasReads_), so an older read's balance never replaces a newer
+// one's.
 void WalletPage::LoadGas() {
   if (!snWallet_ || !Sdk().hasDevice()) {
-    ApplyGas(std::nullopt);
+    ApplyGas(gasReads_.Start(), std::nullopt);
     return;
   }
   GasKeyInfo info;
@@ -1200,14 +1212,15 @@ void WalletPage::LoadGas() {
     urnw::LogError("earnings: getSnGasKey failed: {}", e.what());
   }
   if (info.address.empty()) {
-    ApplyGas(std::nullopt);
+    ApplyGas(gasReads_.Start(), std::nullopt);
     return;
   }
-  ApplyGas(info);  // the address first; the balance follows
+  ApplyGas(gasReads_.Start(), info);  // the address first; the balance follows
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  Sdk().device().snGasBalance([queue, weak, info](std::optional<urnet::SnGasBalanceResult> result,
-                                                  std::optional<std::string> err) mutable {
+  const uint32_t read = gasReads_.Start();
+  Sdk().device().snGasBalance([queue, weak, read, info](std::optional<urnet::SnGasBalanceResult> result,
+                                                        std::optional<std::string> err) mutable {
     std::string error = err ? *err : std::string();
     if (error.empty() && result && result->error) error = result->error->message;
     if (result && error.empty()) {
@@ -1215,8 +1228,8 @@ void WalletPage::LoadGas() {
     } else {
       urnw::LogError("earnings: snGasBalance failed: {}", error);
     }
-    queue.TryEnqueue([weak, info] {
-      if (auto self = weak.get()) self->wallet().ApplyGas(info);
+    queue.TryEnqueue([weak, read, info] {
+      if (auto self = weak.get()) self->wallet().ApplyGas(read, info);
     });
   });
 }
@@ -1226,19 +1239,22 @@ void WalletPage::LoadGas() {
 // failed read, and an answer without its list (the SDK answers [] for none),
 // leave the balances unavailable, never zero. A pool the ledger could not read
 // just now (capture the flag's or the provider pool's) comes back in the
-// answer's unavailable pools, and only that pool is unavailable.
+// answer's unavailable pools, and only that pool is unavailable. Each read is
+// numbered as it starts (v2Reads_), so an older read's answer, which may be
+// from before a claim's Done, never replaces a newer one's.
 void WalletPage::LoadV2Accounts() {
   if (!snWallet_) return;
   if (!Sdk().hasDevice()) {
-    ApplyV2Accounts(snpayout::LedgerFetch::NoDevice, {}, {});
+    ApplyV2Accounts(v2Reads_.Start(), snpayout::LedgerFetch::NoDevice, {}, {});
     return;
   }
   v2Fetch_ = snpayout::LedgerFetch::Loading;
   RebuildV2Section();
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  Sdk().device().snLedgerAccounts([queue, weak](std::optional<urnet::SnLedgerAccountsResult> result,
-                                                std::optional<std::string> err) {
+  const uint32_t read = v2Reads_.Start();
+  Sdk().device().snLedgerAccounts([queue, weak, read](std::optional<urnet::SnLedgerAccountsResult> result,
+                                                      std::optional<std::string> err) {
     std::optional<urnet::SnError> error;
     if (err) error = TransportError(*err);
     else if (result && result->error) error = result->error;
@@ -1259,10 +1275,10 @@ void WalletPage::LoadV2Accounts() {
     } else if (!unavailable.empty()) {
       urnw::LogWarn("earnings: snLedgerAccounts left out {} unavailable pool(s)", unavailable.size());
     }
-    queue.TryEnqueue([weak, accounts = std::move(accounts), unavailable = std::move(unavailable), ok] {
+    queue.TryEnqueue([weak, read, accounts = std::move(accounts), unavailable = std::move(unavailable), ok] {
       if (auto self = weak.get())
         self->wallet().ApplyV2Accounts(
-            ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts, unavailable);
+            read, ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts, unavailable);
     });
   });
 }
@@ -1435,6 +1451,10 @@ void WalletPage::ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state) 
     v2Fetch_ = snpayout::LedgerFetch::Loading;
     v2Accounts_.clear();
     v2Unavailable_.clear();
+    // no read out for a coldkey puts its claims, accounts or gas back
+    v1Reads_.Reset();
+    v2Reads_.Reset();
+    gasReads_.Reset();
   }
   RebuildHistory();
   RebuildPayoutLine();
@@ -2445,9 +2465,13 @@ void WalletPage::ApplyLedgerMeta() {
 
 // ---- claims, gas, head -----------------------------------------------------
 
-void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t totalClaimableRao,
-                             Fetch state, std::optional<urnet::SnError> const& error,
+void WalletPage::ApplyClaims(uint32_t read, std::vector<EpochClaim> const& claims,
+                             int64_t totalClaimableRao, Fetch state,
+                             std::optional<urnet::SnError> const& error,
                              std::optional<snpayout::EpochSchedule> const& schedule) {
+  // the answer of a read that started before one that has applied already:
+  // it may be from before a claim's Done, and put back the epochs it paid
+  if (!v1Reads_.Apply(read)) return;
   claims_ = claims;
   totalClaimableRao_ = totalClaimableRao;
   claimsState_ = state;
@@ -2468,8 +2492,8 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
     w_.ClaimsStatusText().Visibility(noDevice ? Visibility::Collapsed : Visibility::Visible);
     SetStatValue(w_.UnclaimedValue(), L"-", false);
     w_.UnclaimedNote().Text(noDevice ? Loc("earnings_claims_need_session") : SnErrorText(error));
-    // a claim in flight keeps Claim, which opens its dialog
-    w_.ClaimButton().IsEnabled(v1Claim_.InFlight());
+    // nothing to claim; a claim in flight keeps Claim, which opens its dialog
+    RebuildClaimButton();
     RebuildHistory();
     return;
   }
@@ -2482,14 +2506,21 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
       claimable > 0
           ? hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(claimable))}
           : Loc("wallet_connected_to_protocol"));
-  // Live: only with something to claim and a device to send from. Under the
-  // preview's sample the dialog still OPENS (read-only, its action disabled)
-  // so it can be looked at.
-  const bool previewSample = w_.previewUi() && PreviewSample() && !claims_.empty();
-  // A claim in flight keeps Claim, which opens its dialog, whatever the read
-  // says since it started.
-  w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample || v1Claim_.InFlight());
+  RebuildClaimButton();
   RebuildHistory();
+}
+
+void WalletPage::RebuildClaimButton() {
+  // Live: only with something to claim, from a read that started after the
+  // last v1 claim's Done (a read from before may list the epochs it paid), and
+  // a device to send from. A claim in flight keeps Claim, which opens its
+  // dialog, whatever the read says since it started. Under the preview's
+  // sample the dialog still OPENS (read-only, its action disabled) so it can
+  // be looked at.
+  const bool previewSample = w_.previewUi() && PreviewSample() && !claims_.empty();
+  w_.ClaimButton().IsEnabled(
+      snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight()) ||
+      previewSample);
 }
 
 // How and when SN payouts happen, under the points figure. The decision is
@@ -2519,10 +2550,18 @@ void WalletPage::RebuildPayoutLine() {
                      : hstring{});
   w_.SetColdkeyButton().Visibility(setColdkey ? Visibility::Visible : Visibility::Collapsed);
   w_.SnPayoutClaimButton().Visibility(view.showClaim ? Visibility::Visible : Visibility::Collapsed);
-  w_.SnPayoutClaimButton().IsEnabled(view.showClaim && CanClaim());
+  // as the tile's Claim: from a read that started after the last v1 claim's
+  // Done, or to open the claim in flight
+  w_.SnPayoutClaimButton().IsEnabled(
+      view.showClaim &&
+      snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight()));
 }
 
-void WalletPage::ApplyGas(std::optional<GasKeyInfo> gas) { gas_ = std::move(gas); }
+void WalletPage::ApplyGas(uint32_t read, std::optional<GasKeyInfo> gas) {
+  // the balance of a read that started before one that has applied already
+  if (!gasReads_.Apply(read)) return;
+  gas_ = std::move(gas);
+}
 
 // The tile (owner decision 2026-10-29, LEADERTOP; apple/LEADERTOP.md §8), from
 // the Protocol board's card answer: the same projected position, margin and
@@ -2694,15 +2733,22 @@ void WalletPage::OnV1ClaimEvent(std::weak_ptr<ClaimAlphaProgress> const& claim,
 
 void WalletPage::OnV1ClaimDone(std::weak_ptr<ClaimAlphaProgress> const& claim, uint64_t ticket) {
   if (const auto progress = claim.lock()) progress->Done();
-  if (claimSheet_) claimSheet_->Redraw();
-  // a v2 dialog up waited for this claim
-  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
   // no claim in flight from now, unless a sign-out dropped this one: the tile,
-  // its Claim and the history follow the claims as the vault now has them
+  // its Claim and the history follow the claims as the vault now has them.
+  // Every claims read started so far is from before this Done and may list the
+  // epochs the claim paid, so the tile's and the payout line's Claim wait for
+  // the read started here (snpayout::ClaimReads).
   if (v1Claim_.End(ticket)) {
+    v1Reads_.Done();
+    RebuildClaimButton();
+    RebuildPayoutLine();
     LoadClaims();
     LoadGas();
   }
+  // the dialogs draw again once no claim is in flight: this claim's, and a v2
+  // dialog up that waited for it
+  if (claimSheet_) claimSheet_->Redraw();
+  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
 }
 
 winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEventArgs const&) {
@@ -2718,9 +2764,18 @@ winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEvent
   GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
   // A dialog opened during a claim draws the claim in flight, the session's,
   // whatever the page read since, and its Claim waits for it; otherwise the
-  // epochs as last read.
+  // epochs as last read, by a read that started after the last v1 claim's
+  // Done: one from before may list the epochs the claim paid, and the dialog
+  // keeps the rows it opens with. Until that read answers there is none to
+  // open (the Earnings actions menu's item may have been enabled before).
   std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();
-  if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);
+  if (!progress) {
+    if (!v1Reads_.Fresh()) {
+      Notify(Loc("loading"), InfoBarSeverity::Informational);
+      co_return;
+    }
+    progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);
+  }
   // and its Claim waits for a v2 claim in flight: the gas key sends one claim
   // at a time (StartV2Claim)
   auto page = w_.get_weak();
@@ -2745,9 +2800,12 @@ winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEvent
 
 // ---- settlement v2 ---------------------------------------------------------
 
-void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
+void WalletPage::ApplyV2Accounts(uint32_t read, snpayout::LedgerFetch fetch,
                                  std::vector<snpayout::LedgerAccount> const& accounts,
                                  std::vector<snpayout::UnavailablePool> const& unavailable) {
+  // the answer of a read that started before one that has applied already: it
+  // may be from before a claim's Done, and put back what the claim paid
+  if (!v2Reads_.Apply(read)) return;
   v2Fetch_ = fetch;
   v2Accounts_ = accounts;
   v2Unavailable_ = unavailable;
@@ -2765,10 +2823,12 @@ void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
 // sn_ctf_* keys, the other apps' own. Claim opens the v2 claim dialog, and
 // says Claim both while it claims both pools; the app never claims by itself.
 void WalletPage::RebuildV2Section() {
-  // a claim in flight keeps Claim, which opens its dialog
+  // a claim in flight keeps Claim, which opens its dialog; between claims it
+  // waits for a read that started after the last v2 claim's Done
   const auto view =
       snpayout::LedgerSectionFor(snWallet_.has_value(), Vault2Configured(), v2Fetch_, v2Accounts_,
-                                 CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight());
+                                 CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight(),
+                                 v2Reads_.Fresh());
   // A network with no wallet on this device has no ledger read here: the tile
   // shows what URnetwork's claim relay claims for its consent, once the relay
   // reports a claimable or pending balance.
@@ -3025,9 +3085,15 @@ void WalletPage::OnV2ClaimEvent(std::weak_ptr<snpayout::LedgerClaimProgress> con
 void WalletPage::OnV2ClaimDone(std::weak_ptr<snpayout::LedgerClaimProgress> const& claim,
                                uint64_t ticket) {
   if (const auto progress = claim.lock()) progress->Done();
-  // no claim in flight from now, unless a sign-out dropped this one: the
-  // section's Claim follows the read again
-  if (v2Claim_.End(ticket)) RebuildV2Section();
+  // no claim in flight from now, unless a sign-out dropped this one. Every
+  // accounts read started so far is from before this Done and may hold what
+  // the claim paid, so the section's Claim waits for the read after it
+  // (WithClaimPaid's, queued after this), then follows the read again
+  // (snpayout::ClaimReads).
+  if (v2Claim_.End(ticket)) {
+    v2Reads_.Done();
+    RebuildV2Section();
+  }
   if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
   // a v1 dialog up waited for this claim
   if (claimSheet_) claimSheet_->Redraw();
@@ -3046,9 +3112,17 @@ winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArg
   GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
   // A dialog opened during a claim draws the claim in flight, the session's,
   // whatever the page read since, and its Claim waits for it; otherwise the
-  // accounts as last read, and the pools that read could not read.
+  // accounts as last read, and the pools that read could not read, by a read
+  // that started after the last v2 claim's Done: one from before may hold
+  // what the claim paid, and the dialog keeps the rows it opens with. Until
+  // that read answers there is none to open (the relay's "Claim it yourself"
+  // and the Earnings actions menu reach here whatever the section says).
   std::shared_ptr<snpayout::LedgerClaimProgress> progress = v2Claim_.Progress();
   if (!progress) {
+    if (!v2Reads_.Fresh()) {
+      Notify(Loc("loading"), InfoBarSeverity::Informational);
+      co_return;
+    }
     progress = std::make_shared<snpayout::LedgerClaimProgress>(v2Accounts_, gas.tao, v2Unavailable_,
                                                                TransferFloorRao());
   }
@@ -4183,12 +4257,12 @@ void WalletPage::ShowPreviewWalletState() {
     schedule.endMillis = NowMillis() + 21'600LL * 12'000;
     schedule.claimOpenMillis = schedule.endMillis + 14'400LL * 12'000;
     schedule.expiryMillis = schedule.endMillis + (9LL * 50'400 - 1) * 12'000;
-    ApplyClaims(claims, 3'241'000'000, Fetch::Ready, std::nullopt, schedule);
+    ApplyClaims(v1Reads_.Start(), claims, 3'241'000'000, Fetch::Ready, std::nullopt, schedule);
     GasKeyInfo gas;
     gas.address = kSampleGasAddress;
     gas.mirrorSs58 = kSampleGasMirror;
     gas.tao = 0.0;  // the funding hint renders
-    ApplyGas(gas);
+    ApplyGas(gasReads_.Start(), gas);
     // settlement v2: one account, with a pending root over the finalized one
     snpayout::LedgerAccount account;
     account.noId = 1;
@@ -4198,7 +4272,7 @@ void WalletPage::ShowPreviewWalletState() {
     account.paidRao = 500'000'000;
     account.pending = true;
     account.pendingRao = 3'861'000'000;
-    ApplyV2Accounts(snpayout::LedgerFetch::Ready, {account});
+    ApplyV2Accounts(v2Reads_.Start(), snpayout::LedgerFetch::Ready, {account}, {});
     // the payout consent beside it: none yet, so the panel asks for one (its
     // button waits: --preview-ui has no session to sign with)
     ApplyConsentStatus(++consentReadGeneration_, snconsent::Fetch::Ready, snconsent::Status{});
@@ -4220,7 +4294,7 @@ void WalletPage::ShowPreviewWalletState() {
   ApplyReliability(std::nullopt, Fetch::Ready);
   ApplyEpochs({}, Fetch::Ready);
   ApplySnWallet(std::nullopt, Fetch::Ready);
-  ApplyGas(std::nullopt);
+  ApplyGas(gasReads_.Start(), std::nullopt);
   ApplyTop200(protocolboard::Tile{});
 }
 

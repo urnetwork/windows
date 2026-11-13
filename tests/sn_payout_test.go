@@ -238,7 +238,8 @@ func TestSettlementV2Wiring(t *testing.T) {
 	)
 	requireAll("WalletPage::OnV2ClaimDone", functionBody(walletPage, "void WalletPage::OnV2ClaimDone("),
 		"if (const auto progress = claim.lock()) progress->Done();",
-		"if (v2Claim_.End(ticket)) RebuildV2Section();",
+		"if (v2Claim_.End(ticket)) {",
+		"RebuildV2Section();",
 		"if (v2ClaimSheet_) v2ClaimSheet_->Redraw();",
 		// a v1 dialog up waited for it
 		"if (claimSheet_) claimSheet_->Redraw();",
@@ -408,8 +409,10 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	// status, the won slots with capture the flag's account, and Claim both
 	section := body("WalletPage.cpp", page, "void WalletPage::RebuildV2Section(")
 	requireAll("WalletPage::RebuildV2Section", section,
-		// a claim in flight keeps Claim, which opens its dialog
-		"CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight());",
+		// a claim in flight keeps Claim, which opens its dialog; between
+		// claims it waits for a read that started after the last v2 Done
+		"CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight(),",
+		"v2Reads_.Fresh());",
 		"if (!account.titleKey.empty()) {",
 		"MakeText(PoolTitleText(account.titleKey, account.noId), 13, colors::TextBrush())",
 		"if (account.unavailable) {",
@@ -698,14 +701,20 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 	open := body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimAlpha(")
 	requireAll("WalletPage::OnClaimAlpha", open,
 		"std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();",
-		"if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);",
+		"progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);",
 		"urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,",
 		"ExplorerTxUrl(), allowActions, MakeClaimer(), v2InFlight);",
 		"return window && window->wallet().v2Claim_.InFlight();")
+	// the tile's Claim: a claim in flight keeps it, to open the claim
+	// (snpayout::V1ClaimEnabled, which the spec pins), drawn from both of the
+	// claims read's answers
 	claims := body("WalletPage.cpp", page, "void WalletPage::ApplyClaims(")
-	requireAll("WalletPage::ApplyClaims", claims,
-		"w_.ClaimButton().IsEnabled(v1Claim_.InFlight());",
-		"w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample || v1Claim_.InFlight());")
+	if strings.Count(claims, "RebuildClaimButton();") != 2 {
+		t.Error("WalletPage::ApplyClaims: the failed and the good answer do not each draw the tile's Claim")
+	}
+	requireAll("WalletPage::RebuildClaimButton", body("WalletPage.cpp", page, "void WalletPage::RebuildClaimButton("),
+		"snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight()) ||",
+		"previewSample);")
 	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
 		"v1Claim_.Drop();")
 
@@ -743,6 +752,153 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 	sheetsHeader := stripComments(readAppSource(t, "EarningsSheets.h"))
 	requireAll("EarningsSheets.h", sheetsHeader,
 		"using EpochClaim = snpayout::EpochClaim;", "using ClaimAlphaProgress = snpayout::ClaimAlphaProgress;")
+}
+
+// The reads of what Claim offers, in order (every app, 2026-11-12): each read
+// of the v1 claims, the v2 accounts and the gas balance is numbered as it
+// starts and carries its number to its answer, which applies only if no read
+// of its kind that started after it has (snpayout::ClaimReads, whose rule the
+// spec runs, the race included). A claim's Done makes the reads of its kind
+// from before it stale: the page marks them before the read at Done starts,
+// and every Claim of that kind waits for a read that started after it (the v1
+// tile's and the payout line's, the v2 section's, and the dialogs Claim opens,
+// which keep the rows they open with). A sign-out, or the coldkey gone, drops
+// every read out.
+func TestClaimReadOrder(t *testing.T) {
+	requireAll := func(where string, source string, wants ...string) {
+		t.Helper()
+		for _, want := range wants {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s: missing %s", where, want)
+			}
+		}
+	}
+	requireOrder := func(where, source string, steps ...string) {
+		t.Helper()
+		at := 0
+		for _, step := range steps {
+			found := strings.Index(source[at:], step)
+			if found < 0 {
+				t.Errorf("%s: missing %s, or out of order", where, step)
+				return
+			}
+			at += found + len(step)
+		}
+	}
+	body := func(source, signature string) string {
+		t.Helper()
+		found := functionBody(source, signature)
+		if found == "" {
+			t.Fatalf("WalletPage.cpp: no %s", signature)
+		}
+		return found
+	}
+	header := stripComments(readAppSource(t, "WalletPage.h"))
+	requireAll("WalletPage.h", header,
+		"snpayout::ClaimReads v1Reads_;", "snpayout::ClaimReads v2Reads_;", "snpayout::ClaimReads gasReads_;",
+		"void ApplyClaims(uint32_t read, std::vector<EpochClaim> const& claims,",
+		"void ApplyGas(uint32_t read, std::optional<GasKeyInfo> gas);",
+		"void ApplyV2Accounts(uint32_t read, snpayout::LedgerFetch fetch,")
+	page := stripComments(readAppSource(t, "WalletPage.cpp"))
+
+	// each read numbered as it starts, its number carried to its answer, which
+	// applies only if no newer read's has
+	requireOrder("WalletPage::LoadClaims", body(page, "void WalletPage::LoadClaims("),
+		"ApplyClaims(v1Reads_.Start(), {}, 0, Fetch::Failed, std::nullopt);",
+		"const uint32_t read = v1Reads_.Start();",
+		"Sdk().device().snClaims([queue, weak, read](",
+		"queue.TryEnqueue([weak, read, claims = std::move(claims), total, ok, error, schedule] {",
+		"self->wallet().ApplyClaims(read, claims, total,")
+	requireOrder("WalletPage::ApplyClaims", body(page, "void WalletPage::ApplyClaims("),
+		"if (!v1Reads_.Apply(read)) return;", "claims_ = claims;")
+	requireOrder("WalletPage::LoadV2Accounts", body(page, "void WalletPage::LoadV2Accounts("),
+		"ApplyV2Accounts(v2Reads_.Start(), snpayout::LedgerFetch::NoDevice, {}, {});",
+		"const uint32_t read = v2Reads_.Start();",
+		"Sdk().device().snLedgerAccounts([queue, weak, read](",
+		"queue.TryEnqueue([weak, read, accounts = std::move(accounts), unavailable = std::move(unavailable), ok] {",
+		"read, ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts, unavailable);")
+	requireOrder("WalletPage::ApplyV2Accounts", body(page, "void WalletPage::ApplyV2Accounts("),
+		"if (!v2Reads_.Apply(read)) return;", "v2Fetch_ = fetch;")
+	requireOrder("WalletPage::LoadGas", body(page, "void WalletPage::LoadGas("),
+		"ApplyGas(gasReads_.Start(), std::nullopt);",
+		"ApplyGas(gasReads_.Start(), std::nullopt);",
+		"ApplyGas(gasReads_.Start(), info);",
+		"const uint32_t read = gasReads_.Start();",
+		"Sdk().device().snGasBalance([queue, weak, read, info](",
+		"queue.TryEnqueue([weak, read, info] {",
+		"self->wallet().ApplyGas(read, info);")
+	requireOrder("WalletPage::ApplyGas", body(page, "void WalletPage::ApplyGas("),
+		"if (!gasReads_.Apply(read)) return;", "gas_ = std::move(gas);")
+	// every answer carries its read's number: none applies around the order
+	for name, first := range map[string]*regexp.Regexp{
+		"ApplyClaims":     regexp.MustCompile(`ApplyClaims\(\s*(read|v1Reads_\.Start\(\)|uint32_t read),`),
+		"ApplyV2Accounts": regexp.MustCompile(`ApplyV2Accounts\(\s*(read|v2Reads_\.Start\(\)|uint32_t read),`),
+		"ApplyGas":        regexp.MustCompile(`ApplyGas\(\s*(read|gasReads_\.Start\(\)|uint32_t read),`),
+	} {
+		calls := strings.Count(page, name+"(")
+		if numbered := len(first.FindAllString(page, -1)); calls == 0 || numbered != calls {
+			t.Errorf("WalletPage.cpp: %d of %d %s calls carry a read's number", numbered, calls, name)
+		}
+	}
+
+	// a claim's Done marks its kind's reads before the read at Done starts
+	requireOrder("WalletPage::OnV1ClaimDone", body(page, "void WalletPage::OnV1ClaimDone("),
+		"if (v1Claim_.End(ticket)) {", "v1Reads_.Done();", "RebuildClaimButton();", "RebuildPayoutLine();",
+		"LoadClaims();", "LoadGas();", "}",
+		// the dialogs draw once no claim is in flight: a v2 dialog that waited
+		// for this claim offers its Claim again
+		"if (claimSheet_) claimSheet_->Redraw();", "if (v2ClaimSheet_) v2ClaimSheet_->Redraw();")
+	requireOrder("WalletPage::OnV2ClaimDone", body(page, "void WalletPage::OnV2ClaimDone("),
+		"if (v2Claim_.End(ticket)) {", "v2Reads_.Done();", "RebuildV2Section();")
+	if strings.Contains(body(page, "void WalletPage::OnV2ClaimDone("), "v1Reads_") ||
+		strings.Contains(body(page, "void WalletPage::OnV1ClaimDone("), "v2Reads_") {
+		t.Error("WalletPage.cpp: a claim's Done marks the other kind's reads")
+	}
+	// the read after a v2 claim's Done is WithClaimPaid's, queued after the
+	// Done (the spec pins that the Done is handed on first)
+	requireOrder("WalletPage::StartV2Claim", body(page, "bool WalletPage::StartV2Claim("),
+		"if (auto self = weak.get()) self->wallet().OnV2ClaimDone(claim, ticket);",
+		"events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {",
+		"self->wallet().LoadV2Accounts();")
+
+	// every Claim waits for a read since its kind's last Done
+	requireAll("WalletPage::RebuildClaimButton", body(page, "void WalletPage::RebuildClaimButton("),
+		"snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight())")
+	requireAll("WalletPage::RebuildPayoutLine", body(page, "void WalletPage::RebuildPayoutLine("),
+		"w_.SnPayoutClaimButton().IsEnabled(",
+		"view.showClaim &&",
+		"snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight()));")
+	requireAll("WalletPage::RebuildV2Section", body(page, "void WalletPage::RebuildV2Section("),
+		"v2Claim_.InFlight(),", "v2Reads_.Fresh());")
+	requireOrder("WalletPage::OnClaimAlpha", body(page, "winrt::fire_and_forget WalletPage::OnClaimAlpha("),
+		"std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();", "if (!progress) {",
+		"if (!v1Reads_.Fresh()) {", `Notify(Loc("loading"), InfoBarSeverity::Informational);`, "co_return;", "}",
+		"progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);", "urnw::ClaimAlphaSheet::Create(")
+	requireOrder("WalletPage::OnClaimV2", body(page, "winrt::fire_and_forget WalletPage::OnClaimV2("),
+		"std::shared_ptr<snpayout::LedgerClaimProgress> progress = v2Claim_.Progress();", "if (!progress) {",
+		"if (!v2Reads_.Fresh()) {", `Notify(Loc("loading"), InfoBarSeverity::Informational);`, "co_return;", "}",
+		"progress = std::make_shared<snpayout::LedgerClaimProgress>(", "urnw::ClaimLedgerSheet::Create(")
+
+	// a sign-out, and the coldkey gone, drop every read out
+	requireOrder("WalletPage::ResetForSignOut", body(page, "void WalletPage::ResetForSignOut("),
+		"v1Claim_.Drop();", "v2Claim_.Drop();", "v1Reads_.Reset();", "v2Reads_.Reset();", "gasReads_.Reset();",
+		"RebuildClaimButton();", "RebuildPayoutLine();", "RebuildV2Section();")
+	wallet := body(page, "void WalletPage::ApplySnWallet(")
+	if at := strings.Index(wallet, "if (!connected) {"); at < 0 {
+		t.Error("WalletPage::ApplySnWallet: no branch for a coldkey gone")
+	} else {
+		requireOrder("WalletPage::ApplySnWallet", wallet[at:],
+			"claims_.clear();", "v2Accounts_.clear();", "v1Reads_.Reset();", "v2Reads_.Reset();", "gasReads_.Reset();", "}")
+	}
+
+	// the order is the pure layer's, which the spec builds and runs
+	presentation := stripComments(readAppSource(t, "SnPayoutPresentation.cpp"))
+	requireAll("ClaimReads::Apply", functionBody(presentation, "bool ClaimReads::Apply("),
+		"if (read <= shown_) return false;", "shown_ = read;")
+	requireAll("V1ClaimEnabled", functionBody(presentation, "bool V1ClaimEnabled("),
+		"return (fresh && totalClaimableRao > 0 && canClaim) || claimInFlight;")
+	requireAll("LedgerSectionFor", functionBody(presentation, "LedgerSectionView LedgerSectionFor("),
+		"view.claimEnabled = vault2Configured && ((canClaim && fresh && !movable.empty()) || claimInFlight);")
 }
 
 // Every way settlement v2's Claim misses the look of the earnings claim action,
