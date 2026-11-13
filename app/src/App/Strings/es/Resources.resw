@@ -1876,14 +1876,6 @@ de la manera correcta</value>
     <value>Conecta una billetera con el token Saga Genesis o el token de pre-pedido de Seeker</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_solana_wallet" xml:space="preserve">
-    <value>Conectar billetera de Solana</value>
-    <comment>Overflow menu item next to “Connect Bittensor wallet” on the Earnings screen, and the title of the Solana connect sheet/card: connect a Solana USDC payout wallet (wallet app, or manual address entry). USDC payouts continue until the migration to Bittensor completes.</comment>
-  </data>
-  <data name="connect_solana_wallet_note" xml:space="preserve">
-    <value>Conecta una app de billetera de Solana o introduce manualmente una dirección USDC de Solana.</value>
-    <comment>Note at the top of the Solana connect sheet/card, above the wallet-app button and the manual-entry link.</comment>
-  </data>
   <data name="connect_solana_wallet_to_add_sign_in_method" xml:space="preserve">
     <value>Conecta una billetera de Solana para añadirla como método de inicio de sesión.</value>
     <comment>Add sign-in method sheet (android): the wallet option's explanation.</comment>
@@ -2467,10 +2459,6 @@ de la manera correcta</value>
   <data name="default_option" xml:space="preserve">
     <value>Predeterminado</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>Predeterminado</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Eliminar</value>
@@ -4428,9 +4416,6 @@ de la manera correcta</value>
     <value>Introduce una contraseña</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Introduce una dirección de monedero USDC en Solana</value>
-  </data>
   <data name="enter_address_manually" xml:space="preserve">
     <value>Introducir la dirección manualmente</value>
     <comment>Fallback link to paste an ss58 address.</comment>
@@ -4503,10 +4488,6 @@ de la manera correcta</value>
     <value>Se ha producido un error al conectar tu billetera.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>Se ha producido un error al conectar tu billetera: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>Se ha producido un error al crear tu red. Inténtalo de nuevo más tarde.</value>
     <comment>Snackbar shown when creating the user's network fails. Used in ContentView.swift, Main/Account/AccountRootView.swift and Main/Connect/ConnectView-iOS.swift.</comment>
@@ -4538,10 +4519,6 @@ de la manera correcta</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>Se produjo un error al enviar el código de verificación.</value>
     <comment>Inline error on the verify page when the verification code could not be sent (after sign-in, sign-up or resend). Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Error al establecer la billetera predeterminada: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Error al iniciar sesión con Google</value>
@@ -5214,10 +5191,6 @@ de la manera correcta</value>
     <value>Código de referencia no válido. Por favor, inténtalo de nuevo.</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
   </data>
-  <data name="invalid_solana_address" xml:space="preserve">
-    <value>Esa no es una dirección de Solana válida.</value>
-    <comment>Validation error under the manual address field when the address is not a valid Solana address (parallel to invalid_ss58_address).</comment>
-  </data>
   <data name="invalid_ss58_address" xml:space="preserve">
     <value>Esa no es una dirección de Bittensor válida.</value>
     <comment>Validation error for a coldkey address.</comment>
@@ -5695,10 +5668,6 @@ enviamos para verificar tu identidad.</value>
     <value>La menor proporción de usuarios por IP para acceder a contenido</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Establecer como predeterminada</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Gestionar aplicaciones</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -6147,10 +6116,6 @@ enviamos para verificar tu identidad.</value>
     <value>No se encontraron billeteras de Solana instaladas en este dispositivo. Instale una billetera e intente nuevamente.</value>
     <comment>Call to action</comment>
   </data>
-  <data name="no_wallets_found_enter_address_manually" xml:space="preserve">
-    <value>No se encontró ninguna app de billetera de Solana compatible en este dispositivo. Elige «Introducir la dirección manualmente» para pegar la dirección de tu billetera en su lugar.</value>
-    <comment>Body of the no-wallet alert (android) and note (iOS) of the Solana payout wallet's connect sheet, when no wallet app on the device can connect (android: no wallet app answers the Mobile Wallet Adapter request, as reported with Brave Wallet installed; iOS: neither Phantom nor Solflare is installed). A typed address works with any wallet, so the line points at the sheet's manual entry, naming its Enter address manually control in that control's own words (enter_address_manually); the android alert also offers that control as its action. Signing in needs a wallet app and keeps no_wallets_found_alert_content.</comment>
-  </data>
   <data name="none" xml:space="preserve">
     <value>Ninguno</value>
     <comment>Empty value: the VLESS settings show it for no security and no flow (all apps), and the Referrals section shows it on windows and linux when no referral network is linked.</comment>
@@ -6407,14 +6372,6 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="payment_received_title" xml:space="preserve">
     <value>Pago recibido</value>
     <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Billetera de pago actualizada</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="payouts_now_go_to" xml:space="preserve">
-    <value>Los pagos ahora van a {}.</value>
-    <comment>Status line or snackbar after removing the payout wallet made another of the account's wallets the payout wallet (the server promotes the newest other Solana or Polygon wallet). The placeholder is the new payout wallet's shortened address, its first and last four characters around an ellipsis.</comment>
   </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 par</value>
@@ -7313,14 +7270,6 @@ más grande, seguro y descentralizado del mundo.</value>
   </data>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>¿Eliminar este método de inicio de sesión?</value>
-  </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Eliminar cartera</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="remove_wallet_moves_or_holds_payouts" xml:space="preserve">
-    <value>Los pagos en USDC pasan a otra de tus billeteras de Solana o Polygon, o quedan retenidos hasta que conectes una.</value>
-    <comment>Body of the remove confirmation for the payout wallet (the title is remove_wallet). Removing the payout wallet makes another of the account's active Solana or Polygon wallets the payout wallet when there is one (the server picks it; payouts_now_go_to names it after the removal), and holds USDC payouts until the user connects a wallet when there is none.</comment>
   </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Reenviar enlace</value>
@@ -9730,10 +9679,6 @@ del mundo</value>
     <value>Billetera de Solana</value>
     <comment>Label of the connected Solana wallet block on the Earnings screen (parallel to bittensor_wallet).</comment>
   </data>
-  <data name="solana_wallet_error_extension_not_found" xml:space="preserve">
-    <value>No se encontró la extensión de {} en este navegador. Instálala y vuelve a intentarlo, o elige «Introducir la dirección manualmente» para pegar la dirección de tu billetera.</value>
-    <comment>Error in the Solana payout wallet's connect sheet of the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns extension_not_found: the chosen wallet's browser extension is not in this browser. The argument is the wallet product name (Phantom or Solflare). The sheet also takes a typed address, which works with any wallet, so the line points at its Enter address manually control, named in that control's own words (enter_address_manually). Signing in has no manual entry and keeps bittensor_error_extension_not_found.</comment>
-  </data>
   <data name="solana_wallet_error_session_not_found" xml:space="preserve">
     <value>No se encontró la conexión de la billetera en este navegador. Empieza de nuevo para volver a conectar tu billetera.</value>
     <comment>Solana wallet error in the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
@@ -10621,20 +10566,9 @@ como debería ser.</value>
     <value>URnetwork VPN iniciada</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="usdc_payouts_until_migration" xml:space="preserve">
-    <value>Los pagos en USDC seguirán llegando a esta billetera hasta que se complete la migración a Bittensor.</value>
-    <comment>Second paragraph of the Solana connect sheet/card, and the body line under a connected Solana wallet.</comment>
-  </data>
   <data name="usdc_solana_network_only" xml:space="preserve">
     <value>Envía USDC solo por la red Solana. Los USDC enviados por cualquier otra red no llegarán.</value>
     <comment>Payment: the chain to send on. Shown wherever a USDC payment is requested, because USDC exists on many chains and a transfer sent on the wrong one is lost.</comment>
-  </data>
-  <data name="usdc_waiting" xml:space="preserve">
-    <value>Último pago en USDC: {} USDC pendientes</value>
-    <comment>The last USDC payout still pending since provider payouts moved to the UR subnet; shown on the Solana wallet block and, while no Solana wallet is connected, next to the wallet actions, only while a USDC amount is pending. Mirrors the email headline.</comment>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>Dirección del monedero USDC</value>
   </data>
   <data name="use_extender_settings" xml:space="preserve">
     <value>Usar los ajustes del extensor</value>
@@ -10937,10 +10871,6 @@ como debería ser.</value>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>Conecta una billetera para ganar SN25α a partir de la próxima época. Las épocas anteriores no se liquidan con carácter retroactivo.</value>
     <comment>Line on the wallet block before a wallet is connected.</comment>
-  </data>
-  <data name="wallet_options" xml:space="preserve">
-    <value>Opciones de la billetera</value>
-    <comment>Accessibility label of the three-dot overflow button next to “Connect Bittensor wallet” and on the connected Bittensor wallet block.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Error al iniciar sesión con la billetera</value>

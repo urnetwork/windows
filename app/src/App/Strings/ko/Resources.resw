@@ -1788,14 +1788,6 @@
     <value>Saga Genesis 또는 Seeker 선주문 토큰으로 지갑을 연결하세요</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_solana_wallet" xml:space="preserve">
-    <value>Solana 지갑 연결</value>
-    <comment>Overflow menu item next to “Connect Bittensor wallet” on the Earnings screen, and the title of the Solana connect sheet/card: connect a Solana USDC payout wallet (wallet app, or manual address entry). USDC payouts continue until the migration to Bittensor completes.</comment>
-  </data>
-  <data name="connect_solana_wallet_note" xml:space="preserve">
-    <value>Solana 지갑 앱을 연결하거나 Solana USDC 주소를 직접 입력하세요.</value>
-    <comment>Note at the top of the Solana connect sheet/card, above the wallet-app button and the manual-entry link.</comment>
-  </data>
   <data name="connect_solana_wallet_to_add_sign_in_method" xml:space="preserve">
     <value>Solana 지갑을 연결하여 로그인 방법으로 추가하세요.</value>
     <comment>Add sign-in method sheet (android): the wallet option's explanation.</comment>
@@ -2371,10 +2363,6 @@
   <data name="default_option" xml:space="preserve">
     <value>기본값</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>기본값</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>삭제</value>
@@ -4324,9 +4312,6 @@
     <value>비밀번호를 입력하세요</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Solana USDC 지갑 주소를 입력하세요</value>
-  </data>
   <data name="enter_address_manually" xml:space="preserve">
     <value>주소 직접 입력</value>
     <comment>Fallback link to paste an ss58 address.</comment>
@@ -4399,10 +4384,6 @@
     <value>지갑을 연결하는 중 오류가 발생했습니다.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>지갑을 연결하는 중 오류가 발생했습니다: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>네트워크를 만드는 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.</value>
     <comment>Snackbar shown when creating the user's network fails. Used in ContentView.swift, Main/Account/AccountRootView.swift and Main/Connect/ConnectView-iOS.swift.</comment>
@@ -4434,10 +4415,6 @@
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>인증 코드를 보내는 중 오류가 발생했습니다.</value>
     <comment>Inline error on the verify page when the verification code could not be sent (after sign-in, sign-up or resend). Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>기본 지갑을 설정하는 중 오류가 발생했습니다: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Google로 로그인하는 중 오류가 발생했습니다</value>
@@ -5094,10 +5071,6 @@
     <value>유효하지 않은 추천 코드입니다. 다시 시도해 주세요.</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
   </data>
-  <data name="invalid_solana_address" xml:space="preserve">
-    <value>유효한 Solana 주소가 아닙니다.</value>
-    <comment>Validation error under the manual address field when the address is not a valid Solana address (parallel to invalid_ss58_address).</comment>
-  </data>
   <data name="invalid_ss58_address" xml:space="preserve">
     <value>유효한 Bittensor 주소가 아닙니다.</value>
     <comment>Validation error for a coldkey address.</comment>
@@ -5563,10 +5536,6 @@
     <value>콘텐츠 접근 시 최저 사용자/IP 비율</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>기본값으로 설정</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>앱 관리</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -6007,10 +5976,6 @@
     <value>이 장치에 설치된 Solana 지갑이 없습니다. 지갑을 설치하고 다시 시도하십시오.</value>
     <comment>Call to action</comment>
   </data>
-  <data name="no_wallets_found_enter_address_manually" xml:space="preserve">
-    <value>이 기기에서 호환되는 Solana 지갑 앱을 찾을 수 없습니다. 대신 지갑 주소를 붙여 넣으려면 '주소 직접 입력'을 선택하세요.</value>
-    <comment>Body of the no-wallet alert (android) and note (iOS) of the Solana payout wallet's connect sheet, when no wallet app on the device can connect (android: no wallet app answers the Mobile Wallet Adapter request, as reported with Brave Wallet installed; iOS: neither Phantom nor Solflare is installed). A typed address works with any wallet, so the line points at the sheet's manual entry, naming its Enter address manually control in that control's own words (enter_address_manually); the android alert also offers that control as its action. Signing in needs a wallet app and keeps no_wallets_found_alert_content.</comment>
-  </data>
   <data name="none" xml:space="preserve">
     <value>없음</value>
     <comment>Empty value: the VLESS settings show it for no security and no flow (all apps), and the Referrals section shows it on windows and linux when no referral network is linked.</comment>
@@ -6255,14 +6220,6 @@
   <data name="payment_received_title" xml:space="preserve">
     <value>결제 완료</value>
     <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>지급 지갑이 업데이트되었습니다</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="payouts_now_go_to" xml:space="preserve">
-    <value>이제 지급금은 {}(으)로 전송됩니다.</value>
-    <comment>Status line or snackbar after removing the payout wallet made another of the account's wallets the payout wallet (the server promotes the newest other Solana or Polygon wallet). The placeholder is the new payout wallet's shortened address, its first and last four characters around an ellipsis.</comment>
   </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>피어 1개</value>
@@ -7121,14 +7078,6 @@
   </data>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>이 로그인 방법을 제거할까요?</value>
-  </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>지갑 제거</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="remove_wallet_moves_or_holds_payouts" xml:space="preserve">
-    <value>USDC 지급은 다른 Solana 또는 Polygon 지갑이 있으면 그 지갑으로 옮겨지고, 없으면 지갑을 연결할 때까지 보류됩니다.</value>
-    <comment>Body of the remove confirmation for the payout wallet (the title is remove_wallet). Removing the payout wallet makes another of the account's active Solana or Polygon wallets the payout wallet when there is one (the server picks it; payouts_now_go_to names it after the removal), and holds USDC payouts until the user connects a wallet when there is none.</comment>
   </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>링크 재전송</value>
@@ -8393,10 +8342,6 @@
     <value>Solana 지갑</value>
     <comment>Label of the connected Solana wallet block on the Earnings screen (parallel to bittensor_wallet).</comment>
   </data>
-  <data name="solana_wallet_error_extension_not_found" xml:space="preserve">
-    <value>이 브라우저에서 {} 확장 프로그램을 찾을 수 없습니다. 설치한 후 다시 시도하거나 '주소 직접 입력'을 선택해 지갑 주소를 붙여 넣으세요.</value>
-    <comment>Error in the Solana payout wallet's connect sheet of the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns extension_not_found: the chosen wallet's browser extension is not in this browser. The argument is the wallet product name (Phantom or Solflare). The sheet also takes a typed address, which works with any wallet, so the line points at its Enter address manually control, named in that control's own words (enter_address_manually). Signing in has no manual entry and keeps bittensor_error_extension_not_found.</comment>
-  </data>
   <data name="solana_wallet_error_session_not_found" xml:space="preserve">
     <value>이 브라우저에서 지갑 연결을 찾을 수 없습니다. 다시 시작하여 지갑을 다시 연결하세요.</value>
     <comment>Solana wallet error in the desktop apps (macOS, Windows, Linux) when the ur.io wallet bridge page returns session_not_found: the browser no longer has the wallet connection made in the connect step (another browser or a private window, or its site data was cleared), so nothing was signed. Starting again reconnects the wallet (Phantom or Solflare).</comment>
@@ -9276,20 +9221,9 @@
     <value>URnetwork VPN 시작됨</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="usdc_payouts_until_migration" xml:space="preserve">
-    <value>Bittensor로의 이전이 완료될 때까지 USDC 지급은 계속 이 지갑으로 갑니다.</value>
-    <comment>Second paragraph of the Solana connect sheet/card, and the body line under a connected Solana wallet.</comment>
-  </data>
   <data name="usdc_solana_network_only" xml:space="preserve">
     <value>USDC는 Solana 네트워크로만 보내세요. 다른 네트워크로 보낸 USDC는 도착하지 않습니다.</value>
     <comment>Payment: the chain to send on. Shown wherever a USDC payment is requested, because USDC exists on many chains and a transfer sent on the wrong one is lost.</comment>
-  </data>
-  <data name="usdc_waiting" xml:space="preserve">
-    <value>마지막 USDC 지급: {} USDC 대기 중</value>
-    <comment>The last USDC payout still pending since provider payouts moved to the UR subnet; shown on the Solana wallet block and, while no Solana wallet is connected, next to the wallet actions, only while a USDC amount is pending. Mirrors the email headline.</comment>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDC 월렛 주소</value>
   </data>
   <data name="use_extender_settings" xml:space="preserve">
     <value>익스텐더 설정 사용</value>
@@ -9588,10 +9522,6 @@
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>지갑을 연결하면 다음 에포크부터 SN25α를 받습니다. 이전 에포크는 소급해서 정산되지 않습니다.</value>
     <comment>Line on the wallet block before a wallet is connected.</comment>
-  </data>
-  <data name="wallet_options" xml:space="preserve">
-    <value>지갑 옵션</value>
-    <comment>Accessibility label of the three-dot overflow button next to “Connect Bittensor wallet” and on the connected Bittensor wallet block.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>지갑 로그인 실패</value>
