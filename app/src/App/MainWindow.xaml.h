@@ -376,12 +376,6 @@ struct MainWindow : MainWindowT<MainWindow> {
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnConnectWalletAddress(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // Earnings: the wallet overflows ("Connect Solana wallet" beside the
-  // Bittensor action; "Remove" on the Solana payout wallet's card)
-  void OnWalletMore(winrt::Windows::Foundation::IInspectable const&,
-                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnSolanaWalletMore(winrt::Windows::Foundation::IInspectable const&,
-                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnChangeWallet(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClaimAlpha(winrt::Windows::Foundation::IInspectable const&,

@@ -1,20 +1,18 @@
 // Executable spec for the SN payout line under the points figure on Earnings
 // (App/SnPayoutPresentation.h): which line shows (no coldkey, nothing
-// claimable, claimable), the current epoch's end, claim-open and expiry times
-// formatted from the SDK's epoch schedule, and - with the Solana panel's
-// decision (App/SolanaWalletPresentation.h) - that the final USDC payout line
-// shows only while USDC is pending. And settlement v2 (APPS-SPEC.md, the UX
-// rules): what the section beside the v1 tile shows for every state of the
-// read, configured or not, pending as pending and unavailable never as a zero,
-// in the store's words; and how the v2 claim dialog moves along with the SDK's
-// claim events. Run against the same sources the app compiles, on any host
-// with a C++20 compiler.
+// claimable, claimable), and the current epoch's end, claim-open and expiry
+// times formatted from the SDK's epoch schedule. And settlement v2
+// (APPS-SPEC.md, the UX rules): what the section beside the v1 tile shows for
+// every state of the read, configured or not, pending as pending and
+// unavailable never as a zero, in the store's words; and how the v2 claim
+// dialog moves along with the SDK's claim events. Run against the same sources
+// the app compiles, on any host with a C++20 compiler.
 //
 // The WinUI half (WalletPage's line and v2 section, their Claim and Set coldkey
 // actions, the claim dialogs) cannot be built off Windows at all; what is
 // verified here is every decision it makes before it touches a XAML object.
 //
-//   c++ -std=c++20 -I ../src/App sn-payout-tests.cpp ../src/App/SnPayoutPresentation.cpp ../src/App/SolanaWalletPresentation.cpp -o /tmp/sn-payout-tests && /tmp/sn-payout-tests
+//   c++ -std=c++20 -I ../src/App sn-payout-tests.cpp ../src/App/SnPayoutPresentation.cpp -o /tmp/sn-payout-tests && /tmp/sn-payout-tests
 //
 // With URNW_SN_PAYOUT_TESTS_SDK the SDK's v2 account and claim callback are
 // the generated header's own (urnet::SnLedgerAccount, read from the json the
@@ -23,7 +21,7 @@
 // boundary templates with. The header needs nlohmann/json; both are system
 // includes because the generated code does not build with -Wextra -Werror:
 //
-//   c++ -std=c++20 -Wall -Wextra -Werror -DURNW_SN_PAYOUT_TESTS_SDK -I ../src/App -isystem <dir of urnetwork_sdk.hpp> -isystem <dir of nlohmann/> sn-payout-tests.cpp ../src/App/SnPayoutPresentation.cpp ../src/App/SolanaWalletPresentation.cpp -o ...
+//   c++ -std=c++20 -Wall -Wextra -Werror -DURNW_SN_PAYOUT_TESTS_SDK -I ../src/App -isystem <dir of urnetwork_sdk.hpp> -isystem <dir of nlohmann/> sn-payout-tests.cpp ../src/App/SnPayoutPresentation.cpp -o ...
 //
 // SPDX-License-Identifier: MPL-2.0
 
@@ -39,7 +37,6 @@
 #include <vector>
 
 #include "SnPayoutPresentation.h"
-#include "SolanaWalletPresentation.h"
 
 #if defined(URNW_SN_PAYOUT_TESTS_SDK)
 #include "urnetwork_sdk.hpp"
@@ -561,20 +558,6 @@ int main() {
     CheckEq("2026-10-13 02:00", view.epochEnd, "line end");
     CheckEq("2026-10-15 02:00", view.claimOpen, "line claim open");
     CheckEq("2026-12-15 01:59", view.expiry, "line expiry (the page's offset is per instant)");
-  }
-  {
-    TEST_CASE("the final USDC payout line shows only while USDC is pending");
-    using namespace urnw::solana;
-    LegacyReads reads;
-    reads.wallets = true;
-    reads.payout = true;
-    reads.payments = true;
-    const SolanaPanelView pending = SolanaPanelFor(LegacyState::Ready, reads, std::nullopt, 3'870'000'000);
-    Check(pending.showWaitingLine && !pending.showCard, "the line, with no payout wallet");
-    CheckEq("3.87", pending.pendingUsd, "the amount");
-    Check(!SolanaPanelFor(LegacyState::Ready, reads, std::nullopt, 0).showWaitingLine, "nothing pending");
-    Check(!SolanaPanelFor(LegacyState::Ready, reads, std::nullopt, 4'000'000).showWaitingLine, "a sub-cent remainder");
-    Check(!SolanaPanelFor(LegacyState::Loading, reads, std::nullopt, 3'870'000'000).showWaitingLine, "not before the reads");
   }
 
   // ---- settlement v2 (APPS-SPEC.md, UX rules) --------------------------------

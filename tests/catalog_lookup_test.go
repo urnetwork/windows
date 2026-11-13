@@ -70,7 +70,6 @@ var catalogLookupFunctionKinds = map[string]catalogLookupKind{
 	"DevW":          catalogLookupPlain,
 	"TransportText": catalogLookupPlain,
 	"Missing":       catalogLookupPlain,
-	"KeyText":       catalogLookupPlain,
 	"MakeAction":    catalogLookupPlain,
 	"MakeTextField": catalogLookupPlain,
 	"MakePicker":    catalogLookupPlain,

@@ -1953,18 +1953,12 @@ void SdkHost::SetupWalletCallbacks() {
     // Solana connects first, then signs. Bittensor has no connect step (it
     // returns the address with the signature), so nothing to chain here.
     const bool bittensor = provider == WalletConnect::Provider::Bittensor;
-    switch (bridge::RoutePublicKey(bittensor, static_cast<bool>(walletConnectDone_),
-                                   static_cast<bool>(walletSignDone_),
+    switch (bridge::RoutePublicKey(bittensor, static_cast<bool>(walletSignDone_),
                                    walletAuthDone_ && !ssoAttempt_)) {
       case bridge::PublicKeyRoute::Drop:
         if (!bittensor) {
           LogWarn("sdkhost: a wallet connect return arrived with no flow in flight, ignoring it");
         }
-        return;
-      case bridge::PublicKeyRoute::AnswerConnect:
-        // A bare connect request (ConnectSolanaWallet) wants the address and
-        // nothing more: no challenge, no signature.
-        std::exchange(walletConnectDone_, nullptr)(true, std::move(publicKey), std::string());
         return;
       case bridge::PublicKeyRoute::SignForRequest:
         // A bare signature request carries its own message (SignSolanaForAdd).
@@ -2079,13 +2073,9 @@ void SdkHost::SetupWalletCallbacks() {
         return;
       }
     }
-    // A failed connect or signature request is NOT a failed sign-in: the user is
-    // signed in throughout, and pushing AuthState::Error here would tear the
-    // session down because a browser tab was closed.
-    if (auto connectDone = std::exchange(walletConnectDone_, nullptr)) {
-      connectDone(false, std::string(), err);
-      return;
-    }
+    // A failed signature request is NOT a failed sign-in: the user is signed in
+    // throughout, and pushing AuthState::Error here would tear the session down
+    // because a browser tab was closed.
     if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
       signDone(false, std::string(), std::string(), err);
       return;
@@ -2142,10 +2132,6 @@ uint64_t SdkHost::CancelPendingWalletFlows(const char* reason) {
   if (bittensorDone) {
     LogWarn("sdkhost: a Bittensor wallet proof was superseded ({})", reason);
     bittensorDone({false, {}, reason});
-  }
-  if (auto connectDone = std::exchange(walletConnectDone_, nullptr)) {
-    LogWarn("sdkhost: a wallet connect request was superseded ({})", reason);
-    connectDone(false, std::string(), reason);
   }
   if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
     LogWarn("sdkhost: a wallet signature request was superseded ({})", reason);
@@ -2403,17 +2389,6 @@ void SdkHost::SignWithSolanaWallet(
   walletSignMessage_ = message;
   walletSignDone_ = std::move(done);
   wallet_.Connect(provider);  // continues on the deep-link callback
-}
-
-void SdkHost::ConnectSolanaWallet(
-    WalletConnect::Provider provider,
-    std::function<void(bool, std::string, std::string)> done) {
-  // Not a sign-in: the auth state does not move (see on_error above).
-  CancelPendingWalletFlows("superseded by a wallet connect request");
-  walletConnectDone_ = std::move(done);
-  // continues on the deep-link callback (on_public_key). The payout sheet also
-  // takes a typed address, so a missing extension points at it.
-  wallet_.Connect(provider, /*offersManualEntry=*/true);
 }
 
 void SdkHost::SignWithBittensorWallet(
