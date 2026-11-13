@@ -21,12 +21,11 @@ constexpr bool IsSuperseded(std::string_view error) noexcept {
   return error.starts_with(kSupersededPrefix);
 }
 
-enum class PublicKeyRoute { Drop, AnswerConnect, SignForRequest, SignIn };
+enum class PublicKeyRoute { Drop, SignForRequest, SignIn };
 
-constexpr PublicKeyRoute RoutePublicKey(bool bittensor, bool connectWaiting, bool signWaiting,
+constexpr PublicKeyRoute RoutePublicKey(bool bittensor, bool signWaiting,
                                         bool walletSignInWaiting) noexcept {
   if (bittensor) return PublicKeyRoute::Drop;  // no connect hop to chain
-  if (connectWaiting) return PublicKeyRoute::AnswerConnect;
   if (signWaiting) return PublicKeyRoute::SignForRequest;
   return walletSignInWaiting ? PublicKeyRoute::SignIn : PublicKeyRoute::Drop;
 }

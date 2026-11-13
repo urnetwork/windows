@@ -114,7 +114,7 @@ func TestLeaderboardLoadContractFires(t *testing.T) {
 	wallet := lf(readAppSource(t, "WalletPage.cpp"))
 	window := lf(readAppSource(t, "MainWindow.xaml.cpp"))
 	mutations := []struct{ name, file, old, new, want string }{
-		{"the session load does not ask", "wallet", "  LoadLegacyWallets();\n  LoadLeaderboardIfShowing();\n", "  LoadLegacyWallets();\n", "never asks for the board's load"},
+		{"the session load does not ask", "wallet", "  protocol_->LoadMe();\n  LoadLeaderboardIfShowing();\n", "  protocol_->LoadMe();\n", "never asks for the board's load"},
 		{"the tab does not ask", "wallet", "  LoadLeaderboardIfShowing();\n  UpdatePointsIndicator();\n", "  UpdatePointsIndicator();\n", "does not ask LoadLeaderboardIfShowing"},
 		{"the gate skips the sign-in check", "wallet", "  if (leaderboardLoaded_ || !Sdk().IsLoggedIn()) return;\n", "  if (leaderboardLoaded_) return;\n", "without checking Sdk().IsLoggedIn()"},
 		{"a second load marker", "wallet", "void WalletPage::LoadLeaderboard() {\n", "void WalletPage::LoadLeaderboard() {\n  leaderboardLoaded_ = true;\n", "marked done outside"},

@@ -163,7 +163,7 @@ PathIcon CoinMark(std::string const& iconKey, double size) {
 // The status line is a polite live region, so a screen reader hears the
 // payment move on (seen, confirming, paid) without going to it. WinUI
 // announces a live region only when its peer raises LiveRegionChanged, and a
-// peer exists only while assistive technology is asking (SolanaWalletSheets).
+// peer exists only while assistive technology is asking.
 void Announce(FrameworkElement const& line) {
   if (!line) return;
   if (auto peer = peers::FrameworkElementAutomationPeer::FromElement(line)) {

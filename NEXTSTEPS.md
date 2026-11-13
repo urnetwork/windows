@@ -264,9 +264,10 @@ DeviceRemote → service):
   `src/App/WalletConnect.{h,cpp}` drives the `ur.io/wallet-connect` bridge for both
   providers (Solana keeps the NaCl envelope; Bittensor is a single `signMessage`
   returning plain `?address=<ss58>&signature=<0xhex>`), `SdkHost::SignInWith{Solana,
-  Bittensor}` → `authLogin{wallet_auth{blockchain=SOL|TAO}}`, sign-in buttons on the
-  login panel (Bittensor before Solana), and connect-wallet by address on the Wallet
-  page (`walletValidateAddress` per chain → `createAccountWallet`).
+  Bittensor}` → `authLogin{wallet_auth{blockchain=SOL|TAO}}`, and sign-in buttons on
+  the login panel (Bittensor before Solana). (Connect-wallet by address on the
+  Wallet page, `walletValidateAddress` per chain → `createAccountWallet`, connected
+  a USDC payout wallet; it is gone, see below.)
   **`urnetwork://` protocol activation is now handled**: the MSI already registered
   the scheme; `main.cpp` single-instances on `AppInstance::FindOrRegisterForKey` and
   redirects a second launch (the browser returning the wallet callback) to the
@@ -274,13 +275,12 @@ DeviceRemote → service):
   `AppController::HandleDeepLink` → `SdkHost::HandleDeepLink`. Remaining: set
   `UrnWalletConnectProjectId` (see `src/App/Config.h`), deploy ur.io/wallet-connect,
   and do a real-wallet test.
-  > **The Solana payout wallet is back on Earnings (not yet compiled).** The
-  > by-address connect went with the Subtensor rework (`e14049c`); "Connect Solana
-  > wallet" in the overflow beside "Connect Bittensor wallet" restores it for the
-  > legacy USDC payouts: `SolanaWalletSheets` (Phantom/Solflare through the
-  > connect-only `SdkHost::ConnectSolanaWallet`, or an address checked for `SOL`) →
-  > `createAccountWallet` → `setPayoutWallet`, plus the payout wallet card with
-  > Remove; `tools/solana-wallet-tests.cpp` runs its logic on any host.
+  > **The Solana payout wallet was removed from Earnings on 2026-11-13**: USDC
+  > provider payouts ended on 2026-11-12 (provider earnings are paid in SN25α to a
+  > Bittensor coldkey since 2026-10-06). Gone with it: "Connect Solana wallet" and
+  > its sheet (`SolanaWalletSheets`, `SdkHost::ConnectSolanaWallet`), the payout
+  > wallet card with Remove, and the "Final USDC payout: N USDC waiting" line.
+  > Solana stays a sign-in method, and USDC stays a way to pay for a plan.
   >
   > **No create-network-with-wallet path.** A wallet with no network still only gets
   > an error ("this wallet isn't linked to a network yet") because the app has no
