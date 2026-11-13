@@ -8480,7 +8480,7 @@
   </data>
   <data name="sso_browser_open_failed" xml:space="preserve">
     <value>브라우저를 열 수 없습니다. 다시 시도하세요.</value>
-    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in).</comment>
+    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in; Windows and Linux: the ur.io wallet bridge page of a Solana sign-in, which the wallet never saw).</comment>
   </data>
   <data name="sso_sign_in_timed_out" xml:space="preserve">
     <value>로그인 시간이 초과되었습니다. 다시 시도하세요.</value>

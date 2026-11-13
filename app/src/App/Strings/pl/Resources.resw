@@ -8912,7 +8912,7 @@ treść świata</value>
   </data>
   <data name="sso_browser_open_failed" xml:space="preserve">
     <value>Nie udało się otworzyć przeglądarki. Spróbuj ponownie.</value>
-    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in).</comment>
+    <comment>Error when the app could not open the browser for a sign-in page (macOS: adding a sign-in method; Windows: the browser sign-in; Windows and Linux: the ur.io wallet bridge page of a Solana sign-in, which the wallet never saw).</comment>
   </data>
   <data name="sso_sign_in_timed_out" xml:space="preserve">
     <value>Upłynął limit czasu logowania. Spróbuj ponownie.</value>
