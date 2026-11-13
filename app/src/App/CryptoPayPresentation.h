@@ -36,6 +36,8 @@
 #include <string_view>
 #include <vector>
 
+#include "ManageSubscription.h"  // kStoreFamilyGift: a gift year never renews
+
 namespace urnw::cryptopay {
 
 // ---- vocabulary (CONTRACT §1) ------------------------------------------------
@@ -808,8 +810,10 @@ struct CryptoTermView {
 // renewal reminder.
 inline constexpr const char* kStoreFamilyCrypto = "crypto";  // urnet::SubscriptionStoreCrypto
 
+// A gift code's year of Pro never renews either (ManageSubscription.h
+// kStoreFamilyGift); its own line says so (ShowsGiftDoesNotRenew).
 inline bool StoreFamilyRenews(std::string_view storeFamily) {
-  return storeFamily != kStoreFamilyCrypto;
+  return storeFamily != kStoreFamilyCrypto && storeFamily != kStoreFamilyGift;
 }
 
 // "Does not renew. Pay again when it ends." under a plan paid once in crypto,

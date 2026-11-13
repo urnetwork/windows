@@ -3167,11 +3167,13 @@ winrt::fire_and_forget MainWindow::ShowRedeemSheet() {
     auto weak = get_weak();
     self->redeemSheet_ = urnw::RedeemCodeSheet::Create(
         Content().XamlRoot(), Sdk(), [weak](bool /*credited*/) {
-          // Redeemed now or earlier, the code's data is on the balance: read it
-          // once and refresh the redeemed-codes list. A balance code is data
-          // only (the server grants it with pro = false), so never the Pro
-          // confirmation poll: it waits for a plan a code never grants, spins
-          // the plan ring and holds back the balance notice for 2 minutes.
+          // Redeemed now or earlier, what the code added is on the network: a
+          // data code's data, or a gift code's year of Pro, which the redeem
+          // grants before it answers. Read the balance once (a free plan flips
+          // to Pro on that read, as after a checkout) and refresh the
+          // redeemed-codes list. Never the Pro confirmation poll: there is no
+          // payment to wait for, and it spins the plan ring and holds back the
+          // balance notice for 2 minutes.
           urnw::App().balance().Refresh();
           if (auto self = weak.get()) self->account().LoadBalanceCodes();
         });

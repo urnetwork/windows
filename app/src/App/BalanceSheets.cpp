@@ -11,9 +11,12 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <winrt/Microsoft.Web.WebView2.Core.h>
+#include <winrt/Windows.Globalization.DateTimeFormatting.h>
 
 #include <algorithm>
+#include <chrono>
 #include <map>
+#include <string_view>
 
 #include <nlohmann/json.hpp>
 
@@ -44,6 +47,10 @@ using namespace winrt::Microsoft::UI::Xaml::Media;
 // dialog is showing, so lock() always succeeds during interaction.
 
 namespace urnw {
+
+// BalanceCodeRedeem.h reads a gift code's kind by its text
+static_assert(std::string_view(urnet::BalanceCodeKindProGift) == kBalanceCodeKindProGift);
+
 namespace {
 
 // wingdi.h declares ::Ellipse; alias the XAML shape for unqualified use
@@ -260,6 +267,37 @@ void PairTermsLabel(CheckBox const& box, TextBlock const& label) {
 
 // ---- RedeemCodeSheet --------------------------------------------------------
 
+namespace {
+
+// An RFC 3339 time as a date in the user's locale and time zone ("12/24/2026"),
+// as the crypto year's renewal notice dates its grace (CryptoAccountRows); ""
+// when it does not read.
+std::wstring LocalDateText(std::string const& rfc3339) {
+  const std::optional<int64_t> seconds = cryptopay::ParseRfc3339(rfc3339);
+  if (!seconds) return std::wstring();
+  try {
+    winrt::Windows::Globalization::DateTimeFormatting::DateTimeFormatter formatter(L"shortdate");
+    return std::wstring{formatter.Format(
+        winrt::clock::from_sys(std::chrono::sys_seconds{std::chrono::seconds{*seconds}}))};
+  } catch (...) {
+    return Widen(rfc3339.substr(0, 10));
+  }
+}
+
+// The gift confirmation (BalanceCodeRedeem.h ShowsQueuedGiftLine): the day a
+// year queued after the network's paid Pro period starts, or "A year of Pro is
+// yours." `result` is a credited redeem's answer, or nothing for a gift found
+// in the redeemed list, which does not say whether its year was queued.
+hstring GiftRedeemedText(std::optional<urnet::RedeemBalanceCodeResult> const& result) {
+  const bool queued = result && result->pro && result->pro->queued;
+  const std::wstring date =
+      queued && result->pro->start_time ? LocalDateText(*result->pro->start_time) : std::wstring();
+  return ShowsQueuedGiftLine(queued, !date.empty()) ? hstring{Format("gift_pro_redeemed_queued", date)}
+                                                    : Loc("gift_pro_redeemed");
+}
+
+}  // namespace
+
 std::shared_ptr<RedeemCodeSheet> RedeemCodeSheet::Create(XamlRoot const& root,
                                                          SdkHost& sdk,
                                                          std::function<void(bool)> onRedeemed) {
@@ -285,7 +323,10 @@ void RedeemCodeSheet::Build(XamlRoot const& root) {
   codeBox_ = TextBox();
   codeBox_.Header(winrt::box_value(Loc("balance_code")));
   codeBox_.PlaceholderText(Loc("enter_balance_code"));
-  codeBox_.MaxLength(static_cast<int32_t>(urnet::BalanceCodeLength));
+  // room for a code as a gift card prints it, in groups of four, which
+  // urnet::isBalanceCodeFormatValid reads as the server does (no separators,
+  // any case): capped at the code's own length, a grouped code was cut short
+  codeBox_.MaxLength(static_cast<int32_t>(2 * urnet::BalanceCodeLength));
   codeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) {
       const std::string code = urnw::Narrow(self->codeBox_.Text().c_str());
@@ -361,13 +402,13 @@ void RedeemCodeSheet::Classify(std::string const& secret,
                                std::optional<urnet::RedeemBalanceCodeResult> const& result) {
   const std::string outcome = urnet::classifyBalanceCodeRedeem(result, std::nullopt, secret);
   if (!BalanceCodeRedeemNeedsCodeList(outcome)) {
-    ApplyResult(outcome, result);
+    ApplyResult(BalanceCodeRedeemNoticeFor(outcome), result);
     return;
   }
   // Not credited by this call. The server's refusal is the same for an
-  // unknown code and one this network already redeemed, and a lost response
-  // may have committed: ask the network's redeemed-code list before saying
-  // anything.
+  // unknown data code and one this network already redeemed, and a lost
+  // response may have committed: ask the network's redeemed-code list before
+  // saying anything. A gift code found there confirms as the gift.
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
   sdk_.api().getNetworkRedeemedBalanceCodes(
@@ -379,24 +420,45 @@ void RedeemCodeSheet::Classify(std::string const& secret,
         }
         queue.TryEnqueue([weak, secret, result, codes = std::move(codes)] {
           if (auto self = weak.lock()) {
-            self->ApplyResult(urnet::classifyBalanceCodeRedeem(result, codes, secret), result);
+            // the code in the list, read as the server reads a typed code, and
+            // a refusal saying the code is redeemed (by any network)
+            const std::optional<std::string> listedKind =
+                codes ? RedeemedCodeKind(secret, *codes) : std::nullopt;
+            const bool refusalSaysRedeemed =
+                result && result->error && RefusalSaysAlreadyRedeemed(result->error->message);
+            self->ApplyResult(
+                BalanceCodeRedeemNoticeAfterList(urnet::classifyBalanceCodeRedeem(result, codes, secret),
+                                                 listedKind, refusalSaysRedeemed),
+                result);
           }
         });
       });
 }
 
-void RedeemCodeSheet::ApplyResult(std::string const& outcome,
+void RedeemCodeSheet::ApplyResult(BalanceCodeRedeemNotice notice,
                                   std::optional<urnet::RedeemBalanceCodeResult> const& result) {
   redeeming_ = false;
-  const BalanceCodeRedeemNotice notice = BalanceCodeRedeemNoticeFor(outcome);
-  if (notice == BalanceCodeRedeemNotice::Redeemed) {
+  if (notice == BalanceCodeRedeemNotice::Redeemed ||
+      notice == BalanceCodeRedeemNotice::GiftRedeemed) {
     formPanel_.Visibility(Visibility::Collapsed);
     successPanel_.Visibility(Visibility::Visible);
-    const int64_t bytes =
-        result && result->transfer_balance ? result->transfer_balance->balance_byte_count : 0;
-    successAmountText_.Text(H("+" + FormatByteCountCompact(bytes)));
+    if (notice == BalanceCodeRedeemNotice::GiftRedeemed || (result && result->pro)) {
+      // a gift code: its year of Pro as a sentence under the title, never the
+      // 0-byte transfer balance that comes with it. A gift found in the
+      // redeemed list has no answer to read a queued year from.
+      successAmountText_.Text(
+          GiftRedeemedText(notice == BalanceCodeRedeemNotice::Redeemed ? result : std::nullopt));
+      successAmountText_.FontSize(15);
+      successAmountText_.TextWrapping(TextWrapping::Wrap);
+      successAmountText_.TextAlignment(TextAlignment::Center);
+    } else {
+      const int64_t bytes =
+          result && result->transfer_balance ? result->transfer_balance->balance_byte_count : 0;
+      successAmountText_.Text(H("+" + FormatByteCountCompact(bytes)));
+    }
     dialog_.PrimaryButtonText(hstring{L""});  // nothing left to submit
-    if (onRedeemed_) onRedeemed_(/*credited=*/true);
+    // the balance and the plan are read again, and the redeemed-code list
+    if (onRedeemed_) onRedeemed_(/*credited=*/notice == BalanceCodeRedeemNotice::Redeemed);
     return;
   }
   codeBox_.IsEnabled(true);
@@ -404,8 +466,9 @@ void RedeemCodeSheet::ApplyResult(std::string const& outcome,
   errorText_.Foreground(colors::DangerBrush());
   switch (notice) {
     case BalanceCodeRedeemNotice::AlreadyRedeemed:
-      // this network has the code: the data is on the balance (a retry after
-      // a lost-but-credited response lands here). Not an error.
+      // this network has the data code: the data is on the balance (a retry
+      // after a lost-but-credited response lands here); or the server says
+      // the code is redeemed and it is not this network's. Not an error.
       errorText_.Text(Loc("balance_code_already_redeemed_message"));
       errorText_.Foreground(colors::TextBrush());
       if (onRedeemed_) onRedeemed_(/*credited=*/false);

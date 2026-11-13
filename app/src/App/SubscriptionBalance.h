@@ -61,7 +61,8 @@ struct BalanceSnapshot {
   planview::PlanView planView = planview::PlanView::Loading;
   // the current subscription's store family (urnet::classifySubscriptionStore:
   // "stripe", "apple", "google", "crypto" for a year paid once in a coin,
-  // "other"), "" without a subscription
+  // "gift" for a gift code's year of Pro, "other"), "" without a subscription.
+  // A gift gives way to another store that is still active (PlanStoreFamily).
   std::string subscriptionStoreFamily;
   bool guest = false;
   bool loaded = false;  // at least one successful fetch this session

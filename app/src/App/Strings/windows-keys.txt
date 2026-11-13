@@ -152,6 +152,7 @@ average_reliability_2
 back
 balance_code
 balance_code_already_redeemed_message
+balance_code_pro_year
 balance_code_redeemed
 balance_code_transport_error
 balance_code_where_to_buy
@@ -767,6 +768,9 @@ general
 get_connected
 get_pro
 get_started
+gift_does_not_renew
+gift_pro_redeemed
+gift_pro_redeemed_queued
 google
 google_sign_in_method_added
 gossip_connecting

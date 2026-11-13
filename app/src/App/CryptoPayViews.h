@@ -20,7 +20,10 @@
 //                      way;
 //   CryptoAccountRows  the Account plan pane's rows: "Does not renew" under a
 //                      plan paid once in crypto, the crypto_term notice with
-//                      Renew, and "Payment in progress" for a saved invoice.
+//                      Renew, and "Payment in progress" for a saved invoice;
+//                      and the crypto line's twin for a gift code's year of
+//                      Pro, "A gift. It doesn't renew.", which has nothing
+//                      to manage, cancel or pay.
 //
 // Each keeps its controls in a shared State the XAML handlers capture weakly
 // (PlanPicker's pattern): a control tapped after its host is gone touches
@@ -211,8 +214,9 @@ class CryptoAccountRows {
   // The block for the Account plan pane, every row collapsed until it has
   // something to say.
   winrt::Microsoft::UI::Xaml::Controls::StackPanel Build();
-  // "Does not renew" under a plan paid once in crypto, and the crypto_term
-  // notice while the paid term has ended and its grace has not.
+  // "Does not renew" under a plan paid once in crypto, the crypto_term notice
+  // while the paid term has ended and its grace has not, and "A gift. It
+  // doesn't renew." under a gift code's year of Pro.
   void ApplyBalance(BalanceSnapshot const& balance);
   // "Payment in progress" while a saved invoice is not paid.
   void ApplyInvoice(cryptopay::CryptoInvoiceView const& view);
@@ -224,6 +228,7 @@ class CryptoAccountRows {
   struct State {
     winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Border doesNotRenewRow{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::Border giftRow{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::InfoBar termNotice{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button inProgress{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock inProgressNote{nullptr};

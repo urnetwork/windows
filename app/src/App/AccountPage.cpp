@@ -9,6 +9,7 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 
+#include "BalanceCodeRedeem.h"  // IsProGiftCode: a gift code's row
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
@@ -495,7 +496,10 @@ void AccountPage::RenderBalanceCodes(urnet::RedeemedBalanceCodeList const& codes
   for (auto const& code : codes) {
     auto row = kit::MakePaneTableRow(weights);
     row.cells[0].Text(H(MaskSecret(code.secret)));
-    row.cells[1].Text(H("+" + urnw::FormatByteCountCompact(code.balance_byte_count)));
+    // a gift code's year of Pro adds no data (BalanceCodeRedeem.h): never "+0 B"
+    row.cells[1].Text(IsProGiftCode(code.kind)
+                          ? Loc("balance_code_pro_year")
+                          : H("+" + urnw::FormatByteCountCompact(code.balance_byte_count)));
     row.cells[2].Text(H(code.redeem_time ? IsoDate(*code.redeem_time) : std::string()));
     panel.Children().Append(row.root);
   }

@@ -16,6 +16,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "BalanceCodeRedeem.h"
 #include "SdkHost.h"
 #include "PlanPicker.h"
 #include "OfferCard.h"
@@ -54,13 +55,15 @@ void PairTermsLabel(winrt::Microsoft::UI::Xaml::Controls::CheckBox const& box,
                     winrt::Microsoft::UI::Xaml::Controls::TextBlock const& label);
 
 // ---- Redeem balance code ----------------------------------------------------
-// 26-character code entry (urnet::isBalanceCodeFormatValid) with inline
+// Code entry (urnet::isBalanceCodeFormatValid: 26 characters as the server
+// reads a typed code, so a code in groups of four fits) with inline
 // validation, a where-to-get-codes note, and a success state. The answer comes
 // from the SDK's classification (BalanceCodeRedeem.h). The success state is
-// the data the code added (a code is data only, never a plan). onRedeemed
-// fires when this call credited the code (credited=true) or when the network
-// already had it (credited=false); either way the owner reads the balance once
-// and refreshes the redeemed-codes list.
+// the data a data code added, or a gift code's year of Pro ("A year of Pro is
+// yours.", or the day a queued year starts). onRedeemed fires when this call
+// credited the code (credited=true) or when the network already had it
+// (credited=false); either way the owner reads the balance once and refreshes
+// the redeemed-codes list.
 class RedeemCodeSheet : public std::enable_shared_from_this<RedeemCodeSheet> {
  public:
   static std::shared_ptr<RedeemCodeSheet> Create(
@@ -77,10 +80,11 @@ class RedeemCodeSheet : public std::enable_shared_from_this<RedeemCodeSheet> {
   void Submit();
   // urnet::classifyBalanceCodeRedeem on the redeem answer (nullopt for a
   // transport failure); anything but "redeemed" is classified again with the
-  // network's redeemed-code list before ApplyResult shows it.
+  // network's redeemed-code list (BalanceCodeRedeemNoticeAfterList: a gift
+  // code found there confirms as the gift) before ApplyResult shows it.
   void Classify(std::string const& secret,
                 std::optional<urnet::RedeemBalanceCodeResult> const& result);
-  void ApplyResult(std::string const& outcome,
+  void ApplyResult(BalanceCodeRedeemNotice notice,
                    std::optional<urnet::RedeemBalanceCodeResult> const& result);
 
   SdkHost& sdk_;

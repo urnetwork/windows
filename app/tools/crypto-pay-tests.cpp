@@ -987,6 +987,7 @@ void Times() {
   }
 
   Check(!StoreFamilyRenews("crypto"), "a crypto year never renews");
+  Check(!StoreFamilyRenews("gift"), "a gift year never renews");
   for (const char* family : {"stripe", "apple", "google", "other", ""}) {
     Check(StoreFamilyRenews(family), std::string("renews or is not crypto: \"") + family + "\"");
   }
@@ -995,6 +996,9 @@ void Times() {
   Check(!DoesNotRenewShows("stripe", false) && !DoesNotRenewShows("", false) &&
             !DoesNotRenewShows("other", false),
         "only a crypto year");
+  // a gift year has its own line (ShowsGiftDoesNotRenew), never the crypto one,
+  // which asks to pay again
+  Check(!DoesNotRenewShows("gift", false), "a gift year is not told to pay again");
 }
 
 void Qr() {
