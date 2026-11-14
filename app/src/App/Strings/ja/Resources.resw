@@ -5548,7 +5548,7 @@
   </data>
   <data name="longest_streak" xml:space="preserve">
     <value>最長連続</value>
-    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>コンテンツにアクセスするための最も低いユーザー/IP比率</value>
@@ -6356,7 +6356,7 @@
     <comment>Headline label of the earnings screen.</comment>
   </data>
   <data name="points_leaderboard_description" xml:space="preserve">
-    <value>累計ポイント。ブロックは確定した1エポック。連続は最新ブロックまでポイントを獲得した連続ブロック数です。</value>
+    <value>累計ポイント。ブロックは1週間です。連続はポイントを獲得した連続ブロック数で、ポイントを付与できなかった週や、まだ付与中の週があっても途切れません。</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
@@ -8574,7 +8574,7 @@
   </data>
   <data name="streak" xml:space="preserve">
     <value>連続</value>
-    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive weeks (blocks) with points; a week whose points couldn't be awarded, or are still being awarded, doesn't break it.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>強力な匿名化</value>
