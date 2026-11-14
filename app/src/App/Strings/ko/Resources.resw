@@ -5550,7 +5550,7 @@
   </data>
   <data name="longest_streak" xml:space="preserve">
     <value>최장 연속</value>
-    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>콘텐츠 접근 시 최저 사용자/IP 비율</value>
@@ -6358,7 +6358,7 @@
     <comment>Headline label of the earnings screen.</comment>
   </data>
   <data name="points_leaderboard_description" xml:space="preserve">
-    <value>누적 포인트입니다. 블록은 확정된 에포크 하나이며, 연속은 최신 블록까지 포인트를 얻은 연속 블록 수입니다.</value>
+    <value>누적 포인트입니다. 블록은 한 주이며, 연속은 포인트를 얻은 연속 블록 수로, 포인트를 지급하지 못했거나 아직 지급 중인 주가 있어도 끊기지 않습니다.</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
@@ -8576,7 +8576,7 @@
   </data>
   <data name="streak" xml:space="preserve">
     <value>연속</value>
-    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive weeks (blocks) with points; a week whose points couldn't be awarded, or are still being awarded, doesn't break it.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>강력한 익명화</value>

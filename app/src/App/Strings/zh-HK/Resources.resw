@@ -5550,7 +5550,7 @@
   </data>
   <data name="longest_streak" xml:space="preserve">
     <value>最長連續</value>
-    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>最低用戶/IP比率以存取內容</value>
@@ -6359,7 +6359,7 @@
     <comment>Headline label of the earnings screen.</comment>
   </data>
   <data name="points_leaderboard_description" xml:space="preserve">
-    <value>歷史累計積分。一個區塊是一個已確認的週期；連續統計直到最新區塊的連續得分區塊數。</value>
+    <value>歷史累計積分。一個區塊為一週；連續統計連續得分的區塊數，積分未能發放或仍在發放中的一週不會中斷連續。</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
@@ -8577,7 +8577,7 @@
   </data>
   <data name="streak" xml:space="preserve">
     <value>連續</value>
-    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive weeks (blocks) with points; a week whose points couldn't be awarded, or are still being awarded, doesn't break it.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>強匿名化</value>

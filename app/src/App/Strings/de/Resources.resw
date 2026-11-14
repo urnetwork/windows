@@ -5678,7 +5678,7 @@ gesendet haben, um deine Identität zu überprüfen.</value>
   </data>
   <data name="longest_streak" xml:space="preserve">
     <value>Längste Serie</value>
-    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>Niedrigstes Nutzer/IP-Verhältnis für den Zugriff auf Inhalte</value>
@@ -6514,7 +6514,7 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <comment>Headline label of the earnings screen.</comment>
   </data>
   <data name="points_leaderboard_description" xml:space="preserve">
-    <value>Punkte seit Beginn. Ein Block ist eine abgeschlossene Epoche; die Serie zählt aufeinanderfolgende Blöcke mit Punkten bis zum letzten.</value>
+    <value>Punkte seit Beginn. Ein Block ist eine Woche; die Serie zählt aufeinanderfolgende Blöcke mit Punkten, und eine Woche, deren Punkte nicht vergeben werden konnten oder noch vergeben werden, unterbricht sie nicht.</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
@@ -9913,7 +9913,7 @@ wie es sein sollte.</value>
   </data>
   <data name="streak" xml:space="preserve">
     <value>Serie</value>
-    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive weeks (blocks) with points; a week whose points couldn't be awarded, or are still being awarded, doesn't break it.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Starke Anonymisierung</value>
