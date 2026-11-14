@@ -903,11 +903,15 @@
   </data>
   <data name="balance_code_data_added" xml:space="preserve">
     <value>{} of data added to your balance.</value>
-    <comment>Redeem balance code: confirmation of the data a redeemed code added to the network's balance (amount is a formatted byte count, e.g. "5.00 GiB"). A balance code is data only: never a plan or Pro upgrade.</comment>
+    <comment>Redeem balance code: confirmation of the data a redeemed code added to the network's balance (amount is a formatted byte count, e.g. "5.00 GiB"). Data codes only: a redeemed Pro gift code confirms with gift_pro_redeemed instead.</comment>
   </data>
   <data name="balance_code_invalid_message" xml:space="preserve">
     <value>That balance code isn't valid. Check the code and try again.</value>
     <comment>Redeem balance code: the server answered and rejected the code as unknown/invalid. Distinct from a transport failure, which must never be reported as a bad code.</comment>
+  </data>
+  <data name="balance_code_pro_year" xml:space="preserve">
+    <value>A year of Pro</value>
+    <comment>The redeemed balance codes list's amount for a Pro gift code, in place of a data amount such as "+10 GiB". Short, like a data amount.</comment>
   </data>
   <data name="balance_code_redeemed" xml:space="preserve">
     <value>Balance code redeemed.</value>
@@ -5075,6 +5079,18 @@ right way</value>
   <data name="get_urnetwork_free_for_life_by_participating" xml:space="preserve">
     <value>Get URnetwork free for life by participating</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="gift_does_not_renew" xml:space="preserve">
+    <value>A gift. It doesn't renew.</value>
+    <comment>The plan row's line across from the plan, for Pro that came from a gift code, where a store subscription's Manage button would be: a gift year doesn't renew and has nothing to manage. The gift's twin of crypto_does_not_renew.</comment>
+  </data>
+  <data name="gift_pro_redeemed" xml:space="preserve">
+    <value>A year of Pro is yours.</value>
+    <comment>Confirmation shown after a Pro gift code is redeemed: the code grants a year of Pro, starting now.</comment>
+  </data>
+  <data name="gift_pro_redeemed_queued" xml:space="preserve">
+    <value>Your gift year of Pro starts on {}, after your current Pro period.</value>
+    <comment>Confirmation shown after a Pro gift code is redeemed by someone who already has Pro: the gift's year of Pro is queued after the current Pro period. {date} is the day it starts, formatted by the app for the reader's locale.</comment>
   </data>
   <data name="go_back" xml:space="preserve">
     <value>Go Back</value>
@@ -9840,6 +9856,10 @@ world's content</value>
   <data name="site_sub_free_title" xml:space="preserve">
     <value>Free plan</value>
     <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_gift_body" xml:space="preserve">
+    <value>Your Pro plan is a gift. It doesn't renew, so there's nothing to manage or cancel.</value>
+    <comment>ur.io account, Subscription card: the body for Pro from a gift code, which doesn't renew and has nothing to manage or cancel (compare site_sub_active_body).</comment>
   </data>
   <data name="site_sub_manage_on" xml:space="preserve">
     <value>Manage in {platform}</value>

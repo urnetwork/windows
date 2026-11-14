@@ -10,6 +10,7 @@
 #include "CryptoPaySdk.h"
 #include "GuestConversion.h"
 #include "Log.h"
+#include "ManageSubscription.h"
 #include "Paths.h"
 #include "PaymentPastDueSdk.h"
 
@@ -19,6 +20,8 @@ namespace urnw {
 static_assert(std::string_view(urnet::ShownPlanPro) == planview::kShownPlanPro);
 static_assert(std::string_view(urnet::ShownPlanFree) == planview::kShownPlanFree);
 static_assert(std::string_view(urnet::ShownPlanUnknown) == planview::kShownPlanUnknown);
+// ...and ManageSubscription.h a gift year's store family
+static_assert(std::string_view(urnet::SubscriptionStoreGift) == kStoreFamilyGift);
 
 namespace {
 
@@ -368,9 +371,19 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
   // the plan is the server's answer now: Pro or Free
   SyncPlan();
   if (refreshJwt) sdk_.RefreshJwt();
-  snapshot_.subscriptionStoreFamily =
+  // A gift year is the plan's store only while no other store is active: a
+  // subscriber who pays and redeems a gift keeps that store's controls
+  // (ManageSubscription.h PlanStoreFamily).
+  std::vector<std::string> activeFamilies;
+  if (result.subscriptions) {
+    for (auto const& subscription : *result.subscriptions) {
+      activeFamilies.push_back(urnet::classifySubscriptionStore(subscription.store));
+    }
+  }
+  snapshot_.subscriptionStoreFamily = PlanStoreFamily(
       result.current_subscription ? urnet::classifySubscriptionStore(result.current_subscription->store)
-                                  : std::string();
+                                  : std::string(),
+      activeFamilies);
 
   if (IsSupporterWithBalance()) {
     // nothing left to poll for

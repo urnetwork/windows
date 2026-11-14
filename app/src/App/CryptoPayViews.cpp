@@ -23,6 +23,7 @@
 #include "ExtenderPresentation.h"  // ExtenderQrRunsFor: one rectangle per run of dark modules
 #include "Localization.h"
 #include "Log.h"
+#include "ManageSubscription.h"  // ShowsGiftDoesNotRenew: a gift year's line
 #include "PageContext.h"
 #include "PaymentRefusal.h"
 #include "SettingsSheets.h"  // rows::CopyToClipboard
@@ -901,6 +902,17 @@ StackPanel CryptoAccountRows::Build() {
   state.doesNotRenewRow.Visibility(Visibility::Collapsed);
   state.root.Children().Append(state.doesNotRenewRow);
 
+  // a gift code's year of Pro: someone else paid for it, nothing renews it,
+  // and there is nothing to manage, cancel or pay (Manage Subscription stays
+  // hidden: ShowsManageSubscription)
+  state.giftRow = Border();
+  state.giftRow.Padding(Thickness{12, 10, 12, 10});
+  state.giftRow.BorderBrush(colors::BorderBrush());
+  state.giftRow.BorderThickness(Thickness{0, 0, 0, 1});
+  state.giftRow.Child(MakeText(Loc("gift_does_not_renew"), 13, colors::MutedBrush(), true));
+  state.giftRow.Visibility(Visibility::Collapsed);
+  state.root.Children().Append(state.giftRow);
+
   // the paid term has ended: renew within the grace (an in-app notice, never
   // a system notification)
   state.termNotice = InfoBar();
@@ -959,6 +971,7 @@ void CryptoAccountRows::ApplyBalance(BalanceSnapshot const& balance) {
   Show(state.termNotice, notice);
   Show(state.doesNotRenewRow,
        !balance.guest && cryptopay::DoesNotRenewShows(balance.subscriptionStoreFamily, notice));
+  Show(state.giftRow, !balance.guest && ShowsGiftDoesNotRenew(balance.subscriptionStoreFamily));
 }
 
 void CryptoAccountRows::ApplyInvoice(cryptopay::CryptoInvoiceView const& view) {
