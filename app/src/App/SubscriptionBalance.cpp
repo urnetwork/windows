@@ -102,6 +102,8 @@ void SubscriptionBalanceStore::Start() {
   StopConfirmation(/*timedOut=*/false);
   snapshot_ = {};
   fetchSettledAtMillis_ = 0;
+  // a refused card payment is the signed-in network's own
+  cardRefusals_.Clear();
 
   // Pro and guest are readable without any network call: they are claims baked
   // into the stored jwt. The sdk's decision reads the Pro claim until the
@@ -142,6 +144,9 @@ void SubscriptionBalanceStore::Stop() {
   proTracker_.reset();
   jwtGuest_ = false;
   serverGuest_ = false;
+  // signed out: the refused card payment was that network's (a report still
+  // asking is dropped with the generation)
+  cardRefusals_.Clear();
   Publish();
   // nothing left to wait for; the waiters ask again (and find no session)
   Settle();
@@ -214,13 +219,85 @@ void SubscriptionBalanceStore::StartConfirmationPolling() {
   ResumeConfirmationPolling();
 }
 
-void SubscriptionBalanceStore::StopConfirmationPolling() {
-  if (!gate_.Confirming() && !timedOut_) return;
-  // refused, not given up on: no timeout to show
+uint64_t SubscriptionBalanceStore::BeginPurchaseAttempt(bool yearly) {
+  const bool hadRefusal = cardRefusals_.Has();
+  const uint64_t attempt = cardRefusals_.BeginAttempt(yearly);
+  if (hadRefusal) Publish();
+  return attempt;
+}
+
+void SubscriptionBalanceStore::ReportCardPayment(uint64_t attempt, std::string const& subscriptionId,
+                                                 std::string const& sessionId) {
+  if (!sdk_.IsLoggedIn()) return;
+  // exactly one id: the payment sheet's subscription, else the checkout session
+  urnet::VerifyStripeCheckoutArgs args;
+  if (!subscriptionId.empty()) {
+    args.subscription_id = subscriptionId;
+  } else if (!sessionId.empty()) {
+    args.session_id = sessionId;
+  } else {
+    return;
+  }
+  const uint32_t generation = generation_;
+  auto queue = queue_;
+  sdk_.api().reportStripePurchase(
+      args, [this, queue, generation, attempt](std::optional<urnet::VerifyStorePurchaseResult> result,
+                                               std::optional<std::string> err) {
+        // an sdk thread, once, after the sdk's retries (about 21 minutes for a
+        // pending hosted checkout): only marshal (the store lives for the
+        // process, owned by AppController)
+        if (err) LogWarn("balance: card payment report failed: {}", *err);
+        const std::string status = result ? result->status : std::string();
+        const bool credited = status == urnet::PurchaseReportStatusCredited ||
+                              status == urnet::PurchaseReportStatusAlreadyCredited;
+        // a refusal says why: the server's code, and the words for it
+        // (incorrect_cvc: the trial's card failed its CVC check)
+        const std::optional<PaymentRefusalText> text =
+            result ? PurchaseReportRefusalFor(*result, "something_went_wrong") : std::nullopt;
+        const std::string code = text ? result->error->code.value_or(std::string()) : std::string();
+        if (text) {
+          LogInfo("balance: card payment report: {}, refused: {}", status, code);
+        } else if (!status.empty()) {
+          LogInfo("balance: card payment report: {}", status);
+        }
+        queue.TryEnqueue([this, generation, attempt, credited, text, code] {
+          if (generation != generation_) return;  // a sign-out superseded the attempt
+          switch (CardReportOutcomeFor(credited, text.has_value())) {
+            case CardReportOutcome::Credited:
+              // the server holds the credit: read the balance now, which also
+              // takes a timed-out wait to the success page
+              ClearCardRefusal();
+              Fetch();
+              return;
+            case CardReportOutcome::Refused:
+              KeepCardRefusal(attempt, code, *text);
+              return;
+            case CardReportOutcome::Confirming:
+              return;  // the confirmation poll decides
+          }
+        });
+      });
+}
+
+void SubscriptionBalanceStore::KeepCardRefusal(uint64_t attempt, std::string const& code,
+                                               PaymentRefusalText const& text) {
+  // an older attempt's, already kept, or a Pro account: nothing to show
+  if (!cardRefusals_.Keep(attempt, code, text, snapshot_.isPro)) return;
+  // Nothing of the attempt will land: its confirmation ends, without the
+  // give-up's "no need to buy again", and the background poll takes over. A
+  // retry's StartConfirmationPolling starts a fresh one with the full budget.
   StopConfirmation(/*timedOut=*/false);
   timedOut_ = false;
   EnsureBackgroundPolling();
   Publish();
+}
+
+void SubscriptionBalanceStore::ClearCardRefusal() {
+  if (cardRefusals_.Clear()) Publish();
+}
+
+void SubscriptionBalanceStore::MarkCardRefusalEventSent(uint64_t attempt) {
+  cardRefusals_.MarkEventSent(attempt);
 }
 
 void SubscriptionBalanceStore::ResumeConfirmationPolling() {
@@ -564,7 +641,10 @@ void SubscriptionBalanceStore::SetOffer(urnet::OnboardingOffer const& offer) {
 }
 
 void SubscriptionBalanceStore::Publish() {
-  if (onChange_) onChange_(snapshot_, {gate_.Confirming(), timedOut_});
+  // Pro, by this purchase or any other: a refused card payment is never shown
+  // to it, now or after a lapse
+  if (snapshot_.isPro) cardRefusals_.Clear();
+  if (onChange_) onChange_(snapshot_, CurrentPoll());
 }
 
 }  // namespace urnw

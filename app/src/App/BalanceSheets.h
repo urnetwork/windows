@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -128,7 +129,9 @@ class DataInfoSheet {
 // The report's answer can also refuse the payment (a yearly trial whose card
 // failed its CVC check: no trial, the card detached): from the waiting or the
 // timeout page the sheet goes back to the products with the refusal and Try
-// again, which starts a new payment sheet or checkout (RefuseCard).
+// again, which starts a new payment sheet or checkout (RefuseCard). The balance
+// store makes the report and keeps the refusal (CardPaymentReport.h), so one
+// that lands after the sheet closed shows the next time Get Pro opens.
 // macOS UpgradeSubscriptionSheet parity, with the checkout leg swapped from
 // StoreKit to a Stripe session (linux UpgradeSheet parity):
 //   - embedded first: the ur.io/checkout bridge page in a WebView2, which
@@ -168,9 +171,11 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
       SubscriptionBalanceStore& balance, CryptoInvoiceStore& invoice);
 
-  // `freeRefresh`: a start connect refused for the balance opened the sheet
-  // (datainfo::UpgradeShowsFreeRefresh), so it says when the free data
-  // refreshes and offers Wait for refresh.
+  // Get Pro: the products page. `freeRefresh`: a start connect refused for the
+  // balance opened the sheet (datainfo::UpgradeShowsFreeRefresh), so it says
+  // when the free data refreshes and offers Wait for refresh. A card payment
+  // refused after an earlier sheet closed (the balance store keeps it) shows
+  // here, with Try again for its plan, unless a confirmation is running.
   static std::shared_ptr<UpgradeSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
       SubscriptionBalanceStore& balance, CryptoInvoiceStore& invoice, bool freeRefresh = false);
@@ -184,9 +189,9 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   // flips the waiting state to success when Pro lands, or to the timeout
   // message when the confirmation poll gives up. The timeout page is not
   // terminal: a later Pro-confirming snapshot (background poll, activation
-  // refresh) flips it to success too, and the card payment report's refusal
-  // takes it back to the products (RefuseCard). A paid crypto invoice waits
-  // the same way.
+  // refresh) flips it to success too, and the card payment refusal the store
+  // keeps (poll.cardRefusal) takes it back to the products (RefuseCard). A
+  // paid crypto invoice waits the same way.
   void OnBalance(BalanceSnapshot const& snapshot, BalancePollState const& poll);
 
   // Crypto-invoice store push, forwarded by the window (UI thread): the
@@ -201,6 +206,13 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
  private:
   UpgradeSheet(SdkHost& sdk, SubscriptionBalanceStore& balance, CryptoInvoiceStore& invoice)
       : sdk_(sdk), balance_(balance), invoice_(invoice) {}
+
+  // The sheet for one opening, on its products, nothing started and no kept
+  // refusal shown: Create shows one; CreateForCheckout starts a new attempt
+  // (which drops it) and CreateForInvoice opens on a coin (which does too).
+  static std::shared_ptr<UpgradeSheet> Make(winrt::Microsoft::UI::Xaml::XamlRoot const& root,
+                                            SdkHost& sdk, SubscriptionBalanceStore& balance,
+                                            CryptoInvoiceStore& invoice, bool freeRefresh);
 
   enum class Page { Products, Checkout, Waiting, Success, TimedOut, Invoice };
 
@@ -271,25 +283,33 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   void HandleCheckoutCallback(std::string const& uri);
   // The embedded leg failed before Stripe's form rendered: retry as hosted.
   void FallBackToHosted();
-  // Hands the server the id this attempt's card payment started with
-  // (Api::reportStripePurchase), so it reads the payment back from Stripe
-  // instead of waiting for the webhook: the payment sheet's subscription, or
-  // the checkout session's. Called where the confirmation poll starts, once
-  // per attempt; the sdk asks again while the answer is pending. A credited
-  // answer reads the balance at once; the page still follows the balance. An
-  // answer that carries an error is a refusal (PaymentRefusal.h
-  // PurchaseReportRefusalFor), which ends this attempt through RefuseCard,
-  // unless a later attempt has begun since.
+  // Hands the balance store the id this attempt's card payment started with,
+  // which it reports (Api::reportStripePurchase) so the server reads the
+  // payment back from Stripe instead of waiting for the webhook: the payment
+  // sheet's subscription, or the checkout session's. Called where the
+  // confirmation poll starts, once per attempt; the sdk asks again while the
+  // answer is pending. A credit reads the balance at once; the page still
+  // follows the balance. A refusal is kept by the store, past this sheet, and
+  // comes back through OnBalance (RefuseCard).
   void ReportCardPayment(bool paySheet);
-  // The server refused the card: the attempt ends here. The confirmation poll
-  // stops, and the waiting or timeout page goes back to the products with the
-  // refusal's line and the button reading Try again (a new payment sheet or
-  // checkout, BeginCheckout). The attempt's ids and report are spent, and a
-  // late hand-back of it is ignored (HandleCheckoutCallback). The creation
-  // stages call it too, for a refusal that ends the attempt
-  // (PaymentRefusalEndsAttempt), instead of falling through to their next
-  // stage. `errorClass` is the purchase event's.
-  void RefuseCard(winrt::hstring const& message, std::string const& errorClass);
+  // A checkout stage refused the card itself (PaymentRefusalEndsAttempt):
+  // kept by the store like the report's refusal and shown now, instead of
+  // falling through to the next stage. One the store does not keep (a Pro
+  // account) still ends the attempt, as an error line.
+  void RefuseCardAtStage(std::string const& code, PaymentRefusalText const& text);
+  // The store's kept refusal (poll.cardRefusal), once per refusal: shown by
+  // RefuseCard unless this sheet already dealt with it.
+  void ApplyCardRefusal(std::optional<CardRefusal> const& refusal);
+  // The server refused the card: the attempt ends here. The waiting or timeout
+  // page goes back to the products (a sheet opening shows it there) with the
+  // refusal's line, the refused attempt's plan with the card, and the button
+  // reading Try again (a new payment sheet or checkout, BeginCheckout). The
+  // attempt's ids and report are spent, a late hand-back of it is ignored
+  // (HandleCheckoutCallback), its purchase.failed goes once, and the line is
+  // announced (now, or when the dialog opens).
+  void RefuseCard(CardRefusal const& refusal);
+  // The error line, to a screen reader (a live region, Build).
+  void AnnounceCheckoutError();
   void TeardownWebView();
   void ShowPage(Page page);
   void ShowCheckoutError(winrt::hstring const& message);
@@ -341,13 +361,18 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   std::string paySheetSubscriptionId_;
   std::string checkoutSessionId_;
   bool cardPaymentReported_ = false;  // ReportCardPayment ran for this attempt
-  // the card attempt (BeginCheckout counts them): a report's refusal ends
-  // only the attempt it was made for
-  uint32_t cardAttempt_ = 0;
-  // the last card attempt was refused (RefuseCard): the button reads Try
-  // again, and a late hand-back of that attempt is ignored, until the next
-  // attempt, or another plan or method is picked
+  // this sheet's latest card attempt, as the balance store numbered it
+  // (BeginPurchaseAttempt): the store keeps only the newest attempt's refusal
+  uint64_t cardAttempt_ = 0;
+  // a card refusal is on the products (RefuseCard): the button reads Try
+  // again, and a late hand-back of the refused attempt is ignored, until the
+  // next attempt, or another plan or method is picked
   bool cardRefused_ = false;
+  // the kept refusal this sheet dealt with (ApplyCardRefusal), so a balance
+  // push that carries it again shows nothing new
+  uint64_t refusalAttemptShown_ = 0;
+  bool opened_ = false;          // the dialog is open (Opened)
+  bool announceAtOpen_ = false;  // a refusal shown before the dialog opened
 
   // ---- crypto (crypto-pay CONTRACT §6) ----
   PaymentMethodRow methods_;  // Card, then the sdk's coin tabs, above the button

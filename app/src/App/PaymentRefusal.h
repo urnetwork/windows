@@ -1,8 +1,8 @@
 // What the app's own payment screens say when the server refuses: the upgrade
 // sheet's hosted checkout session (BalanceSheets.cpp UpgradeSheet::RequestSession,
 // POST /stripe/create-checkout-session), the upgrade sheet's card payment
-// report (UpgradeSheet::ReportCardPayment, POST /subscription/verify-stripe-checkout)
-// and Manage subscription in Settings (SettingsPage.cpp
+// report (made and kept by SubscriptionBalanceStore::ReportCardPayment, POST
+// /subscription/verify-stripe-checkout) and Manage subscription in Settings (SettingsPage.cpp
 // SettingsPage::OpenCustomerPortal, POST /stripe/customer-portal).
 // The rule is ur.io's (src/lib/paymentFailure.js):
 //
@@ -77,22 +77,18 @@ inline std::wstring PaymentRefusalMessage(std::wstring line, std::wstring_view d
 }
 
 // ---- the card payment report ------------------------------------------------
-// The upgrade sheet reports a finished card payment by its Stripe id (the
+// The balance store reports a finished card payment by its Stripe id (the
 // sdk's Api::reportStripePurchase) and is called back once, with the server's
-// last answer. Any answer that carries an error is a refusal, whatever its
-// status (the Linux app's rule, and the sdk's: it stops asking at such an
-// answer): the server will never credit the purchase, and says why
-// (incorrect_cvc today, beside status invalid). The balance never carries it
-// (a refused trial just never turns Pro), so the sheet ends the attempt
-// itself: it stops the confirmation poll and goes back to its products with
-// the refusal and Try again, which opens a new payment form. incorrect_cvc
-// reads its own line; any other code reads the screen's own line with the
-// server's words under it. An answer without an error (pending, credited, an
-// older server's invalid) leaves the wait to the confirmation poll as before.
+// last answer. An answer that carries an error is a refusal unless it is a
+// credit, whatever its status (CardPaymentReport.h CardReportOutcomeFor, the
+// Linux app's rule; the sdk stops asking at such an answer): the server will
+// never credit the purchase, and says why (incorrect_cvc today, beside status
+// invalid). incorrect_cvc reads its own line; any other code reads the
+// screen's own line with the server's words under it.
 //
-// The words for the sdk's answer (a urnet::VerifyStorePurchaseResult, with an
-// optional urnet::OnboardingError beside its status), or none when the answer
-// is not a refusal.
+// The words for the error the sdk's answer carries (a
+// urnet::VerifyStorePurchaseResult, with an optional urnet::OnboardingError
+// beside its status), or none when it carries none.
 template <typename SdkResult>
 std::optional<PaymentRefusalText> PurchaseReportRefusalFor(const SdkResult& result,
                                                            std::string_view screenKey) {
