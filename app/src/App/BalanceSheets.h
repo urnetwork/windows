@@ -125,6 +125,10 @@ class DataInfoSheet {
 // balance store's confirmation poll runs → purchase-success (or timeout) state.
 // The finished card payment is also reported to the server by its Stripe id
 // (ReportCardPayment), so a late webhook no longer keeps a paid plan on Free.
+// The report's answer can also refuse the payment (a yearly trial whose card
+// failed its CVC check: no trial, the card detached): from the waiting or the
+// timeout page the sheet goes back to the products with the refusal and Try
+// again, which starts a new payment sheet or checkout (RefuseCard).
 // macOS UpgradeSubscriptionSheet parity, with the checkout leg swapped from
 // StoreKit to a Stripe session (linux UpgradeSheet parity):
 //   - embedded first: the ur.io/checkout bridge page in a WebView2, which
@@ -180,7 +184,9 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   // flips the waiting state to success when Pro lands, or to the timeout
   // message when the confirmation poll gives up. The timeout page is not
   // terminal: a later Pro-confirming snapshot (background poll, activation
-  // refresh) flips it to success too. A paid crypto invoice waits the same way.
+  // refresh) flips it to success too, and the card payment report's refusal
+  // takes it back to the products (RefuseCard). A paid crypto invoice waits
+  // the same way.
   void OnBalance(BalanceSnapshot const& snapshot, BalancePollState const& poll);
 
   // Crypto-invoice store push, forwarded by the window (UI thread): the
@@ -208,8 +214,8 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   // The selection's consequences: monthly locked to Card for a coin, the
   // button's words and the fine print.
   void ApplyMethod(std::string const& method);
-  // The button's words for the method and plan: Card's trial or subscribe,
-  // a coin's "Pay with {method}".
+  // The button's words for the method and plan: Card's trial or subscribe
+  // (Try again after the card was refused), a coin's "Pay with {method}".
   winrt::hstring CtaLabel() const;
   // One invoice at a time (§6.2.1): the saved invoice in progress (open, its
   // status not unknown), of any coin, shown on the Invoice page. False, and
@@ -270,8 +276,20 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   // instead of waiting for the webhook: the payment sheet's subscription, or
   // the checkout session's. Called where the confirmation poll starts, once
   // per attempt; the sdk asks again while the answer is pending. A credited
-  // answer reads the balance at once; the page still follows the balance.
+  // answer reads the balance at once; the page still follows the balance. An
+  // answer that carries an error is a refusal (PaymentRefusal.h
+  // PurchaseReportRefusalFor), which ends this attempt through RefuseCard,
+  // unless a later attempt has begun since.
   void ReportCardPayment(bool paySheet);
+  // The server refused the card: the attempt ends here. The confirmation poll
+  // stops, and the waiting or timeout page goes back to the products with the
+  // refusal's line and the button reading Try again (a new payment sheet or
+  // checkout, BeginCheckout). The attempt's ids and report are spent, and a
+  // late hand-back of it is ignored (HandleCheckoutCallback). The creation
+  // stages call it too, for a refusal that ends the attempt
+  // (PaymentRefusalEndsAttempt), instead of falling through to their next
+  // stage. `errorClass` is the purchase event's.
+  void RefuseCard(winrt::hstring const& message, std::string const& errorClass);
   void TeardownWebView();
   void ShowPage(Page page);
   void ShowCheckoutError(winrt::hstring const& message);
@@ -323,6 +341,13 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   std::string paySheetSubscriptionId_;
   std::string checkoutSessionId_;
   bool cardPaymentReported_ = false;  // ReportCardPayment ran for this attempt
+  // the card attempt (BeginCheckout counts them): a report's refusal ends
+  // only the attempt it was made for
+  uint32_t cardAttempt_ = 0;
+  // the last card attempt was refused (RefuseCard): the button reads Try
+  // again, and a late hand-back of that attempt is ignored, until the next
+  // attempt, or another plan or method is picked
+  bool cardRefused_ = false;
 
   // ---- crypto (crypto-pay CONTRACT §6) ----
   PaymentMethodRow methods_;  // Card, then the sdk's coin tabs, above the button

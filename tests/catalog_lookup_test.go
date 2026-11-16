@@ -91,8 +91,9 @@ var catalogLookupFunctionKinds = map[string]catalogLookupKind{
 	"refresh":       catalogLookupPlural,
 
 	// a refusal's line, with the screen's own line as the fallback
-	// (PaymentRefusal.h)
-	"PaymentRefusalTextFor": catalogLookupPlain,
+	// (PaymentRefusal.h), and the same for the card payment report's answer
+	"PaymentRefusalTextFor":    catalogLookupPlain,
+	"PurchaseReportRefusalFor": catalogLookupPlain,
 	// the message the sdk names for a Solana wallet failure, with the generic
 	// wallet failure as the fallback (SolanaWalletPresentation.h)
 	"FailureTextFor": catalogLookupPlain,

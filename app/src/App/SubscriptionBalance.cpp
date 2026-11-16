@@ -214,6 +214,15 @@ void SubscriptionBalanceStore::StartConfirmationPolling() {
   ResumeConfirmationPolling();
 }
 
+void SubscriptionBalanceStore::StopConfirmationPolling() {
+  if (!gate_.Confirming() && !timedOut_) return;
+  // refused, not given up on: no timeout to show
+  StopConfirmation(/*timedOut=*/false);
+  timedOut_ = false;
+  EnsureBackgroundPolling();
+  Publish();
+}
+
 void SubscriptionBalanceStore::ResumeConfirmationPolling() {
   // hidden or unfocused: the gate holds the budget until it opens again
   if (!started_ || !gate_.Running()) return;

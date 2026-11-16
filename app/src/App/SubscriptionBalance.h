@@ -189,6 +189,12 @@ class SubscriptionBalanceStore {
   // budget pauses with the poll (SetVisible, SetFocused), so a slow browser
   // checkout can never burn it down to a false TimedOut.
   void StartConfirmationPolling();
+  // The server refused the purchase being confirmed (the card payment
+  // report's refusal, PaymentRefusal.h): nothing will land, so the
+  // confirmation ends now, its give-up with it, and the background poll takes
+  // over. The retry's StartConfirmationPolling then starts a fresh one with
+  // the full budget. Publishes; a no-op when nothing is being confirmed.
+  void StopConfirmationPolling();
   void ClearTimeout();
 
   BalanceSnapshot Current() const { return snapshot_; }
