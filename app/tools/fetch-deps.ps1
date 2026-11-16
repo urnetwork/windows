@@ -27,6 +27,11 @@ $thirdParty = Join-Path $PSScriptRoot "..\third_party"
 # --- Wintun (pinned like Mullvad: verify SHA256 + Authenticode signer) ---------
 # Pins (verify against wintun.net before bumping the version):
 $WintunSha256 = "07C256185D6EE3652E09FA55C0B673E2624B565E02C4B9091C79CA7D2F24EF51"
+# Each architecture's wintun.dll inside that zip, as Get-FileHash writes them
+# (QD-823). ur tun (sidecar/cli/tun_wintun.go, defaultUrWintunPins) holds the
+# DLL it loads to the same two values, so bump them together.
+$WintunDllSha256Amd64 = "E5DA8447DC2C320EDC0FC52FA01885C103DE8C118481F683643CACC3220DAFCE"
+$WintunDllSha256Arm64 = "F7BA89005544BE9D85231A9E0D5F23B2D15B3311667E2DAD0DEBD344918A3F80"
 $WintunSignerThumbprint = "DF98E075A012ED8C86FBCF14854B8F9555CB3D45"
 
 $wintunDir = Join-Path $thirdParty "wintun"
@@ -94,10 +99,15 @@ $architectures = foreach ($platform in $Platforms) {
   if ($platform -eq "ARM64") { "arm64" } else { "amd64" }
 }
 foreach ($architecture in $architectures) {
+  $wintunDll = "$wintunExtract\wintun\bin\$architecture\wintun.dll"
+  $expectedDllHash = if ($architecture -eq "arm64") { $WintunDllSha256Arm64 } else { $WintunDllSha256Amd64 }
+  $actualDllHash = (Get-FileHash -Algorithm SHA256 $wintunDll).Hash
+  if ($actualDllHash -ne $expectedDllHash) {
+    throw "Wintun $architecture dll SHA256 mismatch: expected $expectedDllHash, got $actualDllHash"
+  }
   $wintunArchitectureDir = Join-Path $wintunDir "bin\$architecture"
   New-Item -ItemType Directory -Force -Path $wintunArchitectureDir | Out-Null
-  Copy-Item "$wintunExtract\wintun\bin\$architecture\wintun.dll" `
-    (Join-Path $wintunArchitectureDir "wintun.dll") -Force
+  Copy-Item $wintunDll (Join-Path $wintunArchitectureDir "wintun.dll") -Force
 }
 
 # Preserve Wintun's license next to the vendored DLL for third-party attribution
@@ -111,7 +121,7 @@ if ($wintunLicense) {
 } else {
   Invoke-WebRequest -Uri "https://raw.githubusercontent.com/WireGuard/wintun/$WintunVersion/prebuilt-binaries-license.txt" -OutFile "$wintunDir\wintun-license.txt"
 }
-Write-Host "Wintun OK (signer + hash verified)."
+Write-Host "Wintun OK (signer, zip hash and dll hashes verified)."
 
 # --- zxing-cpp (QR decode for the extender import sheet) -----------------------
 # Source release, pinned by sha256 and built HERE rather than pulled as a
