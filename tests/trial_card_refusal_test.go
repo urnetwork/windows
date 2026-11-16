@@ -11,14 +11,16 @@ import (
 // yearly trial whose card fails its CVC check is refused, and the card payment
 // report (POST /subscription/verify-stripe-checkout, the sdk's
 // Api::reportStripePurchase) answers status invalid with error
-// {code: incorrect_cvc, message}. Any answer that carries an error is a
-// refusal (the Linux app's rule). The sdk stops asking at it, and the balance
-// never shows it, so the upgrade sheet ends the attempt itself: the
+// {code: incorrect_cvc, message}. An answer that carries an error is a
+// refusal unless it is a credit (the Linux app's rule). The sdk stops asking
+// at it, and the balance never shows it, so the attempt ends here: the
 // confirmation poll stops, and the waiting page, or the timeout page a hosted
 // checkout's late answer finds, goes back to the products with the refusal's
 // line and the button reading Try again, which starts a new payment sheet or
-// checkout. The rule is PaymentRefusal.h's (TestPaymentRefusalText runs it);
-// the sheet cannot be built off Windows, so its use of the rule is read here.
+// checkout. The balance store makes the report and keeps the refusal past the
+// sheet (card_payment_report_test.go); the sheet shows it. The words are
+// PaymentRefusal.h's (TestPaymentRefusalText runs them); the sheet cannot be
+// built off Windows, so its use of them is read here.
 
 // The upgrade sheet's code without comments and whitespace, by definition.
 func trialCardSheetBody(t *testing.T, signature string) string {
@@ -27,9 +29,9 @@ func trialCardSheetBody(t *testing.T, signature string) string {
 	return cryptoPayCode(definitionBody(t, "BalanceSheets.cpp", sheets, signature))
 }
 
-// The report's answer: a refusal ends the attempt it was made for, before the
-// credit check; a credit still reads the balance.
-func TestUpgradeSheetReadsTheCardPaymentReportsRefusal(t *testing.T) {
+// The sheet hands the attempt's Stripe id to the store, which reports it: the
+// sheet makes no report of its own and never reads the server's words itself.
+func TestUpgradeSheetReportsTheCardPaymentThroughTheStore(t *testing.T) {
 	sheets := readAppSource(t, "BalanceSheets.cpp")
 	for _, want := range []string{
 		`#include "PaymentRefusal.h"`,
@@ -40,44 +42,49 @@ func TestUpgradeSheetReadsTheCardPaymentReportsRefusal(t *testing.T) {
 			t.Errorf("BalanceSheets.cpp: missing %s", want)
 		}
 	}
+	if strings.Contains(stripComments(sheets), "reportStripePurchase(") {
+		t.Error("BalanceSheets.cpp reports the card payment itself; the balance store does, so its refusal outlives the sheet")
+	}
 	report := trialCardSheetBody(t, "void UpgradeSheet::ReportCardPayment(")
 	requireCryptoPayOrder(t, "UpgradeSheet::ReportCardPayment", report,
+		"if(cardPaymentReported_||!sdk_.IsLoggedIn())return;",
+		"conststd::string&id=paySheet?paySheetSubscriptionId_:checkoutSessionId_;if(id.empty())return;",
 		"cardPaymentReported_=true;",
-		"constuint32_tattempt=cardAttempt_;",
-		"sdk_.api().reportStripePurchase(",
-		`result?PurchaseReportRefusalFor(*result,"something_went_wrong"):std::nullopt;`,
-		"queue.TryEnqueue([weak,attempt,status,refusal,refusalCode]{",
-		"if(refusal){if(attempt!=self->cardAttempt_)return;self->RefuseCard(hstring{PaymentRefusalMessage(Localized(refusal->key),Widen(refusal->detail))},",
-		"return;}",
-		"self->balance_.Refresh();")
-	// the server's words reach the line only through PaymentRefusal.h
+		"balance_.ReportCardPayment(cardAttempt_,paySheet?id:std::string(),paySheet?std::string():id);")
 	if strings.Contains(report, "error->message") {
 		t.Error("UpgradeSheet::ReportCardPayment reads the refusal's message itself")
 	}
 }
 
 // RefuseCard: only an attempt still on its way, from the products page (a
-// creation stage), Waiting, or TimedOut; the products come back with the line
-// and Try again, the attempt's ids and report spent, and then the poll stops
-// (its balance push finds the products, not a wait to decide); the line is
-// announced. A late hand-back of the refused attempt waits for nothing.
+// creation stage, or a sheet opening on a kept refusal), Waiting, or TimedOut;
+// the products come back on the refused attempt's plan with the card, the line
+// and Try again; the attempt's ids and report are spent; its purchase.failed
+// goes once; the line is announced now, or once the dialog is up. A late
+// hand-back of the refused attempt waits for nothing.
 func TestUpgradeSheetRefusedCardGoesBackToTheProducts(t *testing.T) {
 	refuse := trialCardSheetBody(t, "void UpgradeSheet::RefuseCard(")
 	requireCryptoPayOrder(t, "UpgradeSheet::RefuseCard", refuse,
+		"refusalAttemptShown_=refusal.attempt;",
 		"if(closed_||(page_!=Page::Products&&page_!=Page::Waiting&&page_!=Page::TimedOut)){return;}",
-		`if(!purchaseEmitted_){EmitPurchase("failed",errorClass);purchaseEmitted_=true;}`,
 		"ShowPage(Page::Products);",
-		"cardRefused_=true;",
-		"paySheetSubscriptionId_.clear();checkoutSessionId_.clear();cardPaymentReported_=false;",
-		"ShowCheckoutError(message);",
-		"balance_.StopConfirmationPolling();",
+		"plans_.Select(refusal.yearly);wantedMethod_=cryptopay::kMethodCard;methods_.Select(cryptopay::kMethodCard);",
+		`if(!refusal.eventSent){EmitPurchase("failed",refusal.code.empty()?std::string("refused"):refusal.code);balance_.MarkCardRefusalEventSent(refusal.attempt);}`,
+		"purchaseEmitted_=true;",
+		"cardRefused_=true;paySheetSubscriptionId_.clear();checkoutSessionId_.clear();cardPaymentReported_=false;",
+		"ShowCheckoutError(hstring{PaymentRefusalMessage(Localized(refusal.text.key),Widen(refusal.text.detail))});",
 		"ApplyPrices();",
 		"subscribeButton_.Content(winrt::box_value(CtaLabel()));",
+		"if(opened_){AnnounceCheckoutError();}else{announceAtOpen_=true;}")
+	for _, unwanted := range []string{"Page::Success", "ShowPage(Page::Waiting)", "StopConfirmationPolling"} {
+		if strings.Contains(refuse, unwanted) {
+			t.Errorf("UpgradeSheet::RefuseCard: %s (it leaves Success alone, never waits again, and the store ends the confirmation)", unwanted)
+		}
+	}
+	announce := trialCardSheetBody(t, "void UpgradeSheet::AnnounceCheckoutError(")
+	requireCryptoPayOrder(t, "UpgradeSheet::AnnounceCheckoutError", announce,
 		"peers::FrameworkElementAutomationPeer::FromElement(checkoutErrorText_)",
 		"peer.RaiseAutomationEvent(peers::AutomationEvents::LiveRegionChanged);")
-	if strings.Contains(refuse, "Page::Success") || strings.Contains(refuse, "ShowPage(Page::Waiting)") {
-		t.Error("UpgradeSheet::RefuseCard must leave Success alone and never wait again")
-	}
 	callback := trialCardSheetBody(t, "void UpgradeSheet::HandleCheckoutCallback(")
 	requireCryptoPayOrder(t, "UpgradeSheet::HandleCheckoutCallback", callback,
 		"if(complete){if(cardRefused_)return;",
@@ -89,9 +96,12 @@ func TestUpgradeSheetRefusedCardGoesBackToTheProducts(t *testing.T) {
 	requireCryptoPay(t, "UpgradeSheet::Build", build,
 		// the line is a live region, which RefuseCard announces
 		"AutomationProperties::SetLiveSetting(checkoutErrorText_,winrt::Microsoft::UI::Xaml::Automation::Peers::AutomationLiveSetting::Assertive);",
-		// another plan or method is a fresh start, not a Try again
-		"self->cardRefused_=false;self->subscribeButton_.Content(winrt::box_value(self->CtaLabel()));",
-		"self->checkoutErrorText_.Visibility(Visibility::Collapsed);self->cardRefused_=false;self->ApplyMethod(method);")
+		// another plan or method is a fresh start, not a Try again, and the
+		// store forgets the refusal
+		"self->cardRefused_=false;self->balance_.ClearCardRefusal();self->subscribeButton_.Content(winrt::box_value(self->CtaLabel()));",
+		"self->checkoutErrorText_.Visibility(Visibility::Collapsed);self->cardRefused_=false;self->balance_.ClearCardRefusal();self->ApplyMethod(method);",
+		// a refusal shown as the sheet was built is announced once it is up
+		"self->opened_=true;if(self->announceAtOpen_){self->announceAtOpen_=false;self->AnnounceCheckoutError();}")
 
 	cta := trialCardSheetBody(t, "hstring UpgradeSheet::CtaLabel(")
 	requireCryptoPayOrder(t, "UpgradeSheet::CtaLabel", cta,
@@ -99,59 +109,44 @@ func TestUpgradeSheetRefusedCardGoesBackToTheProducts(t *testing.T) {
 		`if(cardRefused_)returnLoc("try_again");`,
 		"returnPlanPicker::CtaLabel(plans_.Yearly());")
 
-	// Try again is the buy button's BeginCheckout: a new attempt, with a new
-	// payment sheet or checkout session, and its own report
+	// Try again is the buy button's BeginCheckout: a new attempt, numbered by
+	// the store (which drops the kept refusal), with a new payment sheet or
+	// checkout session and its own report
 	begin := trialCardSheetBody(t, "void UpgradeSheet::BeginCheckout(")
 	requireCryptoPayOrder(t, "UpgradeSheet::BeginCheckout", begin,
 		"if(checkingOut_||!sdk_.IsLoggedIn())return;",
 		"cardPaymentReported_=false;",
-		"++cardAttempt_;",
+		"cardAttempt_=balance_.BeginPurchaseAttempt(plans_.Yearly());",
 		"cardRefused_=false;",
 		"checkoutErrorText_.Visibility(Visibility::Collapsed);")
 }
 
 // A refusal of the card itself is final for the attempt at every stage: the
 // payment sheet's does not fall through to the embedded checkout, nor the
-// embedded session's to the hosted one. A guest's refusal still comes first.
+// embedded session's to the hosted one. It is kept by the store like the
+// report's (so it outlives the sheet) and shown now; one the store does not
+// keep still ends the attempt. A guest's refusal still comes first.
 func TestUpgradeSheetCardRefusalNeverFallsThrough(t *testing.T) {
 	sheet := trialCardSheetBody(t, "void UpgradeSheet::RequestPaymentSheet(")
 	requireCryptoPayOrder(t, "UpgradeSheet::RequestPaymentSheet", sheet,
 		"PaymentRefusalEndsAttempt(refusalCode)?std::optional<PaymentRefusalText>(PaymentRefusalTextFor(*result->error,\"something_went_wrong\")):std::nullopt;",
 		"self->RefuseForGuest();return;}",
-		"if(endsAttempt){self->RefuseCard(hstring{PaymentRefusalMessage(Localized(endsAttempt->key),Widen(endsAttempt->detail))},refusalCode);return;}",
+		"if(endsAttempt){self->RefuseCardAtStage(refusalCode,*endsAttempt);return;}",
 		"if(clientSecret.empty()||publishableKey.empty()){self->RequestSession(true);return;}",
 		"self->OpenPaySheet(clientSecret,publishableKey);")
 
 	session := trialCardSheetBody(t, "void UpgradeSheet::RequestSession(")
 	requireCryptoPayOrder(t, "UpgradeSheet::RequestSession", session,
 		"self->RefuseForGuest();return;}",
-		"if(refused&&PaymentRefusalEndsAttempt(refusalCode)){self->RefuseCard(hstring{PaymentRefusalMessage(Localized(refusalText.key),Widen(refusalText.detail))},refusalCode);return;}",
+		"if(refused&&PaymentRefusalEndsAttempt(refusalCode)){self->RefuseCardAtStage(refusalCode,refusalText);return;}",
 		"if(embedded){",
 		"self->RequestSession(false);",
 		"self->LaunchHosted(url);")
-}
 
-// The confirmation the refused attempt started ends with it: no give-up to
-// show, and the background poll takes over, so the retry's
-// StartConfirmationPolling starts afresh with the full budget.
-func TestBalanceStoreStopsTheConfirmationOnARefusal(t *testing.T) {
-	if !strings.Contains(readAppSource(t, "SubscriptionBalance.h"), "void StopConfirmationPolling();") {
-		t.Error("SubscriptionBalance.h does not declare StopConfirmationPolling")
-	}
-	store := stripComments(readAppSource(t, "SubscriptionBalance.cpp"))
-	stop := cryptoPayCode(definitionBody(t, "SubscriptionBalance.cpp", store,
-		"void SubscriptionBalanceStore::StopConfirmationPolling("))
-	requireCryptoPayOrder(t, "SubscriptionBalanceStore::StopConfirmationPolling", stop,
-		"if(!gate_.Confirming()&&!timedOut_)return;",
-		"StopConfirmation(false);",
-		"timedOut_=false;",
-		"EnsureBackgroundPolling();",
-		"Publish();")
-	// StartConfirmationPolling still keeps a running confirmation
-	start := cryptoPayCode(definitionBody(t, "SubscriptionBalance.cpp", store,
-		"void SubscriptionBalanceStore::StartConfirmationPolling("))
-	requireCryptoPayOrder(t, "SubscriptionBalanceStore::StartConfirmationPolling", start,
-		"if(gate_.Confirming())return;",
-		"timedOut_=false;",
-		"gate_.Start(NowMillis());")
+	stage := trialCardSheetBody(t, "void UpgradeSheet::RefuseCardAtStage(")
+	requireCryptoPayOrder(t, "UpgradeSheet::RefuseCardAtStage", stage,
+		"balance_.KeepCardRefusal(cardAttempt_,code,text);",
+		"conststd::optional<CardRefusal>kept=balance_.CurrentPoll().cardRefusal;",
+		"if(kept&&kept->attempt==cardAttempt_){ApplyCardRefusal(kept);return;}",
+		"ShowCheckoutError(hstring{PaymentRefusalMessage(Localized(text.key),Widen(text.detail))});")
 }

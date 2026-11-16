@@ -9,6 +9,10 @@
 // checkout leaves the window visible behind the browser, so the clock must
 // also stop on focus loss while the user is off paying.
 //
+// It also makes the card payment report and keeps the newest attempt's refusal
+// past the upgrade sheet (CardPaymentReport.h), so a refusal that lands after
+// the buyer closed the sheet shows the next time Get Pro opens.
+//
 // Pro is the sdk's decision (urnet::SubscriptionProTracker): readable OFFLINE
 // from the stored jwt's claim, which seeds the snapshot at login, and the
 // server's answer from the first fetch on. When the two disagree (an upgrade
@@ -37,6 +41,7 @@
 
 #include <winrt/Microsoft.UI.Dispatching.h>
 
+#include "CardPaymentReport.h"
 #include "ConfirmationPollGate.h"
 #include "CryptoPayPresentation.h"
 #include "PaymentPastDue.h"
@@ -101,6 +106,10 @@ struct BalancePollState {
   // slow payment webhook). The purchase is still likely to land: the background
   // poll and the next launch pick it up. The UI must say so instead of spinning.
   bool timedOut = false;
+  // The newest purchase attempt's refused card payment (CardPaymentReport.h),
+  // kept past the upgrade sheet: an open sheet shows it at once, and the next
+  // Get Pro shows it on its products with Try again. Never for a Pro account.
+  std::optional<CardRefusal> cardRefusal;
 };
 
 // The referral program's numbers. The server's pro.yml is the single source of
@@ -189,16 +198,43 @@ class SubscriptionBalanceStore {
   // budget pauses with the poll (SetVisible, SetFocused), so a slow browser
   // checkout can never burn it down to a false TimedOut.
   void StartConfirmationPolling();
-  // The server refused the purchase being confirmed (the card payment
-  // report's refusal, PaymentRefusal.h): nothing will land, so the
-  // confirmation ends now, its give-up with it, and the background poll takes
-  // over. The retry's StartConfirmationPolling then starts a fresh one with
-  // the full budget. Publishes; a no-op when nothing is being confirmed.
-  void StopConfirmationPolling();
   void ClearTimeout();
 
+  // ---- the card payment report and its refusal (CardPaymentReport.h) --------
+  // Made and kept here, not by the upgrade sheet: the sheet is built for each
+  // opening, and the buyer can close it while the report is still asking (a
+  // hosted checkout's report retries for about 21 minutes).
+  //
+  // A new purchase attempt: a checkout (the buy button, Try again, one an
+  // onboarding page starts) or a coin's invoice. Any earlier attempt's refusal
+  // goes. `yearly` is the attempt's plan. Returns its id. Publishes when a
+  // refusal went.
+  uint64_t BeginPurchaseAttempt(bool yearly);
+  // Reports the card payment of `attempt` by its Stripe id
+  // (Api::reportStripePurchase): the payment sheet's subscription, else the
+  // checkout session. A credit reads the balance now (and drops a kept
+  // refusal). A refusal is kept when it is the newest attempt's
+  // (KeepCardRefusal).
+  void ReportCardPayment(uint64_t attempt, std::string const& subscriptionId,
+                         std::string const& sessionId);
+  // A refusal of `attempt`, from its report or a checkout stage the sheet
+  // asked. Kept only for the newest attempt of a Free account, and then
+  // nothing of the attempt will land: its confirmation ends, without the
+  // timeout's give-up, the background poll takes over, and the refusal is
+  // published (BalancePollState::cardRefusal) until Try again, a credit,
+  // another plan or method, Pro or a sign-out.
+  void KeepCardRefusal(uint64_t attempt, std::string const& code, PaymentRefusalText const& text);
+  // Another plan or method was picked on the sheet: the kept refusal goes.
+  // Publishes when there was one.
+  void ClearCardRefusal();
+  // The kept refusal's purchase.failed event was sent, by whichever sheet
+  // showed it first.
+  void MarkCardRefusalEventSent(uint64_t attempt);
+
   BalanceSnapshot Current() const { return snapshot_; }
-  BalancePollState CurrentPoll() const { return {gate_.Confirming(), timedOut_}; }
+  BalancePollState CurrentPoll() const {
+    return {gate_.Confirming(), timedOut_, cardRefusals_.Shown(snapshot_.isPro)};
+  }
   // A freshly issued offer (POST /onboarding/offer/issue) lands here so every
   // plan surface prints it before the next poll. Publishes.
   void SetOffer(urnet::OnboardingOffer const& offer);
@@ -283,6 +319,8 @@ class SubscriptionBalanceStore {
   // whether a confirmation runs, and its give-up budget in ACTIVE polling time
   ConfirmationPollGate gate_{kConfirmationBudgetMillis};
   uint32_t generation_ = 0;      // drops fetch results from a superseded session
+  // the purchase attempts, and the newest one's refused card payment
+  CardRefusalKeeper cardRefusals_;
 };
 
 }  // namespace urnw
