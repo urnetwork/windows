@@ -7,6 +7,7 @@
 #include "CheckoutBridgeError.h"
 #include "CheckoutSessionMode.h"
 #include "PaymentRefusal.h"
+#include "PaymentWindow.h"
 
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -110,6 +111,23 @@ bool WebView2RuntimeAvailable() {
                 .empty();
   } catch (...) {
     return false;
+  }
+}
+
+// A window the pay page or the checkout bridge opens (PaymentWindow.h). One
+// of Stripe's to authenticate the card (3D Secure) stays in the app: left
+// unhandled, WebView2 opens it on this profile with window.opener kept, so the
+// challenge's answer reaches the payment page. Every other window
+// (target=_blank links: Stripe's terms and privacy) goes to the system browser.
+void RouteNewWindow(
+    winrt::Microsoft::Web::WebView2::Core::CoreWebView2NewWindowRequestedEventArgs const& args) {
+  if (PaymentWindowRouteFor(urnw::Narrow(std::wstring_view{args.Uri()})) == PaymentWindowRoute::InApp) {
+    return;
+  }
+  args.Handled(true);
+  try {
+    winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
+  } catch (...) {
   }
 }
 
@@ -1258,14 +1276,8 @@ winrt::fire_and_forget UpgradeSheet::OpenPaySheet(std::string clientSecret,
     co_await self->webview_.EnsureCoreWebView2Async(environment);
     if (generation != self->webviewGeneration_ || !self->webview_) co_return;
     auto core = self->webview_.CoreWebView2();
-    core.NewWindowRequested([](auto const&, auto const& args) {
-      // target=_blank links (Stripe's terms/privacy): the system browser
-      args.Handled(true);
-      try {
-        winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
-      } catch (...) {
-      }
-    });
+    // a 3D Secure window of Stripe's stays in the app; links go to the system browser
+    core.NewWindowRequested([](auto const&, auto const& args) { RouteNewWindow(args); });
     // the page's posted {type:"ur-pay"} message reaches WebMessageReceived
     // through window.chrome.webview; the bridge forwards a plain postMessage
     co_await core.AddScriptToExecuteOnDocumentCreatedAsync(hstring{kPayMessageBridge});
@@ -1516,14 +1528,8 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
     // alive across the await, the generation says whether it still wants us
     if (generation != self->webviewGeneration_ || !self->webview_) co_return;
     auto core = self->webview_.CoreWebView2();
-    core.NewWindowRequested([](auto const&, auto const& args) {
-      // target=_blank links (Stripe's terms/privacy): the system browser
-      args.Handled(true);
-      try {
-        winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
-      } catch (...) {
-      }
-    });
+    // a 3D Secure window of Stripe's stays in the app; links go to the system browser
+    core.NewWindowRequested([](auto const&, auto const& args) { RouteNewWindow(args); });
     core.Navigate(H(url));
   } catch (...) {
     // WebView2 init failed even though the runtime probe passed (disk, group
