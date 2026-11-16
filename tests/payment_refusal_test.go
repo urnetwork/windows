@@ -23,6 +23,7 @@ var paymentRefusalCodeKeys = []string{
 	"site_payment_error_already_subscribed",
 	"site_payment_error_plan_unavailable",
 	"checkout_error_unavailable",
+	"checkout_error_incorrect_cvc",
 	"site_subscription_error_no_customer",
 	"site_subscription_error_store_unavailable",
 }
@@ -31,6 +32,12 @@ var paymentRefusalCodeKeys = []string{
 // message (sdk fix/app-checkout-error-codes).
 var paymentRefusalPortalCodePattern = regexp.MustCompile(
 	`struct StripeCreateCustomerPortalError \{\s*std::optional<std::string> code;`)
+
+// The generated header's card payment report answer with the refusal beside
+// its status (sdk feature/trial-card-check): a member line of the struct, in
+// any position (each starts with a tab; the closing "};" does not).
+var paymentRefusalReportErrorPattern = regexp.MustCompile(
+	`struct VerifyStorePurchaseResult \{\r?\n(?:\t[^\n]*\n)*\tstd::optional<OnboardingError> error;`)
 
 // Compile the payment refusal spec (app/tools/payment-refusal-tests.cpp,
 // header-only). extra adds compiler arguments ahead of the source.
@@ -79,12 +86,13 @@ func TestPaymentRefusalText(t *testing.T) {
 // server's json. The header is git-ignored (fetch-deps unpacks it into
 // app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE names another
 // directory) and needs nlohmann/json, so a host without them skips this, and
-// so does a header whose billing portal refusal has no code yet.
+// so does a header whose billing portal refusal has no code yet, or whose card
+// payment report answer has no refusal yet.
 func TestPaymentRefusalTextAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
 	sdkDir := paymentRefusalSdkHeaderDir(t, root)
 	if sdkDir == "" {
-		t.Skip("no urnetwork_sdk.hpp whose billing portal refusal has a code (set URNETWORK_SDK_INCLUDE)")
+		t.Skip("no urnetwork_sdk.hpp whose billing portal refusal has a code and whose card payment report has a refusal (set URNETWORK_SDK_INCLUDE)")
 	}
 	jsonDir, found := jsonIncludeDir(root)
 	if !found {
@@ -100,7 +108,7 @@ func TestPaymentRefusalTextAgainstSdkHeader(t *testing.T) {
 }
 
 // The directory of a urnetwork_sdk.hpp whose billing portal refusal keeps the
-// code, or "".
+// code and whose card payment report answer keeps the refusal, or "".
 func paymentRefusalSdkHeaderDir(t *testing.T, root string) string {
 	t.Helper()
 	explicit := os.Getenv("URNETWORK_SDK_INCLUDE")
@@ -124,6 +132,13 @@ func paymentRefusalSdkHeaderDir(t *testing.T, root string) string {
 				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnet::StripeCreateCustomerPortalError has no code", explicit)
 			}
 			t.Logf("%s: urnet::StripeCreateCustomerPortalError predates the code", dir)
+			continue
+		}
+		if !paymentRefusalReportErrorPattern.Match(header) {
+			if dir == explicit {
+				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnet::VerifyStorePurchaseResult has no error", explicit)
+			}
+			t.Logf("%s: urnet::VerifyStorePurchaseResult predates the card payment report's refusal", dir)
 			continue
 		}
 		return dir
@@ -210,8 +225,8 @@ func TestManageSubscriptionWordsThePortalRefusal(t *testing.T) {
 }
 
 // The header is part of the app build, and every line a refusal can read (the
-// codes' own lines and the screens' own line) is in the catalog in every
-// language.
+// codes' own lines, the screens' own line, and the refused card's Try again)
+// is in the catalog in every language.
 func TestPaymentRefusalLinesAreTranslated(t *testing.T) {
 	root := repositoryRoot(t)
 	if !strings.Contains(readAppSource(t, "App.vcxproj"), `<ClInclude Include="PaymentRefusal.h" />`) {
@@ -227,7 +242,7 @@ func TestPaymentRefusalLinesAreTranslated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lineKeys := append([]string{"something_went_wrong"}, paymentRefusalCodeKeys...)
+	lineKeys := append([]string{"something_went_wrong", "try_again"}, paymentRefusalCodeKeys...)
 	for _, name := range lineKeys {
 		englishValue := reswValue(t, root, "en", name)
 		if englishValue == "" {

@@ -1495,6 +1495,10 @@
     <value>हम आपकी खरीद की पुष्टि कर रहे हैं। आपका प्लान अपने आप अपडेट हो जाएगा।</value>
     <comment>Purchase confirmation message while the app waits for the payment to be confirmed.</comment>
   </data>
+  <data name="checkout_error_incorrect_cvc" xml:space="preserve">
+    <value>आपके कार्ड का सुरक्षा कोड (CVC) मेल नहीं खाया। कार्ड की जानकारी जाँचें और फिर से कोशिश करें।</value>
+    <comment>Shown when the server refuses a Stripe card for the yearly plan's free trial because the card's security code (CVC) check failed (verify-stripe-checkout answers error.code incorrect_cvc). The card was not saved and nothing was or will be charged; the trial did not start. Shown with a Try again action that opens a new payment form. Apps: the Android builds outside Google Play, the macOS direct download, Windows and Linux; the site: the checkout return page.</comment>
+  </data>
   <data name="checkout_error_payment_form_unavailable" xml:space="preserve">
     <value>भुगतान फ़ॉर्म लोड नहीं हो सका। अपना इंटरनेट कनेक्शन जांचें, फिर दोबारा प्रयास करें।</value>
     <comment>Checkout error in the desktop apps (the macOS direct download, Windows and Linux) when the ur.io checkout page hands back stripe_unavailable: Stripe's payment form could not be loaded in the checkout page (usually no internet connection, or a network that blocks it). Nothing was charged.</comment>

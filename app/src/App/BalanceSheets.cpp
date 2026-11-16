@@ -7,7 +7,9 @@
 #include "CheckoutBridgeError.h"
 #include "CheckoutSessionMode.h"
 #include "PaymentRefusal.h"
+#include "PaymentWindow.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <winrt/Microsoft.Web.WebView2.Core.h>
@@ -50,6 +52,8 @@ namespace urnw {
 
 // BalanceCodeRedeem.h reads a gift code's kind by its text
 static_assert(std::string_view(urnet::BalanceCodeKindProGift) == kBalanceCodeKindProGift);
+// ...and PaymentRefusal.h the refused trial card's code
+static_assert(std::string_view(urnet::PurchaseErrorCodeIncorrectCvc) == kPurchaseErrorCodeIncorrectCvc);
 
 namespace {
 
@@ -107,6 +111,23 @@ bool WebView2RuntimeAvailable() {
                 .empty();
   } catch (...) {
     return false;
+  }
+}
+
+// A window the pay page or the checkout bridge opens (PaymentWindow.h). One
+// of Stripe's to authenticate the card (3D Secure) stays in the app: left
+// unhandled, WebView2 opens it on this profile with window.opener kept, so the
+// challenge's answer reaches the payment page. Every other window
+// (target=_blank links: Stripe's terms and privacy) goes to the system browser.
+void RouteNewWindow(
+    winrt::Microsoft::Web::WebView2::Core::CoreWebView2NewWindowRequestedEventArgs const& args) {
+  if (PaymentWindowRouteFor(urnw::Narrow(std::wstring_view{args.Uri()})) == PaymentWindowRoute::InApp) {
+    return;
+  }
+  args.Handled(true);
+  try {
+    winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
+  } catch (...) {
   }
 }
 
@@ -707,8 +728,13 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   plans.Margin(Thickness{0, 36, 0, 0});  // room for the halo and the Best value pill
   productsPanel_.Children().Append(plans);
   plans_.onSelect = [weak = weak_from_this()](bool) {
-    // the button says what the click does: the plan's for Card, the coin's otherwise
-    if (auto self = weak.lock()) self->subscribeButton_.Content(winrt::box_value(self->CtaLabel()));
+    // the button says what the click does: the plan's for Card, the coin's
+    // otherwise (a plan picked after a refused card is a fresh start, not a
+    // Try again)
+    if (auto self = weak.lock()) {
+      self->cardRefused_ = false;
+      self->subscribeButton_.Content(winrt::box_value(self->CtaLabel()));
+    }
   };
 
   // the network's welcome offer while it is active (read-only: the picker's
@@ -725,6 +751,10 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   // to copy out by hand (LaunchHosted)
   checkoutErrorText_.IsTextSelectionEnabled(true);
   checkoutErrorText_.Visibility(Visibility::Collapsed);
+  // a live region: a refused card's line arrives long after the click, while
+  // the sheet waits, and is announced when it shows (RefuseCard)
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetLiveSetting(
+      checkoutErrorText_, winrt::Microsoft::UI::Xaml::Automation::Peers::AutomationLiveSetting::Assertive);
   productsPanel_.Children().Append(checkoutErrorText_);
 
   // the payment method, after the plan cards and directly above the buy
@@ -739,6 +769,8 @@ void UpgradeSheet::Build(XamlRoot const& root) {
       self->wantedMethod_ = method;
       self->invoice_.SetPaymentMethod(method);
       self->checkoutErrorText_.Visibility(Visibility::Collapsed);
+      // the refused card's line went with the error text
+      self->cardRefused_ = false;
       self->ApplyMethod(method);
     }
   };
@@ -1062,6 +1094,11 @@ void UpgradeSheet::BeginCheckout() {
   paySheetSubscriptionId_.clear();
   checkoutSessionId_.clear();
   cardPaymentReported_ = false;
+  // a new attempt, with its own payment sheet or checkout session: a late
+  // answer about an earlier one cannot end it, and a refused card's Try
+  // again is this
+  ++cardAttempt_;
+  cardRefused_ = false;
   // the card's purchase, whatever an earlier invoice of this sheet was
   purchaseMethod_ = cryptopay::kMethodCard;
   purchasePriceUsd_ = 0;
@@ -1101,6 +1138,15 @@ void UpgradeSheet::RequestPaymentSheet() {
         const PurchaseRefusal refusal =
             result && result->error ? PurchaseRefusalFor(result->error->code.value_or(std::string()))
                                     : PurchaseRefusal::PaymentError;
+        // a refusal of the card itself ends the attempt here, in this app's
+        // words, instead of falling through to the checkout (PaymentRefusal.h)
+        const std::string refusalCode =
+            result && result->error ? result->error->code.value_or(std::string()) : std::string();
+        const std::optional<PaymentRefusalText> endsAttempt =
+            PaymentRefusalEndsAttempt(refusalCode)
+                ? std::optional<PaymentRefusalText>(
+                      PaymentRefusalTextFor(*result->error, "something_went_wrong"))
+                : std::nullopt;
         if (!err && result && !result->error) {
           if (result->setup_intent_client_secret && !result->setup_intent_client_secret->empty()) {
             clientSecret = *result->setup_intent_client_secret;
@@ -1112,11 +1158,18 @@ void UpgradeSheet::RequestPaymentSheet() {
           if (result->subscription_id) subscriptionId = *result->subscription_id;
         }
         if (err) LogWarn("upgrade: payment sheet failed: {}", *err);
-        queue.TryEnqueue([weak, clientSecret, publishableKey, subscriptionId, refusal] {
+        queue.TryEnqueue([weak, clientSecret, publishableKey, subscriptionId, refusal, refusalCode,
+                          endsAttempt] {
           auto self = weak.lock();
           if (!self || self->closed_) return;
           if (refusal == PurchaseRefusal::AddSignIn) {
             self->RefuseForGuest();
+            return;
+          }
+          if (endsAttempt) {
+            self->RefuseCard(
+                hstring{PaymentRefusalMessage(Localized(endsAttempt->key), Widen(endsAttempt->detail))},
+                refusalCode);
             return;
           }
           if (clientSecret.empty() || publishableKey.empty()) {
@@ -1223,14 +1276,8 @@ winrt::fire_and_forget UpgradeSheet::OpenPaySheet(std::string clientSecret,
     co_await self->webview_.EnsureCoreWebView2Async(environment);
     if (generation != self->webviewGeneration_ || !self->webview_) co_return;
     auto core = self->webview_.CoreWebView2();
-    core.NewWindowRequested([](auto const&, auto const& args) {
-      // target=_blank links (Stripe's terms/privacy): the system browser
-      args.Handled(true);
-      try {
-        winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
-      } catch (...) {
-      }
-    });
+    // a 3D Secure window of Stripe's stays in the app; links go to the system browser
+    core.NewWindowRequested([](auto const&, auto const& args) { RouteNewWindow(args); });
     // the page's posted {type:"ur-pay"} message reaches WebMessageReceived
     // through window.chrome.webview; the bridge forwards a plain postMessage
     co_await core.AddScriptToExecuteOnDocumentCreatedAsync(hstring{kPayMessageBridge});
@@ -1292,6 +1339,8 @@ void UpgradeSheet::RequestSession(bool embedded) {
         const PurchaseRefusal refusal =
             refused ? PurchaseRefusalFor(result->error->code.value_or(std::string()))
                     : PurchaseRefusal::PaymentError;
+        const std::string refusalCode =
+            refused ? result->error->code.value_or(std::string()) : std::string();
         const std::string url =
             result && result->checkout_url ? *result->checkout_url : std::string();
         const std::string clientSecret =
@@ -1300,8 +1349,8 @@ void UpgradeSheet::RequestSession(bool embedded) {
         const std::string sessionId =
             result && result->session_id ? *result->session_id : std::string();
         const std::string transportError = err ? *err : std::string();
-        queue.TryEnqueue([weak, embedded, refused, refusalText, url, clientSecret, sessionId,
-                          transportError, refusal] {
+        queue.TryEnqueue([weak, embedded, refused, refusalText, refusalCode, url, clientSecret,
+                          sessionId, transportError, refusal] {
           auto self = weak.lock();
           if (!self || self->closed_) return;
           if (refusal == PurchaseRefusal::AddSignIn) {
@@ -1309,14 +1358,22 @@ void UpgradeSheet::RequestSession(bool embedded) {
             self->RefuseForGuest();
             return;
           }
+          if (refused && PaymentRefusalEndsAttempt(refusalCode)) {
+            // a refusal of the card itself ends the attempt here: an embedded
+            // session's does not fall through to the hosted one
+            self->RefuseCard(
+                hstring{PaymentRefusalMessage(Localized(refusalText.key), Widen(refusalText.detail))},
+                refusalCode);
+            return;
+          }
           // the session this attempt goes on with; a fallback's replaces it
           self->checkoutSessionId_ = sessionId;
           if (embedded) {
-            // Any embedded failure — transport, server error, or a session
-            // without a client_secret — retries once as hosted: nothing has
-            // been shown yet, so no payment can be lost by switching. The
-            // hosted retry is a SEPARATE session (never created up front);
-            // the embedded one just expires server-side.
+            // Any other embedded failure — transport, server error, or a
+            // session without a client_secret — retries once as hosted:
+            // nothing has been shown yet, so no payment can be lost by
+            // switching. The hosted retry is a SEPARATE session (never
+            // created up front); the embedded one just expires server-side.
             if (!refused && transportError.empty() && !clientSecret.empty()) {
               self->OpenEmbedded(clientSecret);
             } else {
@@ -1471,14 +1528,8 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
     // alive across the await, the generation says whether it still wants us
     if (generation != self->webviewGeneration_ || !self->webview_) co_return;
     auto core = self->webview_.CoreWebView2();
-    core.NewWindowRequested([](auto const&, auto const& args) {
-      // target=_blank links (Stripe's terms/privacy): the system browser
-      args.Handled(true);
-      try {
-        winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
-      } catch (...) {
-      }
-    });
+    // a 3D Secure window of Stripe's stays in the app; links go to the system browser
+    core.NewWindowRequested([](auto const&, auto const& args) { RouteNewWindow(args); });
     core.Navigate(H(url));
   } catch (...) {
     // WebView2 init failed even though the runtime probe passed (disk, group
@@ -1516,6 +1567,10 @@ void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
     }
   }
   if (complete) {
+    // A refused attempt is over (RefuseCard): a late hand-back of it (the pay
+    // page both posts and navigates) waits for nothing. Try again is a new
+    // attempt, and clears the refusal before its page can hand anything back.
+    if (cardRefused_) return;
     // Paid inside the webview. A client saying "I paid" is not evidence, so
     // the report hands the server the payment's id to read back from Stripe
     // (the session the bridge names, else the one it was opened with), and
@@ -1574,18 +1629,38 @@ void UpgradeSheet::ReportCardPayment(bool paySheet) {
     args.session_id = checkoutSessionId_;
   }
   cardPaymentReported_ = true;
+  const uint32_t attempt = cardAttempt_;
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
   sdk_.api().reportStripePurchase(
-      args, [queue, weak](std::optional<urnet::VerifyStorePurchaseResult> result,
-                          std::optional<std::string> err) {
+      args, [queue, weak, attempt](std::optional<urnet::VerifyStorePurchaseResult> result,
+                                   std::optional<std::string> err) {
         // the api callback runs on an sdk thread, once, after the sdk's retries
         if (err) LogWarn("upgrade: card payment report failed: {}", *err);
         const std::string status = result ? result->status : std::string();
-        if (!status.empty()) LogInfo("upgrade: card payment report: {}", status);
-        queue.TryEnqueue([weak, status] {
+        // a refusal: the server will never credit this payment, and says why
+        // (incorrect_cvc: the trial's card failed its CVC check). The sdk
+        // stopped asking at it, and the balance never shows it.
+        const std::optional<PaymentRefusalText> refusal =
+            result ? PurchaseReportRefusalFor(*result, "something_went_wrong") : std::nullopt;
+        const std::string refusalCode =
+            refusal ? result->error->code.value_or(std::string()) : std::string();
+        if (refusal) {
+          LogInfo("upgrade: card payment report: {}, refused: {}", status, refusalCode);
+        } else if (!status.empty()) {
+          LogInfo("upgrade: card payment report: {}", status);
+        }
+        queue.TryEnqueue([weak, attempt, status, refusal, refusalCode] {
           auto self = weak.lock();
           if (!self) return;
+          if (refusal) {
+            // it ends the attempt it was made for, never a later one
+            if (attempt != self->cardAttempt_) return;
+            self->RefuseCard(
+                hstring{PaymentRefusalMessage(Localized(refusal->key), Widen(refusal->detail))},
+                refusalCode.empty() ? std::string("refused") : refusalCode);
+            return;
+          }
           // the server holds the credit: read the balance now, which also
           // takes a timed-out wait to the success page
           if (status == urnet::PurchaseReportStatusCredited ||
@@ -1594,6 +1669,44 @@ void UpgradeSheet::ReportCardPayment(bool paySheet) {
           }
         });
       });
+}
+
+void UpgradeSheet::RefuseCard(hstring const& message, std::string const& errorClass) {
+  // Only an attempt still on its way ends here: the products page (a
+  // creation stage's refusal), or the wait for a finished payment, from
+  // Waiting or from TimedOut (a hosted checkout's report retries for about
+  // 21 minutes, well past the 2-minute confirmation). Pro already won
+  // (Success), and another purchase on screen (a checkout form, a coin's
+  // invoice) is left alone.
+  if (closed_ || (page_ != Page::Products && page_ != Page::Waiting && page_ != Page::TimedOut)) {
+    return;
+  }
+  if (!purchaseEmitted_) {
+    EmitPurchase("failed", errorClass);
+    purchaseEmitted_ = true;
+  }
+  ShowPage(Page::Products);
+  // the button opens a new payment form for the same plan: a new payment
+  // sheet or checkout session (BeginCheckout), reported by its own id. The
+  // refused attempt's ids and its report are spent.
+  cardRefused_ = true;
+  paySheetSubscriptionId_.clear();
+  checkoutSessionId_.clear();
+  cardPaymentReported_ = false;
+  ShowCheckoutError(message);
+  // nothing will land: no confirmation to wait out, and no timeout to show.
+  // After the page flip, so the balance push this publishes finds the
+  // products, not a wait to decide.
+  balance_.StopConfirmationPolling();
+  // the products as they are now, and the button's Try again (CtaLabel)
+  ApplyPrices();
+  subscribeButton_.Content(winrt::box_value(CtaLabel()));
+  // the line arrives long after the click: a screen reader hears it now (a
+  // live region, Build; WinUI announces one only when its peer says so)
+  namespace peers = winrt::Microsoft::UI::Xaml::Automation::Peers;
+  if (auto peer = peers::FrameworkElementAutomationPeer::FromElement(checkoutErrorText_)) {
+    peer.RaiseAutomationEvent(peers::AutomationEvents::LiveRegionChanged);
+  }
 }
 
 void UpgradeSheet::TeardownWebView() {
@@ -1645,6 +1758,8 @@ hstring UpgradeSheet::CtaLabel() const {
   if (cryptopay::IsCoin(method)) {
     return hstring{Format("crypto_pay_button", PaymentMethodName(method))};
   }
+  // the card was refused: the click opens a new payment form (RefuseCard)
+  if (cardRefused_) return Loc("try_again");
   return PlanPicker::CtaLabel(plans_.Yearly());
 }
 
