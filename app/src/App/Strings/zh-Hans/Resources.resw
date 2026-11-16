@@ -1556,6 +1556,10 @@
     <value>我们正在确认你的购买。你的套餐会自动更新。</value>
     <comment>Purchase confirmation message while the app waits for the payment to be confirmed.</comment>
   </data>
+  <data name="checkout_error_incorrect_cvc" xml:space="preserve">
+    <value>您的银行卡安全码（CVC）不匹配。请检查卡片信息后重试。</value>
+    <comment>Shown when the server refuses a Stripe card for the yearly plan's free trial because the card's security code (CVC) check failed (verify-stripe-checkout answers error.code incorrect_cvc). The card was not saved and nothing was or will be charged; the trial did not start. Shown with a Try again action that opens a new payment form. Apps: the Android builds outside Google Play, the macOS direct download, Windows and Linux; the site: the checkout return page.</comment>
+  </data>
   <data name="checkout_error_payment_form_unavailable" xml:space="preserve">
     <value>无法加载付款表单。请检查您的网络连接，然后重试。</value>
     <comment>Checkout error in the desktop apps (the macOS direct download, Windows and Linux) when the ur.io checkout page hands back stripe_unavailable: Stripe's payment form could not be loaded in the checkout page (usually no internet connection, or a network that blocks it). Nothing was charged.</comment>

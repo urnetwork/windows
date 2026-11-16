@@ -281,6 +281,7 @@ change_network_api
 change_network_api_title
 checking_wallet_address
 checkout_browser_launch_failed
+checkout_error_incorrect_cvc
 checkout_error_payment_form_unavailable
 checkout_error_unavailable
 checkout_interrupted_confirming
