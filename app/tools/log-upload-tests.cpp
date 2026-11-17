@@ -635,6 +635,19 @@ void TestAppLogFiles() {
           std::string("app logs: a glog name only, refuses \"") + name + "\"");
   }
 
+  // besides its glog files, the app's Go crash file and its own log, as the
+  // sdk's upload takes them (sdk log_special_files.go), and nothing else
+  for (const char* name : {"URnetwork.exe.HOST.someone.log.INFO.20260901-000000.101", "go-crash.txt",
+                           "urnetwork-app.log"}) {
+    Check(applogs::LooksLikeAppLogFileName(name), std::string("app logs: takes \"") + name + "\"");
+  }
+  for (const char* name : {"", "app_prefs.json", "rpc_session.json", "go-crash.txt.tmp",
+                           ".go-crash.txt", "a\\go-crash.txt", "urnetwork-app.log:stream",
+                           "urnetwork-app.log.1", "URnetwork.exe.INFO"}) {
+    Check(!applogs::LooksLikeAppLogFileName(name),
+          std::string("app logs: a glog name or the app's own files only, refuses \"") + name + "\"");
+  }
+
   for (const char* dir : {"C:\\Users\\someone\\AppData\\Local\\URnetwork\\app\\logs",
                           "D:/worktree/.localstate/logs", "c:\\logs\\"}) {
     Check(applogs::LooksLikeLocalDirectory(dir),
@@ -652,16 +665,21 @@ void TestAppLogFiles() {
     entries.push_back(applogs::AppLogEntry{
         "URnetwork.exe.HOST.someone.log.INFO.20260901-000000." + std::to_string(100 + i), 1000 + i});
   }
-  entries.push_back(applogs::AppLogEntry{"urnetwork-app.log", 999999});
+  entries.push_back(applogs::AppLogEntry{"app_prefs.json", 999999});
+  entries.push_back(applogs::AppLogEntry{"urnetwork-app.log", 99999});
+  entries.push_back(applogs::AppLogEntry{"go-crash.txt", 1});
   entries.push_back(applogs::AppLogEntry{"URnetwork.exe.HOST.someone.log.ERROR.b", 5000});
   entries.push_back(applogs::AppLogEntry{"URnetwork.exe.HOST.someone.log.ERROR.a", 5000});
   const std::vector<std::string> picked = applogs::PickAppLogFiles(entries);
   Check(picked.size() == applogs::kMaxAppLogFiles, "app logs: no more than the cap");
-  Check(!picked.empty() && picked[0] == "URnetwork.exe.HOST.someone.log.ERROR.a" &&
-            picked.size() > 1 && picked[1] == "URnetwork.exe.HOST.someone.log.ERROR.b",
-        "app logs: the newest first, files written at once in name order");
-  Check(std::find(picked.begin(), picked.end(), "urnetwork-app.log") == picked.end(),
-        "app logs: a name glog did not write is never taken, however new");
+  Check(!picked.empty() && picked[0] == "go-crash.txt",
+        "app logs: the Go crash file first, however old");
+  Check(picked.size() > 3 && picked[1] == "urnetwork-app.log" &&
+            picked[2] == "URnetwork.exe.HOST.someone.log.ERROR.a" &&
+            picked[3] == "URnetwork.exe.HOST.someone.log.ERROR.b",
+        "app logs: then the newest first, files written at once in name order");
+  Check(std::find(picked.begin(), picked.end(), "app_prefs.json") == picked.end(),
+        "app logs: a name the upload does not take is never taken, however new");
   Check(std::find(picked.begin(), picked.end(),
                   "URnetwork.exe.HOST.someone.log.INFO.20260901-000000.100") == picked.end(),
         "app logs: the oldest are the ones left out");
