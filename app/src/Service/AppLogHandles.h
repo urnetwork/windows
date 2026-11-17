@@ -61,7 +61,8 @@ class AppLogHandles {
   std::vector<File> files_;
 };
 
-// Lists the glog files in the app's log directory `dir` and opens the newest
+// Lists the log files in the app's log directory `dir` (its glog files, its Go
+// crash file and its own log: applogs::LooksLikeAppLogFileName) and opens the newest
 // (applogs::PickAppLogFiles) for synchronous reads. Call it only while acting
 // as the app's pipe client (PipeServer::RunAsClient), so that Windows checks
 // the listing and every open against the app's rights, never this service's.
@@ -90,7 +91,7 @@ inline AppLogHandles OpenAppLogHandles(const std::string& dir) {
       continue;
     }
     std::string name = Narrow(data.cFileName);
-    if (!applogs::LooksLikeGlogFileName(name)) continue;
+    if (!applogs::LooksLikeAppLogFileName(name)) continue;
     const uint64_t lastWriteTime =
         (static_cast<uint64_t>(data.ftLastWriteTime.dwHighDateTime) << 32) |
         data.ftLastWriteTime.dwLowDateTime;

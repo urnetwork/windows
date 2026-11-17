@@ -58,6 +58,21 @@ inline bool LooksLikeGlogFileName(std::string_view name) {
   });
 }
 
+// The app's files the service takes besides its glog files, as the sdk's
+// upload takes them (sdk log_special_files.go): the sdk's Go crash file, which
+// only a Go fatal of the app writes, and the app's own log (Log.cpp). Neither
+// rotates under a glog name, so without these a crash or a host-side failure
+// of the app never reached support. The sdk masks both, and carries the log's
+// newest lines.
+inline constexpr const char* kAppGoCrashFileName = "go-crash.txt";
+inline constexpr const char* kAppLogFileName = "urnetwork-app.log";
+
+// A name the service takes from the app's directory: a glog name, or one of
+// the app's files above.
+inline bool LooksLikeAppLogFileName(std::string_view name) {
+  return LooksLikeGlogFileName(name) || name == kAppGoCrashFileName || name == kAppLogFileName;
+}
+
 // A directory the service may act as the app in: a drive-absolute path
 // ("C:\..."), never a share or a device path (\\server\share, \\?\, \\.\),
 // with no "." or ".." segment, no colon past the drive's (a stream) and no
@@ -90,16 +105,21 @@ struct AppLogEntry {
   uint64_t lastWriteTime = 0;
 };
 
-// The entries the service opens: those under glog names, newest first, files
-// written at the same time in name order, at most kMaxAppLogFiles. The sdk's
-// cap then decides which of these fit beside the service's own.
+// The entries the service opens: those under the names it takes
+// (LooksLikeAppLogFileName), the Go crash file first, since it is old and
+// rarely written and is the one that says why the app died, then newest first,
+// files written at the same time in name order, at most kMaxAppLogFiles. The
+// sdk's cap then decides which of these fit beside the service's own.
 inline std::vector<std::string> PickAppLogFiles(std::vector<AppLogEntry> entries) {
   entries.erase(std::remove_if(entries.begin(), entries.end(),
                                [](const AppLogEntry& entry) {
-                                 return !LooksLikeGlogFileName(entry.name);
+                                 return !LooksLikeAppLogFileName(entry.name);
                                }),
                 entries.end());
   std::sort(entries.begin(), entries.end(), [](const AppLogEntry& a, const AppLogEntry& b) {
+    const bool aCrash = a.name == kAppGoCrashFileName;
+    const bool bCrash = b.name == kAppGoCrashFileName;
+    if (aCrash != bCrash) return aCrash;
     if (a.lastWriteTime != b.lastWriteTime) return a.lastWriteTime > b.lastWriteTime;
     return a.name < b.name;
   });
