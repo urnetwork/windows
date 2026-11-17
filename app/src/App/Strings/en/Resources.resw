@@ -9009,6 +9009,14 @@ world's content</value>
     <value>Apply hotkey signature</value>
     <comment>App top200: re-check every device with the hotkey signature</comment>
   </data>
+  <data name="site_app_top200_authority" xml:space="preserve">
+    <value>Mainnet commands need the reviewed fleet runtime authority document. Download it, then pass its path with --mainnet-runtime-authority and this SHA-256 with --mainnet-runtime-authority-sha256:</value>
+    <comment>App top200: what the mainnet fleet commands need; the page shows the document's download link and SHA-256 right after this line</comment>
+  </data>
+  <data name="site_app_top200_authority_link" xml:space="preserve">
+    <value>Download the fleet runtime authority document</value>
+    <comment>App top200: link that downloads the reviewed fleet runtime authority document</comment>
+  </data>
   <data name="site_app_top200_bad_epochs" xml:space="preserve">
     <value>Enter the validity epochs as whole numbers, the last one no earlier than the first.</value>
     <comment>App top200: validity epochs missing, not whole numbers, or reversed</comment>
@@ -9032,6 +9040,10 @@ world's content</value>
   <data name="site_app_top200_calldata" xml:space="preserve">
     <value>Binding calldata</value>
     <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_cli_guide" xml:space="preserve">
+    <value>Claim from the command line</value>
+    <comment>App top200 and the Earnings tile: link to the docs page on claiming a spot with btcli and provider</comment>
   </data>
   <data name="site_app_top200_current_epoch" xml:space="preserve">
     <value>The current epoch is {}.</value>
@@ -9069,6 +9081,30 @@ world's content</value>
     <value>Head miners are the top {cutoff} networks by routable egress IP breadth. A head spot is paid natively by the subnet every tempo, straight to your coldkey.</value>
     <comment>App top200: intro</comment>
   </data>
+  <data name="site_app_top200_limit_commitment_age" xml:space="preserve">
+    <value>A commitment older than 14 days can't bind new devices, so publish again before adding devices later.</value>
+    <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
+  </data>
+  <data name="site_app_top200_limit_devices" xml:space="preserve">
+    <value>Bind at most 7 devices, unless the others are already measured. At most 7 devices per fleet draw ahead of the rest to be measured by the validator. A bound device that isn't measured earns no head score and has left the pool, so it earns nothing.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+  </data>
+  <data name="site_app_top200_limit_pay" xml:space="preserve">
+    <value>A spot pays only while the SN25 validator steers its weights, and in proportion to your score, not your rank. All selected fleets share one channel: 3% of miner emission until epoch 8, and 5% from epoch 8.</value>
+    <comment>App top200 limits: a spot pays only while the validator steers, in proportion to EMA score and not rank; the head channel is 3% of miner emission before epoch 8 and 5% from epoch 8, when capture the flag splits the providers' tenth pool 4/10, CTF 1/10, head 5/10 (sn CAPTURETHEFLAG.md §2.1)</comment>
+  </data>
+  <data name="site_app_top200_limit_republish" xml:space="preserve">
+    <value>If you published before, you may need to publish again. Commitments in the old format aren't mirrored, and a mirror older than 14 days can't bind.</value>
+    <comment>App top200 limits: a fleet that already published may have to publish again; old-format (Sha256) commitments are not mirrored and a mirror past 100,800 blocks can't bind</comment>
+  </data>
+  <data name="site_app_top200_limit_timing" xml:space="preserve">
+    <value>Register in the 3 days before the epoch your binding starts. A binding starts no earlier than the next epoch, up to 7 days away, and a UID with no emission can be replaced once its immunity ends, about 3 days after it registers.</value>
+    <comment>App top200 limits: register within the 3 days before the binding's first epoch, because a zero-emission UID can be replaced after 21,600 blocks of immunity and a binding can wait up to 7 days</comment>
+  </data>
+  <data name="site_app_top200_limits_title" xml:space="preserve">
+    <value>Before you register</value>
+    <comment>App top200: heads the limits a customer needs before registering, shown once binding is open</comment>
+  </data>
   <data name="site_app_top200_manifest" xml:space="preserve">
     <value>Fleet manifest</value>
     <comment>App top200: fleet manifest textarea label</comment>
@@ -9078,12 +9114,16 @@ world's content</value>
     <comment>App top200: the manifest's SHA-256 is not the commitment_sha256 line pasted with it</comment>
   </data>
   <data name="site_app_top200_manifest_hint" xml:space="preserve">
-    <value>Write the fleet manifest on a provider device with provider fleet init (the command below, filled in for this deployment; add each other device with --member=&lt;client_id&gt;:&lt;client_key&gt;), then publish its commitment from your hotkey with provider fleet publish. Publishing on mainnet opens once the mainnet fleet runtime is approved. Paste the manifest here with the validity epochs to build each device's binding. The app shows its device's member entry for the manifest under Earnings › Top 200 › Sign fleet binding.</value>
+    <value>Write the fleet manifest on a provider device with provider fleet init (the command below, filled in for this deployment; add each other device with --member=&lt;client_id&gt;:&lt;client_key&gt;), then publish its commitment from your hotkey with provider fleet publish. Paste the manifest here with the validity epochs to build each device's binding. The app shows its device's member entry for the manifest under Earnings › Top 200 › Sign fleet binding.</value>
     <comment>App top200: how to create and publish the fleet manifest and where an app shows its member entry</comment>
   </data>
   <data name="site_app_top200_manifest_hotkey_mismatch" xml:space="preserve">
     <value>The manifest's hotkey is not the hotkey entered in step 1.</value>
     <comment>App top200: the manifest's hotkey is not the ss58 hotkey entered in step 1</comment>
+  </data>
+  <data name="site_app_top200_next_epoch" xml:space="preserve">
+    <value>The next epoch starts about {}.</value>
+    <comment>App top200 limits: when the next settlement epoch starts. {when} is an estimated local date and time</comment>
   </data>
   <data name="site_app_top200_not_eligible" xml:space="preserve">
     <value>Not eligible yet. Your score is {score} and the eviction floor is {floor}.</value>

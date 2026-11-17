@@ -8938,6 +8938,14 @@
     <value>تطبيق توقيع hotkey</value>
     <comment>App top200: re-check every device with the hotkey signature</comment>
   </data>
+  <data name="site_app_top200_authority" xml:space="preserve">
+    <value>تحتاج أوامر الشبكة الرئيسية إلى مستند سلطة بيئة تشغيل الأسطول الذي جرت مراجعته. نزّله، ثم مرّر مساره باستخدام --mainnet-runtime-authority وقيمة SHA-256 هذه باستخدام --mainnet-runtime-authority-sha256:</value>
+    <comment>App top200: what the mainnet fleet commands need; the page shows the document's download link and SHA-256 right after this line</comment>
+  </data>
+  <data name="site_app_top200_authority_link" xml:space="preserve">
+    <value>نزّل مستند سلطة بيئة تشغيل الأسطول</value>
+    <comment>App top200: link that downloads the reviewed fleet runtime authority document</comment>
+  </data>
   <data name="site_app_top200_bad_epochs" xml:space="preserve">
     <value>أدخل حقب الصلاحية كأعداد صحيحة، على ألّا تسبق الأخيرةُ الأولى.</value>
     <comment>App top200: validity epochs missing, not whole numbers, or reversed</comment>
@@ -8961,6 +8969,10 @@
   <data name="site_app_top200_calldata" xml:space="preserve">
     <value>بيانات calldata للربط</value>
     <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_cli_guide" xml:space="preserve">
+    <value>احجز من سطر الأوامر</value>
+    <comment>App top200 and the Earnings tile: link to the docs page on claiming a spot with btcli and provider</comment>
   </data>
   <data name="site_app_top200_current_epoch" xml:space="preserve">
     <value>الحقبة الحالية هي {}.</value>
@@ -8998,6 +9010,30 @@
     <value>كبار المعدِّنين هم أفضل {cutoff} شبكة من حيث تنوّع عناوين IP الخروج القابلة للتوجيه. تدفع الشبكة الفرعية مقابل المقعد الرئيسي بشكل أصلي في كل tempo، مباشرةً إلى coldkey الخاص بك.</value>
     <comment>App top200: intro</comment>
   </data>
+  <data name="site_app_top200_limit_commitment_age" xml:space="preserve">
+    <value>لا يمكن لالتزام مضى عليه أكثر من 14 يومًا ربط أجهزة جديدة، لذا انشر من جديد قبل إضافة أجهزة لاحقًا.</value>
+    <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
+  </data>
+  <data name="site_app_top200_limit_devices" xml:space="preserve">
+    <value>اربط 7 أجهزة على الأكثر، إلا إذا كانت الأجهزة الأخرى تخضع للقياس بالفعل. يحظى 7 أجهزة على الأكثر في كل أسطول بأولوية القياس لدى المدقِّق. الجهاز المربوط الذي لا يخضع للقياس لا يحصل على نتيجة في الفئة الرئيسية وقد غادر المجمّع، فلا يكسب شيئًا.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+  </data>
+  <data name="site_app_top200_limit_pay" xml:space="preserve">
+    <value>لا يدرّ المقعد أرباحًا إلا ما دام مدقِّق SN25 يوجّه أوزانه، وبما يتناسب مع نتيجتك لا مع ترتيبك. تتقاسم جميع الأساطيل المختارة قناة واحدة: 3% من إصدار المعدِّنين قبل الحقبة 8، و5% بدءًا من الحقبة 8.</value>
+    <comment>App top200 limits: a spot pays only while the validator steers, in proportion to EMA score and not rank; the head channel is 3% of miner emission before epoch 8 and 5% from epoch 8, when capture the flag splits the providers' tenth pool 4/10, CTF 1/10, head 5/10 (sn CAPTURETHEFLAG.md §2.1)</comment>
+  </data>
+  <data name="site_app_top200_limit_republish" xml:space="preserve">
+    <value>إذا كنت قد نشرت من قبل، فقد تحتاج إلى النشر من جديد. لا تُنسخ الالتزامات ذات التنسيق القديم، ولا يمكن لنسخة مضى عليها أكثر من 14 يومًا أن تربط الأجهزة.</value>
+    <comment>App top200 limits: a fleet that already published may have to publish again; old-format (Sha256) commitments are not mirrored and a mirror past 100,800 blocks can't bind</comment>
+  </data>
+  <data name="site_app_top200_limit_timing" xml:space="preserve">
+    <value>سجّل خلال الأيام الـ 3 التي تسبق الحقبة التي يبدأ فيها الربط. لا يبدأ الربط قبل الحقبة التالية، وقد تفصلك عنها 7 أيام، ويمكن استبدال UID الذي لا يحصل على إصدار بمجرد انتهاء فترة حصانته، بعد نحو 3 أيام من تسجيله.</value>
+    <comment>App top200 limits: register within the 3 days before the binding's first epoch, because a zero-emission UID can be replaced after 21,600 blocks of immunity and a binding can wait up to 7 days</comment>
+  </data>
+  <data name="site_app_top200_limits_title" xml:space="preserve">
+    <value>قبل أن تسجّل</value>
+    <comment>App top200: heads the limits a customer needs before registering, shown once binding is open</comment>
+  </data>
   <data name="site_app_top200_manifest" xml:space="preserve">
     <value>بيان الأسطول</value>
     <comment>App top200: fleet manifest textarea label</comment>
@@ -9007,12 +9043,16 @@
     <comment>App top200: the manifest's SHA-256 is not the commitment_sha256 line pasted with it</comment>
   </data>
   <data name="site_app_top200_manifest_hint" xml:space="preserve">
-    <value>اكتب بيان الأسطول على جهاز مزوّد باستخدام provider fleet init (الأمر أدناه، مملوءًا لهذا النشر؛ أضف كل جهاز آخر باستخدام --member=&lt;client_id&gt;:&lt;client_key&gt;)، ثم انشر التزامه من مفتاحك الساخن باستخدام provider fleet publish. يُفتح النشر على الشبكة الرئيسية بمجرد اعتماد بيئة تشغيل الأسطول على الشبكة الرئيسية. الصق البيان هنا مع حقب الصلاحية لإنشاء ربط كل جهاز. يعرض التطبيق إدخال العضو الخاص بجهازه للبيان في الأرباح › أفضل 200 › توقيع ربط الأسطول.</value>
+    <value>اكتب بيان الأسطول على جهاز مزوّد باستخدام provider fleet init (الأمر أدناه، مملوءًا لهذا النشر؛ أضف كل جهاز آخر باستخدام --member=&lt;client_id&gt;:&lt;client_key&gt;)، ثم انشر التزامه من مفتاحك الساخن باستخدام provider fleet publish. الصق البيان هنا مع حقب الصلاحية لإنشاء ربط كل جهاز. يعرض التطبيق إدخال العضو الخاص بجهازه للبيان في الأرباح › أفضل 200 › توقيع ربط الأسطول.</value>
     <comment>App top200: how to create and publish the fleet manifest and where an app shows its member entry</comment>
   </data>
   <data name="site_app_top200_manifest_hotkey_mismatch" xml:space="preserve">
     <value>المفتاح الساخن في البيان ليس المفتاح الساخن الذي أُدخل في الخطوة 1.</value>
     <comment>App top200: the manifest's hotkey is not the ss58 hotkey entered in step 1</comment>
+  </data>
+  <data name="site_app_top200_next_epoch" xml:space="preserve">
+    <value>تبدأ الحقبة التالية في حوالي {}.</value>
+    <comment>App top200 limits: when the next settlement epoch starts. {when} is an estimated local date and time</comment>
   </data>
   <data name="site_app_top200_not_eligible" xml:space="preserve">
     <value>غير مؤهل بعد. نتيجتك {score} وحد الإقصاء {floor}.</value>

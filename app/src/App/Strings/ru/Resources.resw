@@ -8683,6 +8683,14 @@
     <value>Применить подпись hotkey</value>
     <comment>App top200: re-check every device with the hotkey signature</comment>
   </data>
+  <data name="site_app_top200_authority" xml:space="preserve">
+    <value>Командам в mainnet нужен проверенный документ полномочий среды выполнения парка. Скачайте его и укажите путь в --mainnet-runtime-authority, а этот SHA-256 в --mainnet-runtime-authority-sha256:</value>
+    <comment>App top200: what the mainnet fleet commands need; the page shows the document's download link and SHA-256 right after this line</comment>
+  </data>
+  <data name="site_app_top200_authority_link" xml:space="preserve">
+    <value>Скачать документ полномочий среды выполнения парка</value>
+    <comment>App top200: link that downloads the reviewed fleet runtime authority document</comment>
+  </data>
   <data name="site_app_top200_bad_epochs" xml:space="preserve">
     <value>Укажите эпохи действия целыми числами, причём последняя не раньше первой.</value>
     <comment>App top200: validity epochs missing, not whole numbers, or reversed</comment>
@@ -8706,6 +8714,10 @@
   <data name="site_app_top200_calldata" xml:space="preserve">
     <value>Calldata привязки</value>
     <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_cli_guide" xml:space="preserve">
+    <value>Занять место из командной строки</value>
+    <comment>App top200 and the Earnings tile: link to the docs page on claiming a spot with btcli and provider</comment>
   </data>
   <data name="site_app_top200_current_epoch" xml:space="preserve">
     <value>Текущая эпоха: {}.</value>
@@ -8743,6 +8755,30 @@
     <value>Ведущие майнеры — это {cutoff} лучших сетей по разнообразию маршрутизируемых исходящих IP. Подсеть нативно оплачивает ведущее место в каждом tempo — прямо на ваш coldkey.</value>
     <comment>App top200: intro</comment>
   </data>
+  <data name="site_app_top200_limit_commitment_age" xml:space="preserve">
+    <value>Коммитмент старше 14 дней не может привязать новые устройства, поэтому перед добавлением устройств опубликуйте его заново.</value>
+    <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
+  </data>
+  <data name="site_app_top200_limit_devices" xml:space="preserve">
+    <value>Привязывайте не больше 7 устройств, если только остальные уже не измеряются. В каждом парке приоритет на измерение валидатором получают не больше 7 устройств. Привязанное устройство, которое не измеряется, не получает балла ведущего майнера и уже вышло из пула, поэтому ничего не зарабатывает.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+  </data>
+  <data name="site_app_top200_limit_pay" xml:space="preserve">
+    <value>Место приносит выплаты, только пока валидатор SN25 управляет своими весами, и пропорционально вашему баллу, а не месту в рейтинге. Все выбранные парки делят один канал: 3 % эмиссии майнеров до эпохи 8 и 5 % начиная с эпохи 8.</value>
+    <comment>App top200 limits: a spot pays only while the validator steers, in proportion to EMA score and not rank; the head channel is 3% of miner emission before epoch 8 and 5% from epoch 8, when capture the flag splits the providers' tenth pool 4/10, CTF 1/10, head 5/10 (sn CAPTURETHEFLAG.md §2.1)</comment>
+  </data>
+  <data name="site_app_top200_limit_republish" xml:space="preserve">
+    <value>Если вы уже публиковали коммитмент, возможно, его нужно опубликовать заново. Коммитменты в старом формате не зеркалируются, а зеркало старше 14 дней не может привязывать устройства.</value>
+    <comment>App top200 limits: a fleet that already published may have to publish again; old-format (Sha256) commitments are not mirrored and a mirror past 100,800 blocks can't bind</comment>
+  </data>
+  <data name="site_app_top200_limit_timing" xml:space="preserve">
+    <value>Регистрируйтесь в течение 3 дней перед эпохой, с которой начинается ваша привязка. Привязка начинается не раньше следующей эпохи, до которой может быть до 7 дней, а UID без эмиссии можно заменить, как только закончится его иммунитет, примерно через 3 дня после регистрации.</value>
+    <comment>App top200 limits: register within the 3 days before the binding's first epoch, because a zero-emission UID can be replaced after 21,600 blocks of immunity and a binding can wait up to 7 days</comment>
+  </data>
+  <data name="site_app_top200_limits_title" xml:space="preserve">
+    <value>Прежде чем регистрироваться</value>
+    <comment>App top200: heads the limits a customer needs before registering, shown once binding is open</comment>
+  </data>
   <data name="site_app_top200_manifest" xml:space="preserve">
     <value>Манифест парка</value>
     <comment>App top200: fleet manifest textarea label</comment>
@@ -8752,12 +8788,16 @@
     <comment>App top200: the manifest's SHA-256 is not the commitment_sha256 line pasted with it</comment>
   </data>
   <data name="site_app_top200_manifest_hint" xml:space="preserve">
-    <value>Создайте манифест парка на устройстве провайдера командой provider fleet init (команда ниже, уже заполненная для этого развёртывания; каждое другое устройство добавьте через --member=&lt;client_id&gt;:&lt;client_key&gt;), затем опубликуйте его коммитмент со своего хоткея командой provider fleet publish. Публикация в mainnet откроется, когда будет одобрена среда выполнения парка для mainnet. Вставьте манифест сюда вместе с эпохами действия, чтобы создать привязку для каждого устройства. Приложение показывает запись участника своего устройства для манифеста в разделе Заработок › Топ-200 › Подписать привязку парка.</value>
+    <value>Создайте манифест парка на устройстве провайдера командой provider fleet init (команда ниже, уже заполненная для этого развёртывания; каждое другое устройство добавьте через --member=&lt;client_id&gt;:&lt;client_key&gt;), затем опубликуйте его коммитмент со своего хоткея командой provider fleet publish. Вставьте манифест сюда вместе с эпохами действия, чтобы создать привязку для каждого устройства. Приложение показывает запись участника своего устройства для манифеста в разделе Заработок › Топ-200 › Подписать привязку парка.</value>
     <comment>App top200: how to create and publish the fleet manifest and where an app shows its member entry</comment>
   </data>
   <data name="site_app_top200_manifest_hotkey_mismatch" xml:space="preserve">
     <value>Hotkey в манифесте не совпадает с hotkey, указанным на шаге 1.</value>
     <comment>App top200: the manifest's hotkey is not the ss58 hotkey entered in step 1</comment>
+  </data>
+  <data name="site_app_top200_next_epoch" xml:space="preserve">
+    <value>Следующая эпоха начнётся примерно {}.</value>
+    <comment>App top200 limits: when the next settlement epoch starts. {when} is an estimated local date and time</comment>
   </data>
   <data name="site_app_top200_not_eligible" xml:space="preserve">
     <value>Пока нет права на участие. Ваш балл — {score}, порог вытеснения — {floor}.</value>

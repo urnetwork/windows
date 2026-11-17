@@ -8299,6 +8299,14 @@
     <value>应用 hotkey 签名</value>
     <comment>App top200: re-check every device with the hotkey signature</comment>
   </data>
+  <data name="site_app_top200_authority" xml:space="preserve">
+    <value>主网命令需要经过审查的设备群运行时授权文档。请下载该文档，并用 --mainnet-runtime-authority 传入其路径，用 --mainnet-runtime-authority-sha256 传入此 SHA-256：</value>
+    <comment>App top200: what the mainnet fleet commands need; the page shows the document's download link and SHA-256 right after this line</comment>
+  </data>
+  <data name="site_app_top200_authority_link" xml:space="preserve">
+    <value>下载设备群运行时授权文档</value>
+    <comment>App top200: link that downloads the reviewed fleet runtime authority document</comment>
+  </data>
   <data name="site_app_top200_bad_epochs" xml:space="preserve">
     <value>请以整数输入有效纪元，且截止纪元不得早于起始纪元。</value>
     <comment>App top200: validity epochs missing, not whole numbers, or reversed</comment>
@@ -8322,6 +8330,10 @@
   <data name="site_app_top200_calldata" xml:space="preserve">
     <value>绑定 calldata</value>
     <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_cli_guide" xml:space="preserve">
+    <value>通过命令行获取</value>
+    <comment>App top200 and the Earnings tile: link to the docs page on claiming a spot with btcli and provider</comment>
   </data>
   <data name="site_app_top200_current_epoch" xml:space="preserve">
     <value>当前纪元为 {}。</value>
@@ -8359,6 +8371,30 @@
     <value>头部矿工是按可路由出口 IP 广度排名前 {cutoff} 的网络。头部席位由子网在每个 tempo 原生支付，直接发放到您的 coldkey。</value>
     <comment>App top200: intro</comment>
   </data>
+  <data name="site_app_top200_limit_commitment_age" xml:space="preserve">
+    <value>超过 14 天的承诺无法绑定新设备，因此以后添加设备前请重新发布。</value>
+    <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
+  </data>
+  <data name="site_app_top200_limit_devices" xml:space="preserve">
+    <value>最多绑定 7 台设备，除非其他设备已在接受测量。每个设备群最多 7 台设备可优先接受验证者测量。已绑定但未被测量的设备没有头部分数，也已离开资金池，因此没有任何收益。</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+  </data>
+  <data name="site_app_top200_limit_pay" xml:space="preserve">
+    <value>席位只有在 SN25 验证者调整权重时才有收益，并按您的分数而非排名分配。所有入选的设备群共享一个通道：第 8 个纪元之前为矿工释放量的 3%，从第 8 个纪元起为 5%。</value>
+    <comment>App top200 limits: a spot pays only while the validator steers, in proportion to EMA score and not rank; the head channel is 3% of miner emission before epoch 8 and 5% from epoch 8, when capture the flag splits the providers' tenth pool 4/10, CTF 1/10, head 5/10 (sn CAPTURETHEFLAG.md §2.1)</comment>
+  </data>
+  <data name="site_app_top200_limit_republish" xml:space="preserve">
+    <value>如果您之前已发布过，可能需要重新发布。旧格式的承诺不会被镜像，超过 14 天的镜像也无法绑定。</value>
+    <comment>App top200 limits: a fleet that already published may have to publish again; old-format (Sha256) commitments are not mirrored and a mirror past 100,800 blocks can't bind</comment>
+  </data>
+  <data name="site_app_top200_limit_timing" xml:space="preserve">
+    <value>请在绑定生效的纪元开始前 3 天内注册。绑定最早从下一个纪元开始，可能还要等最多 7 天；而没有释放的 UID 在免疫期结束后（注册后约 3 天）可能被替换。</value>
+    <comment>App top200 limits: register within the 3 days before the binding's first epoch, because a zero-emission UID can be replaced after 21,600 blocks of immunity and a binding can wait up to 7 days</comment>
+  </data>
+  <data name="site_app_top200_limits_title" xml:space="preserve">
+    <value>注册前须知</value>
+    <comment>App top200: heads the limits a customer needs before registering, shown once binding is open</comment>
+  </data>
   <data name="site_app_top200_manifest" xml:space="preserve">
     <value>设备群清单</value>
     <comment>App top200: fleet manifest textarea label</comment>
@@ -8368,12 +8404,16 @@
     <comment>App top200: the manifest's SHA-256 is not the commitment_sha256 line pasted with it</comment>
   </data>
   <data name="site_app_top200_manifest_hint" xml:space="preserve">
-    <value>在一台提供方设备上用 provider fleet init 生成设备群清单（即下方已为此部署填好的命令；其他每台设备用 --member=&lt;client_id&gt;:&lt;client_key&gt; 添加），然后用 provider fleet publish 从您的热键发布其承诺。主网的发布将在主网设备群运行时获批后开放。将清单与有效纪元一起粘贴到此处，即可为每台设备生成绑定。应用会在 收益 › 前 200 名 › 签署设备群绑定 中显示其设备用于清单的成员条目。</value>
+    <value>在一台提供方设备上用 provider fleet init 生成设备群清单（即下方已为此部署填好的命令；其他每台设备用 --member=&lt;client_id&gt;:&lt;client_key&gt; 添加），然后用 provider fleet publish 从您的热键发布其承诺。将清单与有效纪元一起粘贴到此处，即可为每台设备生成绑定。应用会在 收益 › 前 200 名 › 签署设备群绑定 中显示其设备用于清单的成员条目。</value>
     <comment>App top200: how to create and publish the fleet manifest and where an app shows its member entry</comment>
   </data>
   <data name="site_app_top200_manifest_hotkey_mismatch" xml:space="preserve">
     <value>清单中的 hotkey 与第 1 步中输入的 hotkey 不一致。</value>
     <comment>App top200: the manifest's hotkey is not the ss58 hotkey entered in step 1</comment>
+  </data>
+  <data name="site_app_top200_next_epoch" xml:space="preserve">
+    <value>下一个纪元大约在 {} 开始。</value>
+    <comment>App top200 limits: when the next settlement epoch starts. {when} is an estimated local date and time</comment>
   </data>
   <data name="site_app_top200_not_eligible" xml:space="preserve">
     <value>暂不符合条件。您的分数为 {score}，淘汰线为 {floor}。</value>

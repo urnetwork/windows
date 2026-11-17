@@ -8427,6 +8427,14 @@ del mundo</value>
     <value>Aplicar la firma de la hotkey</value>
     <comment>App top200: re-check every device with the hotkey signature</comment>
   </data>
+  <data name="site_app_top200_authority" xml:space="preserve">
+    <value>Los comandos de mainnet necesitan el documento de autoridad revisado del runtime de flota. Descárgalo y pasa su ruta con --mainnet-runtime-authority y este SHA-256 con --mainnet-runtime-authority-sha256:</value>
+    <comment>App top200: what the mainnet fleet commands need; the page shows the document's download link and SHA-256 right after this line</comment>
+  </data>
+  <data name="site_app_top200_authority_link" xml:space="preserve">
+    <value>Descargar el documento de autoridad del runtime de flota</value>
+    <comment>App top200: link that downloads the reviewed fleet runtime authority document</comment>
+  </data>
   <data name="site_app_top200_bad_epochs" xml:space="preserve">
     <value>Introduce las épocas de validez como números enteros, la última no anterior a la primera.</value>
     <comment>App top200: validity epochs missing, not whole numbers, or reversed</comment>
@@ -8450,6 +8458,10 @@ del mundo</value>
   <data name="site_app_top200_calldata" xml:space="preserve">
     <value>Calldata de vinculación</value>
     <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_cli_guide" xml:space="preserve">
+    <value>Reclamar desde la línea de comandos</value>
+    <comment>App top200 and the Earnings tile: link to the docs page on claiming a spot with btcli and provider</comment>
   </data>
   <data name="site_app_top200_current_epoch" xml:space="preserve">
     <value>La época actual es {}.</value>
@@ -8487,6 +8499,30 @@ del mundo</value>
     <value>Los mineros principales son las {cutoff} mejores redes según la variedad de IP de salida enrutables. La subred paga un puesto principal de forma nativa en cada tempo, directamente a tu coldkey.</value>
     <comment>App top200: intro</comment>
   </data>
+  <data name="site_app_top200_limit_commitment_age" xml:space="preserve">
+    <value>Un compromiso con más de 14 días no puede vincular dispositivos nuevos, así que publica de nuevo antes de añadir dispositivos más adelante.</value>
+    <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
+  </data>
+  <data name="site_app_top200_limit_devices" xml:space="preserve">
+    <value>Vincula 7 dispositivos como máximo, salvo que los demás ya se estén midiendo. Por flota, como máximo 7 dispositivos tienen prioridad para que el validador los mida. Un dispositivo vinculado que no se mide no obtiene puntuación principal y ya ha salido del pool, así que no gana nada.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+  </data>
+  <data name="site_app_top200_limit_pay" xml:space="preserve">
+    <value>Un puesto solo paga mientras el validador de SN25 dirige sus pesos, y lo hace en proporción a tu puntuación, no a tu posición. Todas las flotas seleccionadas comparten un canal: el 3 % de la emisión de mineros antes de la época 8, y el 5 % a partir de la época 8.</value>
+    <comment>App top200 limits: a spot pays only while the validator steers, in proportion to EMA score and not rank; the head channel is 3% of miner emission before epoch 8 and 5% from epoch 8, when capture the flag splits the providers' tenth pool 4/10, CTF 1/10, head 5/10 (sn CAPTURETHEFLAG.md §2.1)</comment>
+  </data>
+  <data name="site_app_top200_limit_republish" xml:space="preserve">
+    <value>Si ya publicaste, quizá tengas que publicar de nuevo. Los compromisos en el formato antiguo no se reflejan, y un reflejo con más de 14 días no puede vincular.</value>
+    <comment>App top200 limits: a fleet that already published may have to publish again; old-format (Sha256) commitments are not mirrored and a mirror past 100,800 blocks can't bind</comment>
+  </data>
+  <data name="site_app_top200_limit_timing" xml:space="preserve">
+    <value>Regístrate en los 3 días anteriores a la época en la que empieza tu vinculación. Una vinculación empieza como pronto en la siguiente época, que puede estar a hasta 7 días, y una UID sin emisión puede ser reemplazada cuando termina su inmunidad, unos 3 días después de registrarse.</value>
+    <comment>App top200 limits: register within the 3 days before the binding's first epoch, because a zero-emission UID can be replaced after 21,600 blocks of immunity and a binding can wait up to 7 days</comment>
+  </data>
+  <data name="site_app_top200_limits_title" xml:space="preserve">
+    <value>Antes de registrarte</value>
+    <comment>App top200: heads the limits a customer needs before registering, shown once binding is open</comment>
+  </data>
   <data name="site_app_top200_manifest" xml:space="preserve">
     <value>Manifiesto de flota</value>
     <comment>App top200: fleet manifest textarea label</comment>
@@ -8496,12 +8532,16 @@ del mundo</value>
     <comment>App top200: the manifest's SHA-256 is not the commitment_sha256 line pasted with it</comment>
   </data>
   <data name="site_app_top200_manifest_hint" xml:space="preserve">
-    <value>Crea el manifiesto de flota en un dispositivo proveedor con provider fleet init (el comando de abajo, ya completado para este despliegue; añade cada otro dispositivo con --member=&lt;client_id&gt;:&lt;client_key&gt;) y luego publica su compromiso desde tu hotkey con provider fleet publish. La publicación en mainnet se abrirá cuando se apruebe el runtime de flota de mainnet. Pega aquí el manifiesto con las épocas de validez para generar la vinculación de cada dispositivo. La app muestra la entrada de miembro de su dispositivo para el manifiesto en Ganancias › Top 200 › Firmar vinculación de flota.</value>
+    <value>Crea el manifiesto de flota en un dispositivo proveedor con provider fleet init (el comando de abajo, ya completado para este despliegue; añade cada otro dispositivo con --member=&lt;client_id&gt;:&lt;client_key&gt;) y luego publica su compromiso desde tu hotkey con provider fleet publish. Pega aquí el manifiesto con las épocas de validez para generar la vinculación de cada dispositivo. La app muestra la entrada de miembro de su dispositivo para el manifiesto en Ganancias › Top 200 › Firmar vinculación de flota.</value>
     <comment>App top200: how to create and publish the fleet manifest and where an app shows its member entry</comment>
   </data>
   <data name="site_app_top200_manifest_hotkey_mismatch" xml:space="preserve">
     <value>La hotkey del manifiesto no es la hotkey introducida en el paso 1.</value>
     <comment>App top200: the manifest's hotkey is not the ss58 hotkey entered in step 1</comment>
+  </data>
+  <data name="site_app_top200_next_epoch" xml:space="preserve">
+    <value>La próxima época empieza aproximadamente el {}.</value>
+    <comment>App top200 limits: when the next settlement epoch starts. {when} is an estimated local date and time</comment>
   </data>
   <data name="site_app_top200_not_eligible" xml:space="preserve">
     <value>Aún no cumples los requisitos. Tu puntuación es {score} y el umbral de expulsión es {floor}.</value>
