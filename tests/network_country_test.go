@@ -110,6 +110,8 @@ type networkCountryControl struct {
 	name   string
 	mutate map[string]func(string) string
 	want   string
+	// This mutation must leave every independent assertion passing.
+	onlyFailure bool
 }
 
 // Runs `harness` against each control's rewritten headers and reports, by
@@ -119,9 +121,22 @@ func requireNetworkCountryFailures(t *testing.T, harness string, controls []netw
 	for _, control := range controls {
 		program := networkCountryTestProgram(t, harness, control.mutate)
 		output, err := exec.Command(program).CombinedOutput()
-		if err == nil || !strings.Contains(string(output), control.want) {
-			t.Errorf("negative control %q was not detected (want %q): %v\n%s",
-				control.name, control.want, err, output)
+		failures := 0
+		found := false
+		for _, line := range strings.Split(string(output), "\n") {
+			failure, ok := strings.CutPrefix(strings.TrimSpace(line), "FAIL ")
+			if !ok {
+				continue
+			}
+			failures++
+			if failure == control.want || (!control.onlyFailure && strings.HasPrefix(failure, control.want)) {
+				found = true
+			}
+		}
+		exited, ok := err.(*exec.ExitError)
+		if !ok || exited.ExitCode() != 1 || !found || (control.onlyFailure && failures != 1) {
+			t.Errorf("negative control %q (want %q, only failure %t): %v\n%s",
+				control.name, control.want, control.onlyFailure, err, output)
 		}
 	}
 }
@@ -212,7 +227,8 @@ func TestNetworkCountryRejectsWatchRegressions(t *testing.T) {
 			mutate: watch(
 				"return channel_->wake.wait_for(lock, readJoinBudget_, [this] { return channel_->finished; });",
 				"return channel_->finished && readJoinBudget_.count() >= 0;"),
-			want: "join: destruction returns only after the read already running has returned",
+			want:        "join: destruction returns only after the read already running has returned",
+			onlyFailure: true,
 		},
 		{
 			name: "destruction waits for a read without a bound",

@@ -19,6 +19,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <mutex>
 #include <optional>
@@ -535,23 +536,37 @@ void TestWatchBlockedFirstRead() {
   Check(reports.Count() == 1, "blocked: once");
 }
 
-// A read that finishes after the cancel is not reported.
+// A read held across explicit cancellation and destruction still finishes on
+// the worker. The channel owns the callbacks until the worker drops the read.
 void TestWatchCancel() {
-  ScriptedRead read;
-  Reports reports;
+  auto read = std::make_shared<ScriptedRead>();
+  auto reports = std::make_shared<Reports>();
+  auto channelGone = std::make_shared<Lifetime>();
+  std::promise<void> destroyed;
+  std::thread release;
   {
-    NetworkCountryWatch watch([&] { return read(); }, [&](const auto& r) { reports.Add(r); }, kJoinBudget);
+    NetworkCountryWatch watch(
+        [read] { return (*read)(); },
+        [reports, end = std::make_shared<Lifetime::End>(channelGone)](const auto& r) { reports->Add(r); },
+        0ms);
     Check(watch.WaitSettled(kBarrier), "cancel: first report");
-    read.Hold(true);
-    read.Set(kRu);
+    read->Hold(true);
+    read->Set(kRu);
     watch.NetworkEventSink()();
-    Check(read.WaitEntered(2), "cancel: the burst's read runs");
+    Check(read->WaitEntered(2), "cancel: the burst's read runs");
     watch.Cancel();
-    read.Hold(false);
+    // An unbounded-join mutant must also get to finish and report its failure.
+    release = std::thread([read, gone = destroyed.get_future()] {
+      gone.wait_for(kBarrier);
+      read->Hold(false);
+    });
   }
-  // the destructor joined: the thread is done with the read and the reports
-  Check(read.Returned() == 2, "cancel: the read returned");
-  Check(reports.Count() == 1, "cancel: a read that finishes after the cancel is not reported");
+  Check(read->Returned() == 1, "cancel: the second read is still held after destruction");
+  destroyed.set_value();
+  release.join();
+  Check(channelGone->WaitEnded(), "cancel: the worker releases the channel after the read");
+  Check(read->Returned() == 2, "cancel: the read returned");
+  Check(reports->Count() == 1, "cancel: a read that finishes after the cancel is not reported");
 }
 
 // Destruction joins a read already running that returns within the read
