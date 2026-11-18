@@ -576,6 +576,8 @@ func TestSessionsPageControllerLifecycle(t *testing.T) {
 		"Automation::AutomationProperties::SetName(header, H(group.label));",
 		"Automation::AutomationProperties::SetHeadingLevel(",
 		"chevron.Glyph(group.expanded ? kChevronUpGlyph : kChevronDownGlyph);",
+		// Narrator reads whether the group is open from the heading's item status
+		`header, group.expanded ? Loc("expanded") : Loc("collapsed"));`,
 		"SetGroupExpanded(kind, !expanded);")
 	requireOrder("SessionsPage::AppendGroup", group,
 		"host.Children().Append(header);",
@@ -1330,5 +1332,20 @@ func TestSessionsCountIsTheUsersGrouping(t *testing.T) {
 	}
 	if !strings.Contains(stripComments(readAppSource(t, "StatsFormat.h")), "std::string FormatLocalCount(int64_t count);") {
 		t.Error("StatsFormat.h no longer declares FormatLocalCount")
+	}
+}
+
+// Adding a sign-in method and converting a guest verify the new email or
+// phone with authVerify, which mints a session while this device is signed
+// in, so the account's session cap can refuse it: the sheet then says the
+// signed-in line (sessions_limit_reached), ahead of the server's words.
+func TestSignedInVerificationShowsTheSessionCapLine(t *testing.T) {
+	sheets := stripComments(readAppSource(t, "SettingsSheets.cpp"))
+	verify := functionBody(sheets, "void VerifyCode(std::string const& userAuth, std::string const& code,")
+	refusal := strings.Index(verify, "urnw::sessionlimit::LimitReached(result->error->code)")
+	line := strings.Index(verify, `Narrow(Localized("sessions_limit_reached"))`)
+	server := strings.Index(verify, "ServerError(result, err)")
+	if refusal < 0 || line < refusal || server < line {
+		t.Errorf("the signed-in verification does not show the session cap's signed-in line ahead of the server's words:\n%s", verify)
 	}
 }

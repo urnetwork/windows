@@ -572,6 +572,9 @@ void SessionsPage::AppendGroup(Panel const& host, sessions::GroupView const& gro
   content.Children().Append(chevron);
   header.Content(content);
   Automation::AutomationProperties::SetName(header, H(group.label));
+  // whether the group is open, which the chevron shows (Raw above), for Narrator
+  Automation::AutomationProperties::SetItemStatus(
+      header, group.expanded ? Loc("expanded") : Loc("collapsed"));
   Automation::AutomationProperties::SetHeadingLevel(
       header, Automation::Peers::AutomationHeadingLevel::Level3);
   const std::string kind = group.kind;

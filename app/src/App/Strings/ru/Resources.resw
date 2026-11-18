@@ -1758,7 +1758,7 @@
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Свёрнуто</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>Не хотите регистрироваться?</value>
@@ -4626,7 +4626,7 @@
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Развёрнуто</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Истекает</value>
@@ -7979,7 +7979,7 @@
   </data>
   <data name="sessions_limit_reached" xml:space="preserve">
     <value>Слишком много активных сеансов. Завершите неиспользуемые сеансы в разделе «Аккаунт &gt; Сеансы» и попробуйте снова.</value>
-    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, on a page where the user is signed in to the account (ur.io's hosted proxy creation). A button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
   </data>
   <data name="sessions_limit_reached_sign_in" xml:space="preserve">
     <value>Слишком много активных сеансов. На устройстве, где выполнен вход в этот аккаунт, откройте «Аккаунт &gt; Сеансы», завершите неиспользуемые сеансы и попробуйте снова.</value>

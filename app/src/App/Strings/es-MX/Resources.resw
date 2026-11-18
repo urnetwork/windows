@@ -1662,7 +1662,7 @@ de la manera correcta</value>
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Contraído</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>¿Problemas para comprometerte?</value>
@@ -4498,7 +4498,7 @@ de la manera correcta</value>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Desplegado</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Expira</value>
@@ -7659,7 +7659,7 @@ del mundo</value>
   </data>
   <data name="sessions_limit_reached" xml:space="preserve">
     <value>Hay demasiadas sesiones activas. Cierra las sesiones que ya no uses en Cuenta &gt; Sesiones y vuelve a intentarlo.</value>
-    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, on a page where the user is signed in to the account (ur.io's hosted proxy creation). A button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
   </data>
   <data name="sessions_limit_reached_sign_in" xml:space="preserve">
     <value>Hay demasiadas sesiones activas. En un dispositivo con la sesión iniciada en esta cuenta, ve a Cuenta &gt; Sesiones, cierra las sesiones que ya no uses y vuelve a intentarlo.</value>
