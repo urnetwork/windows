@@ -302,6 +302,12 @@ void AppController::Start() {
   sdk_.SetAuthInvalidHandler([this](std::string cause) {
     OnUi([this, cause] { OnAuthInvalid(cause); });
   });
+  // The server refused the account's own sign-in while this device's client
+  // stays signed in (the sdk kept the client and signed nothing out): the app
+  // signs out only when that was its own session, signed out from Sessions.
+  sdk_.SetAccountSignInRequiredHandler([this] {
+    OnUi([this] { OnAccountSignInRequired(); });
+  });
   sdk_.SetJwtRefreshedHandler([this] {
     OnUi([this] { balance_.OnJwtRefreshed(); });
   });
@@ -569,11 +575,31 @@ void AppController::OnAuthInvalid(const std::string& cause) {
   sdk_.Logout();
 }
 
+void AppController::OnAccountSignInRequired() {
+  switch (authlogout::AccountSignInStepFor(sdk_.IsLoggedIn(), ownSessionSignOut_)) {
+    case authlogout::AccountSignInStep::None:
+      return;
+    case authlogout::AccountSignInStep::SignOut:
+      // as the confirmation said: "This app will be signed out"
+      LogInfo("app: this app signed its own session out from Sessions; signing out");
+      ownSessionSignOut_ = false;
+      sdk_.Logout();
+      return;
+    case authlogout::AccountSignInStep::Stay:
+      // nothing signs out or disconnects; the Sessions page says the account
+      // needs a sign-in again
+      LogInfo("app: the server refused the account's sign-in; this device stays signed in");
+      return;
+  }
+}
+
 void AppController::OnAuthState(AuthState state, const std::string& error) {
   const bool wasLoggedIn = (authState_ == AuthState::LoggedIn);
   authState_ = state;
   authError_ = error;
   authErrorUndelivered_ = !error.empty();
+  // a sign-in or a sign-out ends the Sessions page's sign-out of this session
+  if (state == AuthState::LoggedIn || state == AuthState::LoggedOut) ownSessionSignOut_ = false;
   // A browser approval is a sign-in this app started and waits on. Any OTHER sign-in
   // starting (every one pushes Authenticating first) or succeeding, and a sign-out, ends
   // it, so a late answer from the browser is a stray (UrIoApproval.h). The approval's own

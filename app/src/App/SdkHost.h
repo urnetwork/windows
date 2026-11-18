@@ -574,6 +574,12 @@ class SdkHost {
   // callback thread and must only marshal -- the ui marshals onto its thread
   // and calls Logout() once for them (AuthLogoutNotice.h).
   using AuthInvalidHandler = std::function<void(std::string cause)>;
+  // The server refused the account's own sign-in while this device's client
+  // stays signed in: the sdk's AccountSignInRequired, which the Api reports in
+  // place of an AuthLogout when the client is not of that sign-in's session,
+  // and then signs nothing out. Runs on an sdk callback thread and must only
+  // marshal; the ui decides (AppController::OnAccountSignInRequired).
+  using AccountSignInRequiredHandler = std::function<void()>;
   using JwtRefreshedHandler = std::function<void()>;
   using TunnelStateHandler = std::function<void(const proto::TunnelStatus&)>;
   using StatsHandler = std::function<void(const LiveStats&)>;
@@ -1346,6 +1352,9 @@ class SdkHost {
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
   bool AuthEventIsCurrent(std::uint64_t epoch) const { return signOutRun_.Epoch() == epoch; }
   void SetAuthInvalidHandler(AuthInvalidHandler h) { onAuthInvalid_ = std::move(h); }
+  void SetAccountSignInRequiredHandler(AccountSignInRequiredHandler h) {
+    onAccountSignInRequired_ = std::move(h);
+  }
   void SetJwtRefreshedHandler(JwtRefreshedHandler h) { onJwtRefreshed_ = std::move(h); }
   void SetTunnelStateHandler(TunnelStateHandler h) { onTunnel_ = std::move(h); }
   // Live stats push (connection/throughput/provide). Fired on SDK listener
@@ -2537,7 +2546,8 @@ class SdkHost {
   // (server session/REVOKE-UI-FINAL.md §1.13, the last use the Sessions page
   // lists), and its confirmed rejection of the account's credential routed,
   // with the rejection's cause, to the sign-out the device's rejection takes
-  // (onAuthInvalid_). Caller holds mutex_.
+  // (onAuthInvalid_), or, when the sdk kept the device's client, to the
+  // account sign-in handler (onAccountSignInRequired_). Caller holds mutex_.
   void BindApiLocked();
   void SetupWalletCallbacks();
   void RequestWalletChallenge(
@@ -3274,6 +3284,8 @@ class SdkHost {
   std::string appVersion_ = urnw::version::kString;
   // The Api's logout listener (BindApiLocked), replaced with the Api.
   std::optional<urnet::Sub> apiLogoutSub_;
+  // The Api's account sign-in listener (BindApiLocked), replaced with the Api.
+  std::optional<urnet::Sub> apiAccountSignInSub_;
 
   // Answer and clear whichever wallet-bridge flow is outstanding. Called when a
   // new one starts: the bridge has a single pair of callbacks, so the new flow
@@ -3394,6 +3406,7 @@ class SdkHost {
 
   AuthStateHandler onAuth_;
   AuthInvalidHandler onAuthInvalid_;
+  AccountSignInRequiredHandler onAccountSignInRequired_;
   JwtRefreshedHandler onJwtRefreshed_;
   TunnelStateHandler onTunnel_;
   StatsHandler onStats_;

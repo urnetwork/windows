@@ -65,4 +65,24 @@ class SignedOutNotice {
   Notice pending_ = Notice::None;
 };
 
+// The server refused the account's own sign-in while this device's client
+// stays signed in: the sdk's AccountSignInRequired, which the Api reports in
+// place of an AuthLogout when the device's client is not of that sign-in's
+// session (a client registered before sessions were tagged, say). The sdk
+// signs nothing out then, and neither does the app, but for the one case its
+// own confirmation promised: this app signed its own session out from the
+// Sessions page ("This app will be signed out", REVOKE-UI-FINAL.md §4), and
+// its normal sign-out follows. Otherwise the device stays signed in and
+// connected, and the Sessions page says the account needs a sign-in again.
+enum class AccountSignInStep {
+  None,     // signed out already: a report behind a sign-out
+  SignOut,  // this app signed its own session out from Sessions
+  Stay,     // the account was signed out from elsewhere
+};
+
+constexpr AccountSignInStep AccountSignInStepFor(bool signedIn, bool ownSessionSignOut) {
+  if (!signedIn) return AccountSignInStep::None;
+  return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Stay;
+}
+
 }  // namespace urnw::authlogout

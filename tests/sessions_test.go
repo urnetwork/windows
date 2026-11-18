@@ -310,6 +310,13 @@ func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
 	requireSessionsFailure(t, "SessionLimitNotice.h", func(source string) string {
 		return strings.Replace(source, "  return clientlimit::SignInRefusalMessageKey(error);\n", "  return nullptr;\n", 1)
 	}, "the client limit's token, a plan an upgrade lifts")
+	// the account's sign-in refused while the device stays: this app's own
+	// session signed out from Sessions still signs the app out
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source,
+			"return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Stay;",
+			"return ownSessionSignOut ? AccountSignInStep::Stay : AccountSignInStep::Stay;", 1)
+	}, "this app signed its own session out from Sessions: its sign-out follows")
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
 		return strings.Replace(source, "  if (countryCode.empty()) return kUnknownCountryRgb;\n", "", 1)
 	}, "an empty code is the unknown-country colour")
@@ -1189,6 +1196,83 @@ func TestSessionLimitSignInWiring(t *testing.T) {
 		definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::OfferSignInManageDevices("),
 		"const char* words = urnw::sessionlimit::SignInRefusalKey(error);",
 		"manageDevicesSheet_->SetMessage(words ? Loc(words) : hstring{urnw::Widen(error)});")
+}
+
+// The account's own sign-in refused while this device's client stays signed
+// in: the sdk's AccountSignInRequired, which the Api reports in place of an
+// AuthLogout when the client is not of that sign-in's session, and then signs
+// nothing out. The app did not listen, so signing this app's own session out
+// from Sessions could leave it signed in, against the confirmation's "This app
+// will be signed out" (REVOKE-UI-FINAL.md §4). Every Api the host binds
+// subscribes, replacing the last one's subscription and dropped with the host,
+// and reports on its own handler (never the auth-invalid one, which signs out
+// whatever it hears); the controller signs out only when the Sessions page
+// noted this app's own session's confirmed sign-out (AuthLogoutNotice.h
+// AccountSignInStepFor, TestSessionsPresentation), and a sign-in or a
+// sign-out forgets that note.
+func TestAccountSignInRequiredSignsOutOnlyThisAppsOwnSessionSignOut(t *testing.T) {
+	host := stripComments(readAppSource(t, "SdkHost.cpp"))
+	requireSessionsOrder(t, "SdkHost::BindApiLocked",
+		sessionsCode(definitionBody(t, "SdkHost.cpp", host, "void SdkHost::BindApiLocked() {")),
+		"apiLogoutSub_.emplace(",
+		"apiAccountSignInSub_.reset();",
+		"apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this]{"+
+			"if(!loggedIn_.load(std::memory_order_acquire)||!onAccountSignInRequired_)return;"+
+			"onAccountSignInRequired_();}));")
+	if count := strings.Count(host, "addAccountSignInRequiredListener("); count != 1 {
+		t.Errorf("SdkHost.cpp subscribes to the account sign-in %d times; BindApiLocked does, for every Api", count)
+	}
+	if count := strings.Count(host, "onAccountSignInRequired_("); count != 1 {
+		t.Errorf("SdkHost.cpp reports the account sign-in from %d places; only the Api's listener may", count)
+	}
+	requireSessionsOrder(t, "SdkHost::~SdkHost", definitionBody(t, "SdkHost.cpp", host, "SdkHost::~SdkHost() {"),
+		"apiLogoutSub_.reset();", "apiAccountSignInSub_.reset();")
+	header := sessionsCode(readAppSource(t, "SdkHost.h"))
+	for _, want := range []string{"usingAccountSignInRequiredHandler=std::function<void()>;",
+		"voidSetAccountSignInRequiredHandler(AccountSignInRequiredHandlerh){onAccountSignInRequired_=std::move(h);}",
+		"std::optional<urnet::Sub>apiAccountSignInSub_;", "AccountSignInRequiredHandleronAccountSignInRequired_;"} {
+		if !strings.Contains(header, want) {
+			t.Errorf("SdkHost.h: missing %s", want)
+		}
+	}
+
+	controller := stripComments(readAppSource(t, "AppController.cpp"))
+	requireSessionsOrder(t, "AppController::Start",
+		sessionsCode(handlerSource(t, "AppController.cpp", controller, "sdk_.SetAccountSignInRequiredHandler(")),
+		"sdk_.SetAccountSignInRequiredHandler([this]{OnUi([this]{OnAccountSignInRequired();});")
+	on := sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAccountSignInRequired() {"))
+	requireSessionsOrder(t, "AppController::OnAccountSignInRequired", on,
+		"switch(authlogout::AccountSignInStepFor(sdk_.IsLoggedIn(),ownSessionSignOut_)){",
+		"caseauthlogout::AccountSignInStep::SignOut:", "ownSessionSignOut_=false;", "sdk_.Logout();", "return;",
+		"caseauthlogout::AccountSignInStep::Stay:")
+	if at := strings.Index(on, "caseauthlogout::AccountSignInStep::Stay:"); at >= 0 {
+		if stay := on[at:]; strings.Contains(stay, "Logout(") || strings.Contains(stay, "Disconnect") ||
+			strings.Contains(stay, "signedOutNotice_") {
+			t.Error("AppController::OnAccountSignInRequired signs out, disconnects or leaves a notice for a sign-in refused elsewhere; the device stays signed in")
+		}
+	}
+	requireSessionsOrder(t, "AppController::OnAuthState",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthState(AuthState state, const std::string& error) {")),
+		"if(state==AuthState::LoggedIn||state==AuthState::LoggedOut)ownSessionSignOut_=false;")
+	if !strings.Contains(sessionsCode(readAppSource(t, "AppController.h")), "voidNoteOwnSessionSignOut(){ownSessionSignOut_=true;}") {
+		t.Error("AppController.h: NoteOwnSessionSignOut no longer notes this app's own session's sign-out")
+	}
+
+	// the page notes it for a confirmed sign-out of its current session, by the
+	// controller that signs it out, before the revoke; and nothing else does
+	page := stripComments(readAppSource(t, "SessionsPage.cpp"))
+	requireSessionsOrder(t, "SessionsPage::ConfirmSignOut",
+		sessionsCode(definitionBody(t, "SessionsPage.cpp", page, "winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {")),
+		"if(confirmed){",
+		"if(current&&controller_&&fence_.Admits(generation))urnw::App().NoteOwnSessionSignOut();",
+		"SignOut(sessionId,generation);")
+	notes := 0
+	for _, source := range appSourceFiles(t, ".cpp", ".h") {
+		notes += strings.Count(stripComments(source), "NoteOwnSessionSignOut(")
+	}
+	if notes != 2 {
+		t.Errorf("the app names NoteOwnSessionSignOut %d times; its definition and the Sessions page's confirmed sign-out of this session, once each", notes)
+	}
 }
 
 // The session cap's code and the group kinds the app spells itself are the

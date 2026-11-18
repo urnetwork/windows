@@ -1573,6 +1573,19 @@ void TestSignedOutNotice() {
     CheckEq(0, app.signOuts, "a signed-out app is not signed out again");
     Check(app.notice.Take() == al::Notice::None, "and says nothing");
   }
+
+  // The account's own sign-in refused while this device's client stays
+  // signed in (the sdk's AccountSignInRequired, when the client is not of
+  // that sign-in's session): only this app's own session, signed out from
+  // Sessions, signs the app out.
+  Check(al::AccountSignInStepFor(true, true) == al::AccountSignInStep::SignOut,
+        "this app signed its own session out from Sessions: its sign-out follows, as the "
+        "confirmation said");
+  Check(al::AccountSignInStepFor(true, false) == al::AccountSignInStep::Stay,
+        "the account was signed out from elsewhere: this device stays signed in");
+  Check(al::AccountSignInStepFor(false, true) == al::AccountSignInStep::None &&
+            al::AccountSignInStepFor(false, false) == al::AccountSignInStep::None,
+        "a report behind a sign-out changes nothing");
 }
 
 void TestReader() {

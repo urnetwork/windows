@@ -402,6 +402,7 @@ SdkHost::~SdkHost() {
   std::scoped_lock lock(mutex_);
   subs_.clear();
   apiLogoutSub_.reset();
+  apiAccountSignInSub_.reset();
 }
 
 std::string SdkHost::RandomLoopbackHostPort() {
@@ -592,6 +593,19 @@ void SdkHost::BindApiLocked() {
   apiLogoutSub_.emplace(api_->addAuthLogoutListener([this, api = api_->handle()] {
     if (!loggedIn_.load(std::memory_order_acquire) || !onAuthInvalid_) return;
     onAuthInvalid_(authlogout::ApiCause(api));
+  }));
+  // When the device's client is not of the rejected sign-in's session (one
+  // registered before sessions were tagged, say), the sdk drops only the
+  // account's credential, keeps the client and signs nothing out: it tells
+  // this Api's account sign-in listeners instead of its logout listeners. A
+  // sign-out of this app's own session from the Sessions page is one of those
+  // too, and the app's sign-out follows it (AppController::
+  // OnAccountSignInRequired, AuthLogoutNotice.h AccountSignInStepFor). On an
+  // sdk thread: the handler marshals.
+  apiAccountSignInSub_.reset();
+  apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this] {
+    if (!loggedIn_.load(std::memory_order_acquire) || !onAccountSignInRequired_) return;
+    onAccountSignInRequired_();
   }));
 }
 

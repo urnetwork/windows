@@ -12,6 +12,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
+#include "AppController.h"  // NoteOwnSessionSignOut: this session's sign-out signs the app out
 #include "Localization.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -780,7 +781,13 @@ winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
   } catch (...) {
   }
   w_.SetSheetOpen(false);
-  if (confirmed) SignOut(sessionId, generation);
+  if (confirmed) {
+    // this app's own session: its sign-out follows however the sdk reports
+    // the rejection (AppController::NoteOwnSessionSignOut), when this page's
+    // controller is the one that signs it out
+    if (current && controller_ && fence_.Admits(generation)) urnw::App().NoteOwnSessionSignOut();
+    SignOut(sessionId, generation);
+  }
   // back on the row the dialog was for, or its nearest neighbour
   RestoreFocus({FocusKind::SignOut, sessionId, section});
 }
