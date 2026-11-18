@@ -8878,6 +8878,10 @@ como ela deveria ser.</value>
     <value>Testar animação</value>
     <comment>Get Pro screen: debug button that replays the Pro celebration animation.</comment>
   </data>
+  <data name="test_purchases_in_test_builds_don_t_unlock_pro" xml:space="preserve">
+    <value>Compras de teste em versões de teste não desbloqueiam o Pro.</value>
+    <comment>Shown inline in the upgrade flow, and as the restore result, when the server refuses an App Store sandbox purchase (a TestFlight build) because the account is not one of its internal testers: the purchase report answers invalid with error code sandbox_purchase (sdk IsSandboxPurchaseRefusal). Test purchases are free, so they unlock nothing. Neutral on purpose: it must never name another way to pay (the App Store's anti-steering rule). Owner 2026-11-17: "Keep buttons, neutral notice" (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
   <data name="thanks_for_building_the_new_internet_with_us" xml:space="preserve">
     <value>Obrigado por construir a nova internet conosco</value>
     <comment>Used in Shared/Views/PurchaseSuccessView.swift.</comment>

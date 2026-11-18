@@ -9129,6 +9129,14 @@ world's content</value>
     <value>Not eligible yet. Your score is {score} and the eviction floor is {floor}.</value>
     <comment>App top200: status when not eligible</comment>
   </data>
+  <data name="site_app_top200_not_measurable" xml:space="preserve">
+    <value>Not measurable yet</value>
+    <comment>App top200: status headline for a network the SN25 validator can't measure yet, in place of You qualify (owner decision 2026-11-17: qualifying follows measurability, as the claim guide says). The body (site_app_top200_not_measurable_body) and the reason (leaderboard_protocol_not_measurable_*) follow it</comment>
+  </data>
+  <data name="site_app_top200_not_measurable_body" xml:space="preserve">
+    <value>Don't register or pay anything until this page and your Earnings tile show Claim your spot.</value>
+    <comment>App top200: under Not measurable yet, the claim guide's rule: register a hotkey (the burn) or pay for nothing until the page and the Earnings Top 200 tile show the Claim your spot button (claim_your_spot, quoted in the reader's language)</comment>
+  </data>
   <data name="site_app_top200_open_in_app" xml:space="preserve">
     <value>Open in the app</value>
     <comment>App top200: link that opens the app's Sign fleet binding screen with this binding filled in</comment>
@@ -10833,6 +10841,10 @@ as it should be.</value>
   <data name="test_animation" xml:space="preserve">
     <value>Test animation</value>
     <comment>Get Pro screen: debug button that replays the Pro celebration animation.</comment>
+  </data>
+  <data name="test_purchases_in_test_builds_don_t_unlock_pro" xml:space="preserve">
+    <value>Test purchases in test builds don't unlock Pro.</value>
+    <comment>Shown inline in the upgrade flow, and as the restore result, when the server refuses an App Store sandbox purchase (a TestFlight build) because the account is not one of its internal testers: the purchase report answers invalid with error code sandbox_purchase (sdk IsSandboxPurchaseRefusal). Test purchases are free, so they unlock nothing. Neutral on purpose: it must never name another way to pay (the App Store's anti-steering rule). Owner 2026-11-17: "Keep buttons, neutral notice" (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="thanks_for_building_the_new_internet_with_us" xml:space="preserve">
     <value>Thanks for building the new internet with us</value>
