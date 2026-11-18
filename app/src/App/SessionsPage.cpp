@@ -365,7 +365,9 @@ void SessionsPage::RenderBody(sessions::View const& view) {
       // The generic wording, or the remote sign-out's when the controller
       // reports that trusted cause. The credential's rejection reaches
       // SdkHost's logout listeners, which run the app's sign-out (§5), and the
-      // sign-in page says the same (AuthLogoutNotice.h).
+      // sign-in page says the same (AuthLogoutNotice.h); or, when this device
+      // stays signed in, its account sign-in listener, and the main window's
+      // notice says so too.
       AppendProse(host, Loc(sessions::SignInRequiredKey(view.signedOutRemotely)),
                   colors::MutedBrush());
       break;

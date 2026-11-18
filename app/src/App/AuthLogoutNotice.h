@@ -68,21 +68,53 @@ class SignedOutNotice {
 // The server refused the account's own sign-in while this device's client
 // stays signed in: the sdk's AccountSignInRequired, which the Api reports in
 // place of an AuthLogout when the device's client is not of that sign-in's
-// session (a client registered before sessions were tagged, say). The sdk
-// signs nothing out then, and neither does the app, but for the one case its
-// own confirmation promised: this app signed its own session out from the
-// Sessions page ("This app will be signed out", REVOKE-UI-FINAL.md §4), and
-// its normal sign-out follows. Otherwise the device stays signed in and
-// connected, and the Sessions page says the account needs a sign-in again.
+// session (a client registered before sessions were tagged, say), with the
+// account's credential already cleared and the device kept (server
+// session/REVOKE-FINAL.md §10, credential rejection). Nothing signs out or
+// disconnects, but for the one case the app's own confirmation promised: this
+// app signed its own session out from the Sessions page ("This app will be
+// signed out", REVOKE-UI-FINAL.md §4), and its normal sign-out follows, with
+// no notice. The sdk reports that one as an AuthLogout now; the step stays
+// for a report that races it. Otherwise the main window says the account
+// needs a sign-in again (AccountSignInNoticeFor) until the notice is closed,
+// or the next sign-in or sign-out; the Sessions page says the same from its
+// own controller.
 enum class AccountSignInStep {
   None,     // signed out already: a report behind a sign-out
   SignOut,  // this app signed its own session out from Sessions
-  Stay,     // the account was signed out from elsewhere
+  Notice,   // the account's sign-in ended elsewhere: the device stays, and the window says so
 };
 
 constexpr AccountSignInStep AccountSignInStepFor(bool signedIn, bool ownSessionSignOut) {
   if (!signedIn) return AccountSignInStep::None;
-  return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Stay;
+  return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Notice;
+}
+
+// What the main window's notice says (AccountSignInStep::Notice), by the
+// cause the Api's listener read for the report (AuthLogoutCause.h
+// AccountSignInCause): "This session was signed out from another device."
+// ahead of "Sign in again to manage sessions." only for the trusted cause the
+// server confirmed, spelled exactly; the generic line alone for any other, ""
+// among them (REVOKE-UI-FINAL.md §5).
+enum class AccountSignInNotice {
+  None,               // nothing shows
+  SignInRequired,     // "Sign in again to manage sessions."
+  SignedOutRemotely,  // "This session was signed out from another device." ahead of it
+};
+
+constexpr AccountSignInNotice AccountSignInNoticeFor(std::string_view cause) {
+  return cause == kCauseSessionRevoked ? AccountSignInNotice::SignedOutRemotely
+                                       : AccountSignInNotice::SignInRequired;
+}
+
+// The notice's words as store keys, in reading order: the remote sign-out's
+// line, "" unless the server confirmed it, then the sign-in line, "" for no
+// notice. The window joins them with a space.
+constexpr const char* AccountSignInLeadKey(AccountSignInNotice notice) {
+  return notice == AccountSignInNotice::SignedOutRemotely ? "sessions_signed_out_remotely" : "";
+}
+constexpr const char* AccountSignInLineKey(AccountSignInNotice notice) {
+  return notice == AccountSignInNotice::None ? "" : "sessions_sign_in_required";
 }
 
 }  // namespace urnw::authlogout

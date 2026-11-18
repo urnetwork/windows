@@ -15,6 +15,7 @@
 
 #include "AccountPage.h"
 #include "ApiKeysPage.h"
+#include "AuthLogoutNotice.h"
 #include "BalanceGate.h"
 #include "BalanceSheets.h"
 #include "ClientLimitNotice.h"
@@ -153,6 +154,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // dismissed): its words, Get Pro, Manage devices and Close. Re-renders only
   // on a change.
   void SetProFeaturesNotice(std::string const& prompt);
+  // The account sign-in notice (AppController, AuthLogoutNotice.h) -> the
+  // AccountSignInNotice InfoBar above every destination: the account's own
+  // sign-in was refused while this device stays signed in and connected.
+  // None closes it. Re-renders only on a change.
+  void SetAccountSignInNotice(urnw::authlogout::AccountSignInNotice notice);
   // The device list (ManageDevicesSheet), in the single-sheet gate: from the
   // notices' Manage devices and Settings, or, `forSignIn`, for the sign-in the
   // client limit refused, with `message` above the list. Its Pro features
@@ -586,6 +592,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // message, open. The sdk's MainPrompt it shows.
   void ApplyProFeaturesNotice();
   std::string proFeaturesPrompt_;
+  // The account sign-in notice's one writer (SetAccountSignInNotice): its
+  // words, open and shown, or closed and collapsed.
+  void ApplyAccountSignInNotice();
+  urnw::authlogout::AccountSignInNotice accountSignInNotice_ =
+      urnw::authlogout::AccountSignInNotice::None;
   // A notice's Get Pro: the client limit notice's, the Pro features notice's
   // and the device list's. The upgrade sheet, after the in-place conversion
   // for a guest: the balance banner's upgrade path, which changes the plan and

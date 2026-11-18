@@ -32,7 +32,8 @@
 // wrapper's handles, strings and lists are what SnapshotFrom reads, and every
 // handle it takes is released once. So do the logout listeners' reads of the
 // cause (App/AuthLogoutCause.h) and the wrapper's own getters, against the
-// header's constant; the group kinds and the session cap's error code are the
+// header's constant, and the account sign-in listener's read of its own
+// report's cause; the group kinds and the session cap's error code are the
 // header's, and the session cap's refusal reads the same through the
 // header's own result structs. The header needs nlohmann/json; both are
 // system includes because the generated code does not build with -Wextra
@@ -441,10 +442,11 @@ struct Object {
   const void* value;
 };
 
-// An Api or a Device as its logout cause reads: what GetAuthLogoutCause
-// returns, or nil.
+// An Api or a Device as its causes read: what GetAuthLogoutCause returns, and
+// on an Api what GetAccountSignInRequiredCause returns, or nil.
 struct FakeLogout {
   std::optional<std::string> cause;
+  std::optional<std::string> accountSignInCause;
 };
 
 std::map<uint64_t, Object> gLive;
@@ -498,6 +500,11 @@ char* urnet_api_get_auth_logout_cause(uint64_t self) {
 char* urnet_device_get_auth_logout_cause(uint64_t self) {
   const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Device);
   return l && l->cause ? abi::Copy(*l->cause) : nullptr;
+}
+// an AccountSignInRequired's cause, on the Api
+char* urnet_api_get_account_sign_in_required_cause(uint64_t self) {
+  const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Api);
+  return l && l->accountSignInCause ? abi::Copy(*l->accountSignInCause) : nullptr;
 }
 
 bool urnet_release(uint64_t handle) {
@@ -1577,15 +1584,52 @@ void TestSignedOutNotice() {
   // The account's own sign-in refused while this device's client stays
   // signed in (the sdk's AccountSignInRequired, when the client is not of
   // that sign-in's session): only this app's own session, signed out from
-  // Sessions, signs the app out.
+  // Sessions, signs the app out, and says nothing; otherwise the device stays
+  // signed in and the main window says the account needs a sign-in again.
   Check(al::AccountSignInStepFor(true, true) == al::AccountSignInStep::SignOut,
         "this app signed its own session out from Sessions: its sign-out follows, as the "
-        "confirmation said");
-  Check(al::AccountSignInStepFor(true, false) == al::AccountSignInStep::Stay,
-        "the account was signed out from elsewhere: this device stays signed in");
+        "confirmation said, with no notice");
+  Check(al::AccountSignInStepFor(true, false) == al::AccountSignInStep::Notice,
+        "the account was signed out from elsewhere: this device stays signed in, and the "
+        "window says so");
   Check(al::AccountSignInStepFor(false, true) == al::AccountSignInStep::None &&
             al::AccountSignInStepFor(false, false) == al::AccountSignInStep::None,
         "a report behind a sign-out changes nothing");
+
+  // the notice's words: the remote sign-out's line only for the trusted cause,
+  // spelled exactly, and the sign-in line for every cause
+  Check(al::AccountSignInNoticeFor("session_revoked") == al::AccountSignInNotice::SignedOutRemotely,
+        "session_revoked: signed out from another device, then sign in again");
+  for (const char* cause : {"", "Session_Revoked", "SESSION_REVOKED", "session_revoked ",
+                            " session_revoked", "session_revoked\n", "session-revoked", "revoked",
+                            "client_removed", "sign_in_required"}) {
+    Check(al::AccountSignInNoticeFor(cause) == al::AccountSignInNotice::SignInRequired,
+          std::string("the cause \"") + cause + "\" says only to sign in again");
+  }
+  const auto words = [](al::AccountSignInNotice notice) {
+    // as MainWindow::ApplyAccountSignInNotice: the lead, a space, the line
+    const char* lead = al::AccountSignInLeadKey(notice);
+    const char* line = al::AccountSignInLineKey(notice);
+    if (!*line) return std::string();
+    return *lead ? English(lead) + " " + English(line) : English(line);
+  };
+  CheckText("This session was signed out from another device. Sign in again to manage sessions.",
+            words(al::AccountSignInNotice::SignedOutRemotely),
+            "the window's words for a session signed out from another device");
+  CheckText("Sign in again to manage sessions.", words(al::AccountSignInNotice::SignInRequired),
+            "the window's words for any other cause");
+  CheckText("", al::AccountSignInLineKey(al::AccountSignInNotice::None), "no notice has no words");
+  CheckText("", al::AccountSignInLeadKey(al::AccountSignInNotice::None), "and no lead");
+  CheckText("", al::AccountSignInLeadKey(al::AccountSignInNotice::SignInRequired),
+            "any other cause has no lead");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/true),
+            al::AccountSignInLeadKey(al::AccountSignInNotice::SignedOutRemotely),
+            "the window says what the Sessions page says of a remote sign-out");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/false),
+            al::AccountSignInLineKey(al::AccountSignInNotice::SignedOutRemotely),
+            "and of the sign-in it needs");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/false),
+            al::AccountSignInLineKey(al::AccountSignInNotice::SignInRequired), "for every cause");
 }
 
 void TestReader() {
@@ -1684,9 +1728,9 @@ void TestSdkLogoutCause() {
   CheckText(std::string(al::kCauseSessionRevoked), urnet::AuthLogoutCauseSessionRevoked,
             "the wrapper's session-revoked cause");
 
-  abi::FakeLogout revoked{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED)};
-  abi::FakeLogout generic{std::string()};
-  abi::FakeLogout nil{std::nullopt};
+  abi::FakeLogout revoked{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED), std::nullopt};
+  abi::FakeLogout generic{std::string(), std::nullopt};
+  abi::FakeLogout nil{std::nullopt, std::nullopt};
   const uint64_t api = abi::Issue(abi::Kind::Api, &revoked);
   const uint64_t device = abi::Issue(abi::Kind::Device, &revoked);
   const int64_t stringsBefore = abi::gStringsIssued;
@@ -1726,6 +1770,50 @@ void TestSdkLogoutCause() {
   }
   CheckEq(abi::gStringsIssued, abi::gStringsFreed, "every cause string is freed");
   for (const uint64_t handle : {api, device, genericApi, nilDevice}) urnet_release(handle);
+  CheckEq(0, static_cast<int64_t>(abi::gLive.size()), "every handle is released");
+}
+
+// The account sign-in listener's read of its own report's cause
+// (AuthLogoutCause.h AccountSignInCause), by the Api's handle through the c
+// abi, which is the call the wrapper's Api::getAccountSignInRequiredCause
+// makes; the window's notice it leads to; and never the Api's logout cause,
+// which each Api here holds with the other value.
+void TestSdkAccountSignInCause() {
+  abi::FakeLogout revoked{std::string(), std::string(urnet::AuthLogoutCauseSessionRevoked)};
+  abi::FakeLogout generic{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED), std::string()};
+  abi::FakeLogout nil{std::nullopt, std::nullopt};
+  const uint64_t api = abi::Issue(abi::Kind::Api, &revoked);
+  const uint64_t genericApi = abi::Issue(abi::Kind::Api, &generic);
+  const uint64_t nilApi = abi::Issue(abi::Kind::Api, &nil);
+  const uint64_t device = abi::Issue(abi::Kind::Device, &revoked);
+  const int64_t stringsBefore = abi::gStringsIssued;
+  const int64_t freedBefore = abi::gStringsFreed;
+
+  CheckText("session_revoked", al::AccountSignInCause(api),
+            "the account sign-in listener reads its own report's cause");
+  Check(al::AccountSignInNoticeFor(al::AccountSignInCause(api)) ==
+            al::AccountSignInNotice::SignedOutRemotely,
+        "a session signed out from another device: the window says so, then to sign in again");
+  CheckText("", al::AccountSignInCause(genericApi), "not the Api's logout cause");
+  Check(al::AccountSignInNoticeFor(al::AccountSignInCause(genericApi)) ==
+            al::AccountSignInNotice::SignInRequired,
+        "any other refusal: the window says only to sign in again");
+  CheckEq(4, abi::gStringsIssued - stringsBefore, "each read takes the sdk's string");
+  CheckEq(abi::gStringsIssued - stringsBefore, abi::gStringsFreed - freedBefore,
+          "and frees every one of them");
+  CheckText("", al::AccountSignInCause(nilApi), "a nil string reads as no cause");
+  CheckText("", al::AccountSignInCause(0), "a nil Api reads no cause");
+  CheckText("", al::AccountSignInCause(device), "a device's handle is not an Api's");
+
+  // the generated wrapper's own getter makes the same call
+  {
+    const urnet::Api wrapped(abi::Issue(abi::Kind::Api, &revoked));
+    CheckText("session_revoked", wrapped.getAccountSignInRequiredCause(),
+              "Api::getAccountSignInRequiredCause");
+    CheckText("", wrapped.getAuthLogoutCause(), "beside the Api's own logout cause");
+  }
+  CheckEq(abi::gStringsIssued, abi::gStringsFreed, "every cause string is freed");
+  for (const uint64_t handle : {api, genericApi, nilApi, device}) urnet_release(handle);
   CheckEq(0, static_cast<int64_t>(abi::gLive.size()), "every handle is released");
 }
 
@@ -1783,6 +1871,7 @@ int main() {
 #if defined(URNW_SESSIONS_TESTS_SDK)
   TestSdkReader();
   TestSdkLogoutCause();
+  TestSdkAccountSignInCause();
   TestSdkGroupsAndSessionLimit();
 #endif
   if (gFailures != 0) {

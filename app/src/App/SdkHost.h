@@ -577,9 +577,12 @@ class SdkHost {
   // The server refused the account's own sign-in while this device's client
   // stays signed in: the sdk's AccountSignInRequired, which the Api reports in
   // place of an AuthLogout when the client is not of that sign-in's session,
-  // and then signs nothing out. Runs on an sdk callback thread and must only
-  // marshal; the ui decides (AppController::OnAccountSignInRequired).
-  using AccountSignInRequiredHandler = std::function<void()>;
+  // and then signs nothing out. `cause` is the report's, read in its listener
+  // (AuthLogoutCause.h AccountSignInCause): "session_revoked" when the server
+  // confirmed another device signed the account's sign-in out, else "". Runs
+  // on an sdk callback thread and must only marshal; the ui decides
+  // (AppController::OnAccountSignInRequired).
+  using AccountSignInRequiredHandler = std::function<void(std::string cause)>;
   using JwtRefreshedHandler = std::function<void()>;
   using TunnelStateHandler = std::function<void(const proto::TunnelStatus&)>;
   using StatsHandler = std::function<void(const LiveStats&)>;

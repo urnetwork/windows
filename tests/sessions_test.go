@@ -75,18 +75,20 @@ func TestSessionsPresentation(t *testing.T) {
 // reader takes is released once. The logout listeners' reads of the cause
 // (AuthLogoutCause.h) run over the same fake: each listener reads its own
 // object's cause by its handle and frees the sdk's string, and the header's
-// constant is the cause the notice is for; the group kinds and the session
-// cap's code are the header's, and the cap's refusal reads as its token
-// through the header's result structs. The header is git-ignored (fetch-deps
-// unpacks it into app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE
-// names another directory) and needs nlohmann/json, so a host without them
-// skips this, and so does a header from before the session controller, the
-// logout cause or the session groups.
+// constant is the cause the notice is for; the account sign-in listener reads
+// its own report's cause, never the logout cause; the group kinds and the
+// session cap's code are the header's, and the cap's refusal reads as its
+// token through the header's result structs. The header is git-ignored
+// (fetch-deps unpacks it into app/third_party/urnetwork-sdk/<arch>;
+// URNETWORK_SDK_INCLUDE names another directory) and needs nlohmann/json, so
+// a host without them skips this, and so does a header from before the
+// session controller, the logout cause, the session groups or the account
+// sign-in cause.
 func TestSessionsPresentationAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
 	sdkDir := sessionsSdkHeaderDir(t, root)
 	if sdkDir == "" {
-		t.Skip("no urnetwork_sdk.hpp with the session view controller, its groups and the logout cause (set URNETWORK_SDK_INCLUDE)")
+		t.Skip("no urnetwork_sdk.hpp with the session view controller, its groups, the logout cause and the account sign-in cause (set URNETWORK_SDK_INCLUDE)")
 	}
 	jsonDir, found := jsonIncludeDir(root)
 	if !found {
@@ -107,10 +109,14 @@ func TestSessionsPresentationAgainstSdkHeader(t *testing.T) {
 	requireSessionsFailureWith(t, extra, "AuthLogoutCause.h", func(source string) string {
 		return strings.Replace(source, "  urnet_free_string(cause);\n", "", 1)
 	}, "and frees every one of them")
+	// the account sign-in listener that reads the logout cause in place of its own report's
+	requireSessionsFailureWith(t, extra, "AuthLogoutCause.h", func(source string) string {
+		return strings.Replace(source, "urnet_api_get_account_sign_in_required_cause(api)", "urnet_api_get_auth_logout_cause(api)", 1)
+	}, "the account sign-in listener reads its own report's cause")
 }
 
-// The directory of a urnetwork_sdk.hpp that has the session view controller
-// and the logout cause, or "".
+// The directory of a urnetwork_sdk.hpp that has the session view controller,
+// the logout cause, the session groups and the account sign-in cause, or "".
 func sessionsSdkHeaderDir(t *testing.T, root string) string {
 	t.Helper()
 	explicit := os.Getenv("URNETWORK_SDK_INCLUDE")
@@ -149,6 +155,13 @@ func sessionsSdkHeaderDir(t *testing.T, root string) string {
 				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no session groups or session cap code", explicit)
 			}
 			t.Logf("%s: urnetwork_sdk.hpp predates the session groups", dir)
+			continue
+		}
+		if !strings.Contains(string(header), "getAccountSignInRequiredCause") {
+			if dir == explicit {
+				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no account sign-in cause", explicit)
+			}
+			t.Logf("%s: urnetwork_sdk.hpp predates the account sign-in cause", dir)
 			continue
 		}
 		return dir
@@ -205,7 +218,11 @@ func requireSessionsFailureWith(t *testing.T, extra []string, header string, mut
 // hosted proxies it keeps, a group's row named for its device, a collapsed
 // group's rows shown, a list of groups alone called empty, and a Show more
 // lost; and the session cap's sign-in refusal read as the server's English,
-// or the client limit's token left without its words.
+// or the client limit's token left without its words. And the account's
+// sign-in refused while the device stays: this app's own sign-out from
+// Sessions not followed, a refusal from elsewhere signing the app out, and the
+// window's notice saying another device signed it out for a cause that is not
+// the trusted one, or for every notice.
 func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
 		return strings.Replace(source,
@@ -311,12 +328,29 @@ func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
 		return strings.Replace(source, "  return clientlimit::SignInRefusalMessageKey(error);\n", "  return nullptr;\n", 1)
 	}, "the client limit's token, a plan an upgrade lifts")
 	// the account's sign-in refused while the device stays: this app's own
-	// session signed out from Sessions still signs the app out
+	// session signed out from Sessions still signs the app out, and a refusal
+	// from elsewhere does not
 	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
 		return strings.Replace(source,
-			"return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Stay;",
-			"return ownSessionSignOut ? AccountSignInStep::Stay : AccountSignInStep::Stay;", 1)
+			"return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Notice;",
+			"return ownSessionSignOut ? AccountSignInStep::Notice : AccountSignInStep::Notice;", 1)
 	}, "this app signed its own session out from Sessions: its sign-out follows")
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source,
+			"return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::Notice;",
+			"return ownSessionSignOut ? AccountSignInStep::SignOut : AccountSignInStep::SignOut;", 1)
+	}, "the account was signed out from elsewhere: this device stays signed in")
+	// and the window's words: another device's sign-out said only for the
+	// trusted cause, and only for it
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, "return cause == kCauseSessionRevoked ? AccountSignInNotice::SignedOutRemotely",
+			"return !cause.empty() ? AccountSignInNotice::SignedOutRemotely", 1)
+	}, `the cause "Session_Revoked" says only to sign in again`)
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source,
+			`return notice == AccountSignInNotice::SignedOutRemotely ? "sessions_signed_out_remotely" : "";`,
+			`return notice != AccountSignInNotice::None ? "sessions_signed_out_remotely" : "";`, 1)
+	}, "the window's words for any other cause")
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
 		return strings.Replace(source, "  if (countryCode.empty()) return kUnknownCountryRgb;\n", "", 1)
 	}, "an empty code is the unknown-country colour")
@@ -1202,25 +1236,31 @@ func TestSessionLimitSignInWiring(t *testing.T) {
 
 // The account's own sign-in refused while this device's client stays signed
 // in: the sdk's AccountSignInRequired, which the Api reports in place of an
-// AuthLogout when the client is not of that sign-in's session, and then signs
-// nothing out. The app did not listen, so signing this app's own session out
-// from Sessions could leave it signed in, against the confirmation's "This app
-// will be signed out" (REVOKE-UI-FINAL.md §4). Every Api the host binds
-// subscribes, replacing the last one's subscription and dropped with the host,
-// and reports on its own handler (never the auth-invalid one, which signs out
-// whatever it hears); the controller signs out only when the Sessions page
-// noted this app's own session's confirmed sign-out (AuthLogoutNotice.h
-// AccountSignInStepFor, TestSessionsPresentation), and a sign-in or a
-// sign-out forgets that note.
-func TestAccountSignInRequiredSignsOutOnlyThisAppsOwnSessionSignOut(t *testing.T) {
+// AuthLogout when the client is not of that sign-in's session, once it has
+// cleared the account's credential and kept the device (server
+// session/REVOKE-FINAL.md §10). Nothing signs out or disconnects: the main
+// window says the account needs a sign-in again, in the words the report's
+// cause calls for (REVOKE-UI-FINAL.md §5), until the notice is closed, or the
+// next sign-in or sign-out (TestAccountSignInNoticeWindowWiring). Every Api
+// the host binds subscribes, replacing the last one's subscription and
+// dropped with the host; its listener reads the report's cause by the Api's
+// handle before it marshals (a new sign-in clears the cause, so nothing reads
+// it later), and reports on its own handler (never the auth-invalid one,
+// which signs out whatever it hears). The one sign-out is this app's own
+// session signed out from Sessions, which its confirmation promised ("This
+// app will be signed out", REVOKE-UI-FINAL.md §4) and which shows no notice:
+// the controller signs out only when the Sessions page noted that confirmed
+// sign-out (AuthLogoutNotice.h AccountSignInStepFor, TestSessionsPresentation),
+// and a sign-in or a sign-out forgets the note and the notice.
+func TestAccountSignInRequiredKeepsTheDeviceAndShowsTheNotice(t *testing.T) {
 	host := stripComments(readAppSource(t, "SdkHost.cpp"))
 	requireSessionsOrder(t, "SdkHost::BindApiLocked",
 		sessionsCode(definitionBody(t, "SdkHost.cpp", host, "void SdkHost::BindApiLocked() {")),
 		"apiLogoutSub_.emplace(",
 		"apiAccountSignInSub_.reset();",
-		"apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this]{"+
+		"apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this,api=api_->handle()]{"+
 			"if(!loggedIn_.load(std::memory_order_acquire)||!onAccountSignInRequired_)return;"+
-			"onAccountSignInRequired_();}));")
+			"onAccountSignInRequired_(authlogout::AccountSignInCause(api));}));")
 	if count := strings.Count(host, "addAccountSignInRequiredListener("); count != 1 {
 		t.Errorf("SdkHost.cpp subscribes to the account sign-in %d times; BindApiLocked does, for every Api", count)
 	}
@@ -1230,34 +1270,90 @@ func TestAccountSignInRequiredSignsOutOnlyThisAppsOwnSessionSignOut(t *testing.T
 	requireSessionsOrder(t, "SdkHost::~SdkHost", definitionBody(t, "SdkHost.cpp", host, "SdkHost::~SdkHost() {"),
 		"apiLogoutSub_.reset();", "apiAccountSignInSub_.reset();")
 	header := sessionsCode(readAppSource(t, "SdkHost.h"))
-	for _, want := range []string{"usingAccountSignInRequiredHandler=std::function<void()>;",
+	for _, want := range []string{"usingAccountSignInRequiredHandler=std::function<void(std::stringcause)>;",
 		"voidSetAccountSignInRequiredHandler(AccountSignInRequiredHandlerh){onAccountSignInRequired_=std::move(h);}",
 		"std::optional<urnet::Sub>apiAccountSignInSub_;", "AccountSignInRequiredHandleronAccountSignInRequired_;"} {
 		if !strings.Contains(header, want) {
 			t.Errorf("SdkHost.h: missing %s", want)
 		}
 	}
+	// the report's own cause, through the c abi by the listener's handle
+	// (TestSessionsPresentationAgainstSdkHeader), and never through the
+	// wrapper later
+	if !strings.Contains(sessionsCode(readAppSource(t, "AuthLogoutCause.h")),
+		"inlinestd::stringAccountSignInCause(uint64_tapi){returnTakeCause(urnet_api_get_account_sign_in_required_cause(api));}") {
+		t.Error("AuthLogoutCause.h: AccountSignInCause no longer reads the Api's account sign-in cause by its handle")
+	}
+	reads := 0
+	for name, source := range appSourceFiles(t, ".cpp", ".h") {
+		code := stripComments(source)
+		reads += strings.Count(code, "urnet_api_get_account_sign_in_required_cause(")
+		if strings.Contains(code, "getAccountSignInRequiredCause(") {
+			t.Errorf("%s reads the account sign-in cause through the wrapper; the listener reads its report's, by its handle", name)
+		}
+	}
+	if reads != 1 {
+		t.Errorf("the app reads the account sign-in cause from %d places; AccountSignInCause only", reads)
+	}
 
 	controller := stripComments(readAppSource(t, "AppController.cpp"))
 	requireSessionsOrder(t, "AppController::Start",
 		sessionsCode(handlerSource(t, "AppController.cpp", controller, "sdk_.SetAccountSignInRequiredHandler(")),
-		"sdk_.SetAccountSignInRequiredHandler([this]{OnUi([this]{OnAccountSignInRequired();});")
-	on := sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAccountSignInRequired() {"))
+		"sdk_.SetAccountSignInRequiredHandler([this](std::stringcause){OnUi([this,cause]{OnAccountSignInRequired(cause);});")
+	on := sessionsCode(definitionBody(t, "AppController.cpp", controller,
+		"void AppController::OnAccountSignInRequired(const std::string& cause) {"))
 	requireSessionsOrder(t, "AppController::OnAccountSignInRequired", on,
 		"switch(authlogout::AccountSignInStepFor(sdk_.IsLoggedIn(),ownSessionSignOut_)){",
+		"caseauthlogout::AccountSignInStep::None:", "return;",
 		"caseauthlogout::AccountSignInStep::SignOut:", "ownSessionSignOut_=false;", "sdk_.Logout();", "return;",
-		"caseauthlogout::AccountSignInStep::Stay:")
-	if at := strings.Index(on, "caseauthlogout::AccountSignInStep::Stay:"); at >= 0 {
-		if stay := on[at:]; strings.Contains(stay, "Logout(") || strings.Contains(stay, "Disconnect") ||
-			strings.Contains(stay, "signedOutNotice_") {
-			t.Error("AppController::OnAccountSignInRequired signs out, disconnects or leaves a notice for a sign-in refused elsewhere; the device stays signed in")
+		"caseauthlogout::AccountSignInStep::Notice:",
+		"SetAccountSignInNotice(authlogout::AccountSignInNoticeFor(cause));", "return;")
+	signOut := strings.Index(on, "caseauthlogout::AccountSignInStep::SignOut:")
+	notice := strings.Index(on, "caseauthlogout::AccountSignInStep::Notice:")
+	if signOut >= 0 && notice > signOut {
+		if strings.Contains(on[signOut:notice], "SetAccountSignInNotice(") {
+			t.Error("AppController::OnAccountSignInRequired shows the notice for this app's own sign-out from Sessions")
 		}
+		requireNone(t, "AppController::OnAccountSignInRequired, for a sign-in refused elsewhere", on[notice:],
+			"Logout(", "Disconnect", "StopServiceTunnel(", "SetProvideControlMode(", "signedOutNotice_")
 	}
+	if count := strings.Count(controller, "AccountSignInNoticeFor("); count != 1 {
+		t.Errorf("AppController.cpp words the account sign-in notice from %d places; OnAccountSignInRequired only", count)
+	}
+	requireSessionsOrder(t, "AppController::SetAccountSignInNotice",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller,
+			"void AppController::SetAccountSignInNotice(authlogout::AccountSignInNotice notice) {")),
+		"if(notice==accountSignInNotice_)return;", "accountSignInNotice_=notice;",
+		"if(!windowVisible_||!window_)return;", "self->SetAccountSignInNotice(accountSignInNotice_);")
+	if count := strings.Count(sessionsCode(controller), "accountSignInNotice_="); count != 1 {
+		t.Errorf("AppController.cpp sets the account sign-in notice from %d places; SetAccountSignInNotice only", count)
+	}
+	requireSessionsOrder(t, "AppController::DismissAccountSignInNotice",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::DismissAccountSignInNotice() {")),
+		"SetAccountSignInNotice(authlogout::AccountSignInNotice::None);")
 	requireSessionsOrder(t, "AppController::OnAuthState",
 		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthState(AuthState state, const std::string& error) {")),
-		"if(state==AuthState::LoggedIn||state==AuthState::LoggedOut)ownSessionSignOut_=false;")
-	if !strings.Contains(sessionsCode(readAppSource(t, "AppController.h")), "voidNoteOwnSessionSignOut(){ownSessionSignOut_=true;}") {
-		t.Error("AppController.h: NoteOwnSessionSignOut no longer notes this app's own session's sign-out")
+		"if(state==AuthState::LoggedIn||state==AuthState::LoggedOut){ownSessionSignOut_=false;"+
+			"SetAccountSignInNotice(authlogout::AccountSignInNotice::None);}")
+	// a refusal while the window was hidden shows on the next show, and a
+	// closed notice does not come back
+	requireSessionsOrder(t, "AppController::ReconcileWindowPresentation",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::ReconcileWindowPresentation() {")),
+		"if(!active)return;", "self->SetProFeaturesNotice(proFeaturesPrompt_);",
+		"self->SetAccountSignInNotice(accountSignInNotice_);")
+	controllerHeader := sessionsCode(readAppSource(t, "AppController.h"))
+	public := controllerHeader
+	if at := strings.Index(controllerHeader, "private:"); at >= 0 {
+		public = controllerHeader[:at]
+	}
+	for _, want := range []string{"voidNoteOwnSessionSignOut(){ownSessionSignOut_=true;}", "voidDismissAccountSignInNotice();"} {
+		if !strings.Contains(public, want) {
+			t.Errorf("AppController.h: the public interface is missing %s", want)
+		}
+	}
+	if !strings.Contains(controllerHeader,
+		"authlogout::AccountSignInNoticeaccountSignInNotice_=authlogout::AccountSignInNotice::None;") {
+		t.Error("AppController.h: the account sign-in notice no longer starts with nothing to say")
 	}
 
 	// the page notes it for a confirmed sign-out of its current session, by the
@@ -1274,6 +1370,83 @@ func TestAccountSignInRequiredSignsOutOnlyThisAppsOwnSessionSignOut(t *testing.T
 	}
 	if notes != 2 {
 		t.Errorf("the app names NoteOwnSessionSignOut %d times; its definition and the Sessions page's confirmed sign-out of this session, once each", notes)
+	}
+}
+
+// The window's account sign-in notice (TestAccountSignInRequiredKeepsTheDeviceAndShowsTheNotice):
+// an InfoBar above every destination, inside HomeNav so it shows only while
+// signed in, in a row of its own over HomeContentRoot's, so it moves the
+// destinations down rather than covering them; closed and collapsed until it
+// has something to say. One writer gives it its words: the remote sign-out's
+// line and a space ahead of the sign-in line only when the cause called for
+// it (AuthLogoutNotice.h, TestSessionsPresentation). Its close button is the
+// controller's dismissal, and nothing else dismisses it.
+func TestAccountSignInNoticeWindowWiring(t *testing.T) {
+	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
+	requireSessionsOrder(t, "MainWindow::SetAccountSignInNotice",
+		sessionsCode(definitionBody(t, "MainWindow.xaml.cpp", window,
+			"void MainWindow::SetAccountSignInNotice(urnw::authlogout::AccountSignInNotice notice) {")),
+		"if(notice==accountSignInNotice_)return;", "accountSignInNotice_=notice;", "ApplyAccountSignInNotice();")
+	if count := strings.Count(window, "ApplyAccountSignInNotice();"); count != 1 {
+		t.Errorf("MainWindow.xaml.cpp writes the account sign-in notice from %d places, want 1 (SetAccountSignInNotice)", count)
+	}
+	apply := definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::ApplyAccountSignInNotice() {")
+	requireSessionsOrder(t, "MainWindow::ApplyAccountSignInNotice", sessionsCode(apply),
+		"autobar=AccountSignInNotice();",
+		"constchar*lead=urnw::authlogout::AccountSignInLeadKey(accountSignInNotice_);",
+		"constchar*line=urnw::authlogout::AccountSignInLineKey(accountSignInNotice_);",
+		"if(!*line){bar.IsOpen(false);bar.Visibility(Visibility::Collapsed);return;}",
+		"bar.Message(", "bar.Visibility(Visibility::Visible);", "bar.IsOpen(true);")
+	// with its whitespace: the space between the two lines is part of the words
+	if !strings.Contains(apply, `bar.Message(*lead ? Loc(lead) + L" " + Loc(line) : Loc(line));`) {
+		t.Error("MainWindow::ApplyAccountSignInNotice no longer says the remote sign-out's line, a space, then the sign-in line")
+	}
+	requireSessionsOrder(t, "the account sign-in notice's close",
+		sessionsCode(handlerSource(t, "MainWindow.xaml.cpp", window, "AccountSignInNotice().Closed(")),
+		"sender.Visibility(Visibility::Collapsed);",
+		"if(args.Reason()!=Microsoft::UI::Xaml::Controls::InfoBarCloseReason::CloseButton)return;",
+		"urnw::App().DismissAccountSignInNotice();")
+	dismissals := 0
+	for _, source := range appSourceFiles(t, ".cpp", ".h") {
+		dismissals += strings.Count(stripComments(source), "App().DismissAccountSignInNotice(")
+	}
+	if dismissals != 1 {
+		t.Errorf("the app dismisses the account sign-in notice from %d places; its close button only", dismissals)
+	}
+	if !strings.Contains(sessionsCode(readAppSource(t, "MainWindow.xaml.h")),
+		"urnw::authlogout::AccountSignInNoticeaccountSignInNotice_=urnw::authlogout::AccountSignInNotice::None;") {
+		t.Error("MainWindow.xaml.h: the window's account sign-in notice no longer starts with nothing to say")
+	}
+
+	named, err := xamlNamedElements(readAppSource(t, "MainWindow.xaml"))
+	if err != nil {
+		t.Fatalf("MainWindow.xaml does not parse: %v", err)
+	}
+	bar, shell, root, nav := named["AccountSignInNotice"], named["HomeContentShell"], named["HomeContentRoot"], named["HomeNav"]
+	if bar == nil || shell == nil || root == nil || nav == nil {
+		t.Fatal("MainWindow.xaml: AccountSignInNotice, HomeContentShell, HomeContentRoot or HomeNav is missing")
+	}
+	if bar.local != "InfoBar" || shell.local != "Grid" || bar.parent != shell || root.parent != shell || shell.parent != nav {
+		t.Error("MainWindow.xaml: the account sign-in notice is not an InfoBar beside HomeContentRoot in the grid HomeNav shows")
+	}
+	if len(shell.children) != 3 || shell.children[0].local != "Grid.RowDefinitions" ||
+		shell.children[1] != bar || shell.children[2] != root {
+		t.Error("MainWindow.xaml: HomeContentShell holds its rows, the account sign-in notice and HomeContentRoot, and nothing else")
+	} else if rows := shell.children[0].children; len(rows) != 2 || rows[0].attrs["Height"] != "Auto" ||
+		rows[1].attrs["Height"] != "*" {
+		t.Error("MainWindow.xaml: HomeContentShell's rows are the notice's (Auto) and the destinations' (*)")
+	}
+	if row := bar.attrs["Grid.Row"]; row != "" && row != "0" {
+		t.Errorf("MainWindow.xaml: the account sign-in notice is in row %s, not above the destinations", row)
+	}
+	if root.attrs["Grid.Row"] != "1" {
+		t.Error("MainWindow.xaml: HomeContentRoot is not in the row under the account sign-in notice")
+	}
+	for attribute, want := range map[string]string{"IsOpen": "False", "IsClosable": "True", "Visibility": "Collapsed",
+		"Severity": "Warning", "AutomationProperties.AutomationId": "acceptance.account-sign-in.notice"} {
+		if got := bar.attrs[attribute]; got != want {
+			t.Errorf("MainWindow.xaml: AccountSignInNotice's %s is %q, want %q", attribute, got, want)
+		}
 	}
 }
 
