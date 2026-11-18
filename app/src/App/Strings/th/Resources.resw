@@ -6150,8 +6150,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork ขับเคลื่อนด้วยโปรโตคอลทางเข้าออกที่ใหญ่ที่สุด
-ปลอดภัยที่สุด และกระจายศูนย์มากที่สุดในโลก</value>
+    <value>URnetwork ขับเคลื่อนด้วยโปรโตคอลทางเข้าออกแบบกระจายศูนย์
+ที่ทำงานบนอุปกรณ์ของชุมชนในหลายประเทศ</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

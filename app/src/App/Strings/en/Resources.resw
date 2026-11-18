@@ -6637,8 +6637,8 @@ Claim your bonus by creating a network!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork is powered by the world's largest, safest,
-and most decentralized ingress and egress protocol.</value>
+    <value>URnetwork is powered by a decentralized ingress and egress protocol,
+run on community devices in a large selection of countries.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

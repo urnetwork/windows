@@ -6226,8 +6226,8 @@ Richiedi il tuo bonus creando una rete!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork si basa sul protocollo di ingresso e uscita
-più grande, sicuro e decentralizzato al mondo.</value>
+    <value>URnetwork si basa su un protocollo di ingresso e uscita decentralizzato,
+eseguito sui dispositivi della community in un'ampia scelta di paesi.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

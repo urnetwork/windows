@@ -6150,8 +6150,8 @@ Klaim bonus Anda dengan membuat jaringan!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork didukung oleh protokol ingress dan egress
-terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
+    <value>URnetwork didukung oleh protokol ingress dan egress terdesentralisasi
+yang berjalan di perangkat komunitas di banyak pilihan negara.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

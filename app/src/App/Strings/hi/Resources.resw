@@ -6223,8 +6223,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork दुनिया के सबसे बड़े, सबसे सुरक्षित
-और सबसे विकेंद्रीकृत प्रवेश-निकास प्रोटोकॉल पर चलता है।</value>
+    <value>URnetwork एक विकेंद्रीकृत प्रवेश-निकास प्रोटोकॉल पर चलता है,
+जो कई देशों में समुदाय के उपकरणों पर चलता है।</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

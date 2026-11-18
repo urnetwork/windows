@@ -6222,8 +6222,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork 由全球最大、最安全、
-最去中心化的出入口协议驱动。</value>
+    <value>URnetwork 由去中心化的出入口协议驱动，
+运行在众多国家的社区设备上。</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

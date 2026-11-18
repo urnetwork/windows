@@ -6600,8 +6600,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>تعمل URnetwork ببروتوكول الدخول والخروج الأكبر
-والأكثر أمانًا ولامركزية في العالم.</value>
+    <value>تعمل URnetwork ببروتوكول دخول وخروج لامركزي
+يعمل على أجهزة المجتمع في مجموعة كبيرة من البلدان.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

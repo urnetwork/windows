@@ -6297,8 +6297,8 @@ enviamos para verificar tu identidad.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork funciona con el protocolo de entrada y salida
-más grande, seguro y descentralizado del mundo.</value>
+    <value>URnetwork funciona con un protocolo descentralizado de entrada y salida,
+que se ejecuta en dispositivos de la comunidad en una amplia selección de países.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

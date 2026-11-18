@@ -6150,8 +6150,8 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork được vận hành bởi giao thức ra vào lớn nhất,
-an toàn nhất và phi tập trung nhất thế giới.</value>
+    <value>URnetwork được vận hành bởi giao thức ra vào phi tập trung,
+chạy trên thiết bị của cộng đồng tại nhiều quốc gia.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

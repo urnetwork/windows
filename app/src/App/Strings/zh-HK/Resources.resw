@@ -6150,8 +6150,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork 由全球最大、最安全、
-最去中心化的出入口協議驅動。</value>
+    <value>URnetwork 由去中心化的出入口協議驅動，
+運行在眾多國家的社區設備上。</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

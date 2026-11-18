@@ -6226,8 +6226,8 @@ Ontvang je bonus door een netwerk aan te maken.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork draait op het grootste, veiligste en meest
-gedecentraliseerde ingress- en egress-protocol ter wereld.</value>
+    <value>URnetwork draait op een gedecentraliseerd ingress- en egress-protocol
+dat op apparaten van de community in een grote selectie landen draait.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

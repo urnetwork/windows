@@ -6225,8 +6225,8 @@ lhe enviámos para verificar a sua identidade.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>A URnetwork é alimentada pelo maior, mais seguro
-e mais descentralizado protocolo de entrada e saída do mundo.</value>
+    <value>A URnetwork é alimentada por um protocolo descentralizado de entrada e saída,
+executado em dispositivos da comunidade numa grande seleção de países.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

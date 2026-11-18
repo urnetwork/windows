@@ -6225,8 +6225,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>Το URnetwork τροφοδοτείται από το μεγαλύτερο, ασφαλέστερο
-και πιο αποκεντρωμένο πρωτόκολλο εισόδου και εξόδου στον κόσμο.</value>
+    <value>Το URnetwork τροφοδοτείται από ένα αποκεντρωμένο πρωτόκολλο εισόδου και εξόδου
+που τρέχει σε συσκευές της κοινότητας σε μεγάλη επιλογή χωρών.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

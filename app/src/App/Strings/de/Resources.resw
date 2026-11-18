@@ -6297,8 +6297,8 @@ gesendet haben, um deine Identität zu überprüfen.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork basiert auf dem weltweit größten, sichersten
-und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
+    <value>URnetwork basiert auf einem dezentralen Ingress- und Egress-Protokoll,
+das auf Community-Geräten in einer großen Auswahl an Ländern läuft.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
