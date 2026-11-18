@@ -5642,7 +5642,7 @@ enviamos para você verificar sua identidade.</value>
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>Proxy hospedado</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>Não foi possível remover o dispositivo. Tente novamente.</value>
@@ -7488,9 +7488,25 @@ conteúdo do mundo</value>
     <value>Não foi possível encerrar esta sessão. Tente novamente.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>Cliente de API</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>Dispositivo pareado</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>Outro cliente</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>A sessão {0} ({1}) será encerrada.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>Este proxy hospedado vai parar de funcionar. Crie um novo para substituí-lo.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>A sessão {} será encerrada.</value>
@@ -7499,6 +7515,10 @@ conteúdo do mundo</value>
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>Todas as outras sessões desta lista serão encerradas. Esta sessão continua conectada. Quem souber seus dados de login ainda pode entrar novamente.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>Todas as outras sessões desta lista serão encerradas, exceto os proxies hospedados. Esta sessão continua conectada. Quem souber seus dados de login ainda pode entrar novamente.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>Sair de todas as outras sessões?</value>
@@ -7555,6 +7575,22 @@ conteúdo do mundo</value>
   <data name="sessions_empty" xml:space="preserve">
     <value>Nenhuma sessão ativa</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>Clientes de API ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>Proxies hospedados ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>Outros clientes ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>Dispositivos pareados ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7620,13 +7656,29 @@ conteúdo do mundo</value>
     <value>Logins de versões mais antigas do app aparecem aqui quando forem renovados. Para encerrar todos os logins, altere seus dados de login.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>Há sessões ativas demais. Encerre as sessões que você não usa mais em Conta &gt; Sessões e tente novamente.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, on a page where the user is signed in to the account (ur.io's hosted proxy creation). A button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>Há sessões ativas demais. Em um dispositivo conectado a esta conta, acesse Conta &gt; Sessões, encerre as sessões que você não usa mais e tente novamente.</value>
+    <comment>Sign-in screens: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>Não foi possível carregar as sessões.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>Abrir Sessões</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>Não foi possível atualizar. Mostrando a última lista.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>Mostrar mais</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>Entre novamente para gerenciar as sessões.</value>
@@ -8877,6 +8929,10 @@ como ela deveria ser.</value>
   <data name="test_animation" xml:space="preserve">
     <value>Testar animação</value>
     <comment>Get Pro screen: debug button that replays the Pro celebration animation.</comment>
+  </data>
+  <data name="test_purchases_in_test_builds_don_t_unlock_pro" xml:space="preserve">
+    <value>Compras de teste em versões de teste não desbloqueiam o Pro.</value>
+    <comment>Shown inline in the upgrade flow, and as the restore result, when the server refuses an App Store sandbox purchase (a TestFlight build) because the account is not one of its internal testers: the purchase report answers invalid with error code sandbox_purchase (sdk IsSandboxPurchaseRefusal). Test purchases are free, so they unlock nothing. Neutral on purpose: it must never name another way to pay (the App Store's anti-steering rule). Owner 2026-11-17: "Keep buttons, neutral notice" (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="thanks_for_building_the_new_internet_with_us" xml:space="preserve">
     <value>Obrigado por construir a nova internet conosco</value>

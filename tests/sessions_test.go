@@ -71,20 +71,22 @@ func TestSessionsPresentation(t *testing.T) {
 // The same spec with the snapshot read through the generated header's
 // urnet::ClientSessionSnapshot family, over a fake of the C ABI functions
 // those classes call: every field arrives, the trusted session-revoked cause
-// among them, nil handles read as nothing, and every handle the reader takes
-// is released once. The logout listeners' reads of the cause
+// and the groups among them, nil handles read as nothing, and every handle the
+// reader takes is released once. The logout listeners' reads of the cause
 // (AuthLogoutCause.h) run over the same fake: each listener reads its own
 // object's cause by its handle and frees the sdk's string, and the header's
-// constant is the cause the notice is for. The header is git-ignored
-// (fetch-deps unpacks it into app/third_party/urnetwork-sdk/<arch>;
-// URNETWORK_SDK_INCLUDE names another directory) and needs nlohmann/json, so a
-// host without them skips this, and so does a header from before the session
-// controller or the logout cause.
+// constant is the cause the notice is for; the group kinds and the session
+// cap's code are the header's, and the cap's refusal reads as its token
+// through the header's result structs. The header is git-ignored (fetch-deps
+// unpacks it into app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE
+// names another directory) and needs nlohmann/json, so a host without them
+// skips this, and so does a header from before the session controller, the
+// logout cause or the session groups.
 func TestSessionsPresentationAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
 	sdkDir := sessionsSdkHeaderDir(t, root)
 	if sdkDir == "" {
-		t.Skip("no urnetwork_sdk.hpp with the session view controller and the logout cause (set URNETWORK_SDK_INCLUDE)")
+		t.Skip("no urnetwork_sdk.hpp with the session view controller, its groups and the logout cause (set URNETWORK_SDK_INCLUDE)")
 	}
 	jsonDir, found := jsonIncludeDir(root)
 	if !found {
@@ -141,6 +143,14 @@ func sessionsSdkHeaderDir(t *testing.T, root string) string {
 			t.Logf("%s: urnetwork_sdk.hpp predates the logout cause", dir)
 			continue
 		}
+		if !strings.Contains(string(header), "class ClientSessionGroup final") ||
+			!strings.Contains(string(header), "SessionErrorCodeLimitReached") {
+			if dir == explicit {
+				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no session groups or session cap code", explicit)
+			}
+			t.Logf("%s: urnetwork_sdk.hpp predates the session groups", dir)
+			continue
+		}
 		return dir
 	}
 	return ""
@@ -188,7 +198,14 @@ func requireSessionsFailureWith(t *testing.T, extra []string, header string, mut
 // words, the controller's trusted remote sign-out unread or ignored, a notice
 // for a cause that is not the trusted one or in the wrong words, a second
 // sign-out for the device's report of the same rejection, a notice shown
-// again, and an unshown notice outliving a sign-in.
+// again, and an unshown notice outliving a sign-in. And each way the sessions
+// at scale could: the bulk sign-out offered by the rows on screen instead of
+// the controller's count, a truncated count without its "+", a hosted proxy's
+// confirmation in a device's words, a bulk body that says nothing of the
+// hosted proxies it keeps, a group's row named for its device, a collapsed
+// group's rows shown, a list of groups alone called empty, and a Show more
+// lost; and the session cap's sign-in refusal read as the server's English,
+// or the client limit's token left without its words.
 func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
 		return strings.Replace(source,
@@ -245,8 +262,54 @@ func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
 			"  if (kind == \"api_key_client\") return \"sessions_kind_api_key_client\";\n  return \"sessions_kind_password\";", 1)
 	}, "kind \"legacy\"")
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
-		return strings.Replace(source, "view.bulkShown = current && other;", "view.bulkShown = other;", 1)
+		return strings.Replace(source, "view.bulkShown = current && snapshot.otherSessionCount > 0;",
+			"view.bulkShown = snapshot.otherSessionCount > 0 || current;", 1)
 	}, "no current session: no bulk")
+	// the 10-09 rule, a current row and another row on screen
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "view.bulkShown = current && snapshot.otherSessionCount > 0;",
+			"view.bulkShown = current && view.rows.size() > 1;", 1)
+	}, "this session and API clients: bulk, though no other row is shown")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, `if (truncated) out += "+";`, `if (truncated) out += "";`, 1)
+	}, "a truncated list's count is a lower bound: 10,000+")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "  } else if (row.group == kGroupHostedProxies) {\n"+
+			"    confirmation.body = text.localized(\"sessions_confirm_body_hosted_proxy\");\n", "", 1)
+	}, "the hosted proxy's confirmation body")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, `view.bulkKeepsProxies ? "sessions_confirm_others_body_keeps_proxies"`,
+			`view.bulkKeepsProxies ? "sessions_confirm_others_body"`, 1)
+	}, "the bulk body says hosted proxies stay")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "    if (group.kind == kGroupHostedProxies) view.bulkKeepsProxies = true;\n", "", 1)
+	}, "the bulk keeps the hosted proxies")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source,
+			"text.localized(group.empty() ? DeviceLabelKey(deviceType) : GroupRowLabelKey(group));",
+			"text.localized(DeviceLabelKey(deviceType));", 1)
+	}, "the row's label in place of the device's")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "    if (group.expanded) {\n      for (const auto& session : group.sessions) {",
+			"    if (true) {\n      for (const auto& session : group.sessions) {", 1)
+	}, "a collapsed group shows no rows")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source,
+			"if (snapshot.sessionCount == 0 && snapshot.sessions.empty() && snapshot.groups.empty()) {",
+			"if (snapshot.sessions.empty()) {", 1)
+	}, "no device sign-in but a group: the group, not No active sessions")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "view.showMore = snapshot.sessionsHasMore;", "view.showMore = false;", 1)
+	}, "more sign-ins than shown: Show more")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "groupView.showMore = group.hasMore;", "groupView.showMore = false;", 1)
+	}, "an open group: its rows and Show more")
+	requireSessionsFailure(t, "SessionLimitNotice.h", func(source string) string {
+		return strings.Replace(source, "  if (LimitReached(error->code)) return std::string(kSignInRefused);\n", "", 1)
+	}, "the session cap's refusal: the token, never the sdk's English")
+	requireSessionsFailure(t, "SessionLimitNotice.h", func(source string) string {
+		return strings.Replace(source, "  return clientlimit::SignInRefusalMessageKey(error);\n", "  return nullptr;\n", 1)
+	}, "the client limit's token, a plan an upgrade lifts")
 	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
 		return strings.Replace(source, "  if (countryCode.empty()) return kUnknownCountryRgb;\n", "", 1)
 	}, "an empty code is the unknown-country colour")
@@ -292,19 +355,33 @@ func TestSessionsStringsExist(t *testing.T) {
 	root := repositoryRoot(t)
 	keyPattern := regexp.MustCompile(`"((?:sessions|days_ago|hours_ago|minutes_ago|seconds_ago)[a-z0-9_]*)"`)
 	keys := map[string]bool{}
-	for _, name := range []string{"SessionsPresentation.h", "SessionsPage.cpp", "RelativeTimeSpan.h", "AccountPage.cpp", "AuthLogoutNotice.h"} {
+	for _, name := range []string{"SessionsPresentation.h", "SessionsPage.cpp", "RelativeTimeSpan.h", "AccountPage.cpp",
+		"AuthLogoutNotice.h", "SessionLimitNotice.h"} {
 		for _, match := range keyPattern.FindAllStringSubmatch(stripComments(readAppSource(t, name)), -1) {
 			keys[match[1]] = true
 		}
 	}
-	if len(keys) < 50 {
+	if len(keys) < 60 {
 		t.Errorf("found only %d sessions keys in the sources; update this contract", len(keys))
 	}
-	// the three messages' own keys
-	for _, key := range []string{"sessions_sign_out_others_failed", "sessions_sign_in_required", "sessions_signed_out_remotely"} {
+	// the three messages' own keys, the sessions at scale's (the groups'
+	// headings and row labels, Show more, the hosted proxy's and the kept
+	// proxies' confirmations) and the session cap's sign-in line
+	for _, key := range []string{"sessions_sign_out_others_failed", "sessions_sign_in_required", "sessions_signed_out_remotely",
+		"sessions_group_hosted_proxies", "sessions_group_api_clients", "sessions_group_paired_devices",
+		"sessions_group_other_clients", "sessions_client_api_key", "sessions_client_device", "sessions_client_other",
+		"sessions_show_more", "sessions_confirm_body_hosted_proxy", "sessions_confirm_others_body_keeps_proxies",
+		"sessions_limit_reached_sign_in"} {
 		if !keys[key] {
 			t.Errorf("the sessions sources no longer read %s", key)
 		}
+	}
+	// a hosted proxy's row is named as the device list names one
+	if !strings.Contains(stripComments(readAppSource(t, "SessionsPresentation.h")), `return "manage_devices_proxy";`) {
+		t.Error("SessionsPresentation.h no longer names a hosted proxy's row manage_devices_proxy")
+	}
+	if !strings.Contains(stripComments(readAppSource(t, "SessionsPage.cpp")), `Loc("sessions_show_more")`) {
+		t.Error("SessionsPage.cpp no longer reads sessions_show_more")
 	}
 	for key := range keys {
 		for _, locale := range []string{"en", "de", "ja", "ar", "zh-Hans"} {
@@ -475,6 +552,51 @@ func TestSessionsPageControllerLifecycle(t *testing.T) {
 		"AppendProse(host,Loc(sessions::SignInRequiredKey(false)),colors::FaintBrush());",
 		"return;")
 
+	// the sessions at scale: the device sign-ins, their Show more, the client
+	// groups below them and the bulk sign-out, in that order; a group's
+	// heading, a named disclosure row and a heading of the page, opens and
+	// closes it through the controller, and its rows and Show more show only
+	// while it is open; both are presentation only, and nothing else asks the
+	// controller for either
+	requireOrder("SessionsPage::RenderBody", render,
+		"for (auto const& row : view.rows) AppendRow(host, row);",
+		"if (view.showMore) AppendShowMore(host, sessions::kGroupSignIns, hstring{});",
+		"for (auto const& group : view.groups) AppendGroup(host, group);",
+		"AppendBulk(host, view);")
+	group := body("void SessionsPage::AppendGroup(Panel const& host, sessions::GroupView const& group) {")
+	requireAll("SessionsPage::AppendGroup", group,
+		`header.Style(rows::Lookup(L"UrPaneRowButtonStyle"));`,
+		"Automation::AutomationProperties::SetName(header, H(group.label));",
+		"Automation::AutomationProperties::SetHeadingLevel(",
+		"chevron.Glyph(group.expanded ? kChevronUpGlyph : kChevronDownGlyph);",
+		"SetGroupExpanded(kind, !expanded);")
+	requireOrder("SessionsPage::AppendGroup", group,
+		"host.Children().Append(header);",
+		"if (!group.expanded) return;",
+		"for (auto const& row : group.rows) AppendRow(host, row);",
+		"if (group.showMore) AppendShowMore(host, kind, H(group.label));")
+	requireAll("SessionsPage::AppendShowMore", body("void SessionsPage::AppendShowMore("),
+		`Loc("sessions_show_more")`, `Automation::AutomationProperties::SetName(more, Loc("sessions_show_more"));`,
+		"ShowMore(kind);")
+	requireAll("SessionsPage::SetGroupExpanded",
+		body("void SessionsPage::SetGroupExpanded(std::string const& kind, bool expanded) {"),
+		"if (controller_) controller_->setGroupExpanded(kind, expanded);")
+	requireAll("SessionsPage::ShowMore", body("void SessionsPage::ShowMore(std::string const& kind) {"),
+		"if (controller_) controller_->showMoreSessions(kind);")
+	if strings.Count(page, "->setGroupExpanded(") != 1 || strings.Count(page, "->showMoreSessions(") != 1 {
+		t.Error("SessionsPage.cpp opens a group or shows more outside SetGroupExpanded and ShowMore")
+	}
+	// the confirmations: a group's row is found as a sign-in's, and the bulk
+	// body knows whether hosted proxies stay
+	requireAll("SessionsPage::ConfirmSignOut",
+		body("winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {"),
+		"sessions::FindRow(*rendered_, sessionId)", "sessions::ConfirmationFor(*row, SessionsText(NowMillis()))")
+	requireAll("SessionsPage::ConfirmSignOutOthers", body("winrt::fire_and_forget SessionsPage::ConfirmSignOutOthers() {"),
+		"sessions::BulkConfirmationFor(*rendered_, SessionsText(NowMillis()))")
+	// a group's count in the user's digit grouping
+	requireAll("SessionsText", body("sessions::Text SessionsText(int64_t nowMillis) {"),
+		"text.count = [](int64_t count) { return FormatLocalCount(count); };")
+
 	// the window: open from the Account row, closed by its back button, by any
 	// rail navigation and by a sign-out, polled with the presentation
 	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
@@ -523,7 +645,7 @@ func TestSessionsPageControllerLifecycle(t *testing.T) {
 	project := readAppSource(t, "App.vcxproj")
 	for _, item := range []string{`<ClCompile Include="SessionsPage.cpp" />`, `<ClInclude Include="SessionsPage.h" />`,
 		`<ClInclude Include="SessionsPresentation.h" />`, `<ClInclude Include="SessionGlyphs.h" />`,
-		`<ClInclude Include="RelativeTimeSpan.h" />`} {
+		`<ClInclude Include="RelativeTimeSpan.h" />`, `<ClInclude Include="SessionLimitNotice.h" />`} {
 		if !strings.Contains(project, item) {
 			t.Errorf("App.vcxproj does not list %s", item)
 		}
@@ -979,5 +1101,150 @@ func TestSignedOutRemotelyReachesTheSignInPage(t *testing.T) {
 		if !strings.Contains(project, item) {
 			t.Errorf("App.vcxproj does not list %s", item)
 		}
+	}
+}
+
+// A sign-in the account's cap of active sessions refused
+// (App/SessionLimitNotice.h; the sdk reads the server's refusal as each
+// route's result, with the error code SessionErrorCodeLimitReached). Every
+// route a sign-in calls reads its result's error through SignInErrorOf, which
+// hands the screens the session cap's token in place of the server's English:
+// the password, an auth code, the account discovery, a new network and an
+// instant account, a verify code, a recovery phrase, the browser sign-in's
+// approval, Google and Apple, a wallet, and the device's registration after
+// any of them. Every sign-in screen shows its errors through the lookup of
+// either refusal token (the relay showed a registration's refusal on the
+// step first, and the step's own answer lands after it), the verify step
+// shows a refusal's words instead of "invalid code", and the browser sign-in
+// sheet and a refused sign-in's device list show the words, never the token.
+// Read from the sources with comments blanked; the decisions are the spec's
+// (TestSessionsPresentation, TestSessionLimitSignIn there).
+func TestSessionLimitSignInWiring(t *testing.T) {
+	host := sdkHostSource(t)
+	for _, route := range []struct{ signature, call string }{
+		{"void SdkHost::LoginWithPassword(", "api_->authLoginWithPassword("},
+		{"void SdkHost::LoginWithCode(", "api_->authCodeLogin("},
+		{"void SdkHost::StartLogin(", "api_->authLogin("},
+		{"void SdkHost::SubmitCreateNetwork(", "api_->networkCreate("},
+		{"void SdkHost::VerifyCode(", "api_->authVerify("},
+		{"void SdkHost::LoginWithSeedphrase(", "api_->authLogin("},
+		{"void SdkHost::CreateInstantAccount(", "api_->networkCreate("},
+		{"void SdkHost::RedeemApprovedCode(", "api_->authCodeLogin("},
+		{"void SdkHost::RegisterNetworkClient(", "AuthNetworkClientWithLocale(args,"},
+		{"void SdkHost::AuthLoginWithSso(", "api_->authLogin("},
+		{"void SdkHost::AuthLoginWithWallet(", "api_->authLogin("},
+	} {
+		body := definitionBody(t, "SdkHost.cpp", host, route.signature)
+		provideRequire(t, route.signature, body, route.call, "sessionlimit::SignInErrorOf(result->error)")
+		if strings.Contains(body, "result->error->message") {
+			t.Errorf("%s reads the server's message itself: sessionlimit::SignInErrorOf reads it, with the session cap's token in its place", route.signature)
+		}
+	}
+	// those are every call of the routes that can start a session
+	for call, want := range map[string]int{
+		"api_->authLoginWithPassword(": 1, "api_->authCodeLogin(": 2, "api_->authLogin(": 4,
+		"api_->networkCreate(": 2, "api_->authVerify(": 1, "AuthNetworkClientWithLocale(args,": 1,
+	} {
+		if got := strings.Count(host, call); got != want {
+			t.Errorf("SdkHost.cpp calls %s %d times, want %d: a new call of a route that can start a session reads its error through sessionlimit::SignInErrorOf and is listed here", call, got, want)
+		}
+	}
+
+	login := stripComments(readAppSource(t, "LoginPage.cpp"))
+	page := func(signature string) string { return definitionBody(t, "LoginPage.cpp", login, signature) }
+	for _, step := range []struct{ signature, want string }{
+		{"void LoginPage::ShowErrorOnCurrentStep(", "MapAuthErrorForDisplay(error)"},
+		{"void LoginPage::ApplyLoginRouting(", ": MapAuthErrorForDisplay(routing.error));"},
+		{"void LoginPage::OnSignIn(", "page.ShowLoginErrorFor(LoginStep::Password, page.MapAuthErrorForDisplay(r.error));"},
+		{"void LoginPage::OnCreateNetwork(", "page.ShowLoginErrorFor(LoginStep::Create, page.MapAuthErrorForDisplay(r.error));"},
+		{"void LoginPage::SignInWithAuthCode(", "page.ShowLoginErrorFor(LoginStep::Initial, page.MapAuthErrorForDisplay(r.error));"},
+		{"void LoginPage::ApplyWalletSignInResult(", "MapAuthErrorForDisplay(result.error)"},
+		{"void LoginPage::OnSeedphraseSubmit(", ": page.MapAuthErrorForDisplay(r.error));"},
+		{"void LoginPage::OnCreateInstantSubmit(", ": page.MapAuthErrorForDisplay(account.error));"},
+	} {
+		provideRequire(t, step.signature, page(step.signature), step.want)
+	}
+	if strings.Contains(login, "H(r.error)") || strings.Contains(login, "H(routing.error)") ||
+		strings.Contains(login, "H(account.error)") {
+		t.Error("LoginPage.cpp shows a sign-in's error as it came: a refusal token would show as it is")
+	}
+	verify := page("void LoginPage::SubmitVerifyCode() {")
+	provideRequireOrder(t, "LoginPage::SubmitVerifyCode", verify,
+		"const bool refused = urnw::sessionlimit::SignInRefusalKey(r.error) != nullptr;",
+		"refused ? page.MapAuthErrorForDisplay(r.error)")
+	provideRequire(t, "LoginPage::SubmitVerifyCode", verify, `: Loc("verify_input_invalid"));`)
+	provideRequireOrder(t, "LoginPage::MapAuthErrorForDisplay", page("hstring LoginPage::MapAuthErrorForDisplay("),
+		"if (const char* key = urnw::sessionlimit::SignInRefusalKey(error)) {", "return H(error);")
+
+	sheet := stripComments(readAppSource(t, "BrowserApprovalSheet.cpp"))
+	provideRequireOrder(t, "BrowserApprovalSheet::OnRedeemed",
+		definitionBody(t, "BrowserApprovalSheet.cpp", sheet, "void BrowserApprovalSheet::OnRedeemed("),
+		"sessionlimit::SignInRefusalMessageKey(answer.error)", `Loc("auth_code_error")`)
+	provideRequireOrder(t, "BrowserApprovalSheet::OnConfirmed",
+		definitionBody(t, "BrowserApprovalSheet.cpp", sheet, "void BrowserApprovalSheet::OnConfirmed("),
+		"sessionlimit::SignInRefusalKey(result.error)", "H(result.error)")
+
+	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
+	provideRequire(t, "MainWindow::OfferSignInManageDevices",
+		definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::OfferSignInManageDevices("),
+		"const char* words = urnw::sessionlimit::SignInRefusalKey(error);",
+		"manageDevicesSheet_->SetMessage(words ? Loc(words) : hstring{urnw::Widen(error)});")
+}
+
+// The session cap's code and the group kinds the app spells itself are the
+// sdk's (cgo urnetwork_sdk.hpp). Skipped with no header that has them.
+func TestSessionsSpellTheSdksValues(t *testing.T) {
+	header := sdkHeaderWith(t, "SessionErrorCodeLimitReached")
+	limit := readAppSource(t, "SessionLimitNotice.h")
+	if sdkValue, appValue := constantValue(t, "urnetwork_sdk.hpp", header, "SessionErrorCodeLimitReached"),
+		constantValue(t, "SessionLimitNotice.h", limit, "kErrorCodeLimitReached"); sdkValue != appValue {
+		t.Errorf("SessionLimitNotice.h: kErrorCodeLimitReached is %q, the sdk's SessionErrorCodeLimitReached is %q", appValue, sdkValue)
+	}
+	presentation := readAppSource(t, "SessionsPresentation.h")
+	for _, pair := range [][2]string{
+		{"ClientSessionGroupSignIns", "kGroupSignIns"},
+		{"ClientSessionGroupHostedProxies", "kGroupHostedProxies"},
+		{"ClientSessionGroupApiClients", "kGroupApiClients"},
+		{"ClientSessionGroupPairedDevices", "kGroupPairedDevices"},
+		{"ClientSessionGroupOtherClients", "kGroupOtherClients"},
+	} {
+		sdkValue := constantValue(t, "urnetwork_sdk.hpp", header, pair[0])
+		appValue := constantValue(t, "SessionsPresentation.h", presentation, pair[1])
+		if sdkValue != appValue {
+			t.Errorf("SessionsPresentation.h: %s is %q, the sdk's %s is %q", pair[1], appValue, pair[0], sdkValue)
+		}
+	}
+	for _, want := range []string{"void setGroupExpanded(const std::string& kind, bool expanded) const;",
+		"void showMoreSessions(const std::string& kind) const;", "ClientSessionGroupList getGroups() const;"} {
+		if !strings.Contains(header, want) {
+			t.Errorf("urnetwork_sdk.hpp: missing %s", want)
+		}
+	}
+}
+
+// A group's count is the user's digit grouping: Windows' own for the user's
+// locale, with no fraction, and the plain digits when Windows cannot format it.
+func TestSessionsCountIsTheUsersGrouping(t *testing.T) {
+	stats := stripComments(readAppSource(t, "StatsFormat.cpp"))
+	count := definitionBody(t, "StatsFormat.cpp", stats, "std::string FormatLocalCount(int64_t count) {")
+	for _, want := range []string{
+		"info(LOCALE_SDECIMAL,", "info(LOCALE_STHOUSAND,", "GroupingOf(info(LOCALE_SGROUPING,",
+		"LOCALE_ILZERO | LOCALE_RETURN_NUMBER", "LOCALE_INEGNUMBER | LOCALE_RETURN_NUMBER",
+		"format.NumDigits = 0;",
+		"::GetNumberFormatEx(LOCALE_NAME_USER_DEFAULT, 0, digits.c_str(), &format, text, 64)",
+		"return Narrow(digits);",
+	} {
+		if !strings.Contains(count, want) {
+			t.Errorf("FormatLocalCount: missing %s", want)
+		}
+	}
+	grouping := definitionBody(t, "StatsFormat.cpp", stats, "UINT GroupingOf(std::wstring_view grouping) {")
+	for _, want := range []string{"if (!sizes.empty() && sizes.back() == L'0') {", "sizes.pop_back();", "sizes.push_back(L'0');"} {
+		if !strings.Contains(grouping, want) {
+			t.Errorf("GroupingOf: missing %s", want)
+		}
+	}
+	if !strings.Contains(stripComments(readAppSource(t, "StatsFormat.h")), "std::string FormatLocalCount(int64_t count);") {
+		t.Error("StatsFormat.h no longer declares FormatLocalCount")
 	}
 }

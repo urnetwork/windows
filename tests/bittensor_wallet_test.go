@@ -254,14 +254,18 @@ func TestBittensorProofHasNoFormInTheApp(t *testing.T) {
 // for result_errors, so a signature from another account than the address comes
 // back as that sentence rather than a 401, and the add sheet shows addAuth's. The
 // bridge page's manual form checks a paste before it hands it back, so this is
-// what is left when it could not.
+// what is left when it could not. The words are read through
+// sessionlimit::SignInErrorOf, which keeps the server's message for every
+// refusal but the account's session cap (SessionLimitNotice.h; the sessions
+// spec holds it to that).
 func TestBittensorRefusedProofReadsInTheServersWords(t *testing.T) {
 	host := stripLineComments(readAppSource(t, "SdkHost.cpp"))
 	for _, signature := range []string{"void SdkHost::AuthLoginWithWallet(", "void SdkHost::SubmitCreateNetwork("} {
 		body := definitionBody(t, "SdkHost.cpp", host, signature)
 		for _, want := range []string{
 			"args.result_errors = true;",
-			"AuthResult r{false, false, result->error->message};",
+			"if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {",
+			"AuthResult r{false, false, error};",
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("SdkHost.cpp: %s is missing %s", signature, want)

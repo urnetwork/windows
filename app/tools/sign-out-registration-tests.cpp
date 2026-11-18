@@ -22,10 +22,12 @@
 #include <vector>
 
 #include "ClientLimitNotice.h"
+#include "SessionLimitNotice.h"
 #include "SignOutRun.h"
 
 namespace {
 namespace clientlimit = urnw::clientlimit;
+namespace sessionlimit = urnw::sessionlimit;
 int failures = 0;
 int checks = 0;
 void Check(bool ok, const std::string& message) {
@@ -519,8 +521,21 @@ void TestFailedCredentialStorageDoesNotReportSuccessfulSignIn() {
   Check(host.reconciles == 0, "failed credential storage never starts a provider reconcile");
 }
 
+// The refusal the account's cap of active sessions makes, as the sdk reads it
+// into a sign-in route's result: its code and the sdk's English.
+urnet::Error SessionCapRefusal() {
+  urnet::Error error;
+  error.message = "Too many active sessions. Sign out sessions you no longer use in Account > "
+                  "Sessions, then try again.";
+  error.code = std::string(sessionlimit::kErrorCodeLimitReached);
+  return error;
+}
+
 // Return one of the real entrypoints' API responses when the test chooses.
 // The network and identity strings are synthetic and never leave this process.
+// Outcome 0 answers a network, 1 a refusal, 2 a transport failure, 3 no
+// result, 4 a verification (where the route has one) and 5 the session cap's
+// refusal.
 std::function<void(int)> BeginAuth(SdkHost& host, int kind) {
   const auto done = [&host](AuthResult result) { host.answers.push_back(result); };
   if (kind == 0) {
@@ -529,6 +544,7 @@ std::function<void(int)> BeginAuth(SdkHost& host, int kind) {
       urnet::AuthLoginWithPasswordResult result;
       if (outcome == 0) result.network = urnet::OptionalNetwork{"old-network"};
       else if (outcome == 1) result.error = urnet::Error{"old refusal"};
+      else if (outcome == 5) result.error = SessionCapRefusal();
       else if (outcome == 4) result.verification_required = urnet::Verification{};
       host.api.passwords.at(0)(outcome == 3 ? std::nullopt : std::optional(result),
                                 outcome == 2 ? std::optional<std::string>("old transport failure") : std::nullopt);
@@ -540,6 +556,7 @@ std::function<void(int)> BeginAuth(SdkHost& host, int kind) {
       urnet::AuthCodeLoginResult result;
       if (outcome == 0) result.by_jwt = "old-network";
       else if (outcome == 1) result.error = urnet::Error{"old refusal"};
+      else if (outcome == 5) result.error = SessionCapRefusal();
       host.api.codes.at(0)(outcome == 3 ? std::nullopt : std::optional(result),
                             outcome == 2 ? std::optional<std::string>("old transport failure") : std::nullopt);
     };
@@ -555,6 +572,7 @@ std::function<void(int)> BeginAuth(SdkHost& host, int kind) {
       urnet::NetworkCreateResult result;
       if (outcome == 0) result.network = urnet::OptionalNetwork{"old-network"};
       else if (outcome == 1) result.error = urnet::Error{"old refusal"};
+      else if (outcome == 5) result.error = SessionCapRefusal();
       else if (outcome == 4) result.verification_required = urnet::Verification{};
       host.api.creates.at(0)(outcome == 3 ? std::nullopt : std::optional(result),
                               outcome == 2 ? std::optional<std::string>("old transport failure") : std::nullopt);
@@ -568,6 +586,7 @@ std::function<void(int)> BeginAuth(SdkHost& host, int kind) {
     urnet::AuthLoginResult result;
     if (outcome == 0) result.network = urnet::Network{"old-network"};
     else if (outcome == 1) result.error = urnet::Error{"old refusal"};
+    else if (outcome == 5) result.error = SessionCapRefusal();
     const auto answer = kind == 4 ? host.api.verifies.at(0) : host.api.logins.at(0);
     answer(outcome == 3 ? std::nullopt : std::optional(result),
              outcome == 2 ? std::optional<std::string>("old transport failure") : std::nullopt);
@@ -884,6 +903,38 @@ void TestAClientLimitRefusalKeepsTheSignInForItsDeviceList() {
             !plain.refusedSignIn_,
         "any other refusal keeps the server's message and keeps nothing");
 }
+
+// A refusal by the account's cap of active sessions answers its token in
+// place of the sdk's English (SessionLimitNotice.h) from every sign-in route
+// here (a password, an auth code, a recovery phrase, the account discovery, a
+// verify code, a new network, Google or Apple, a wallet) and registers
+// nothing; the registration after one answers the same token and, unlike the
+// client limit's refusal, keeps nothing to run again: no device list frees a
+// session. Nothing retries and nothing signs out.
+void TestASessionCapRefusalAnswersItsToken() {
+  for (int kind = 0; kind < 8; ++kind) {
+    SdkHost host;
+    const auto answer = BeginAuth(host, kind);
+    answer(5);
+    const std::string route = "sign-in route " + std::to_string(kind);
+    Check(host.answers.size() == 1 && !host.answers.back().ok &&
+              host.answers.back().error == sessionlimit::kSignInRefused,
+          route + ": the session cap's refusal answers its token, not the sdk's English");
+    Check(host.requests.empty(), route + ": the refused sign-in registers nothing");
+    Check(host.api.signOutRequests == 0, route + ": the refusal signs nothing out");
+  }
+
+  SdkHost host;
+  host.Start("capped-network");
+  urnet::AuthNetworkClientResult refused;
+  refused.error = SessionCapRefusal();
+  host.Answer(0, refused);
+  Check(host.answers.size() == 1 && !host.answers.back().ok &&
+            host.answers.back().error == sessionlimit::kSignInRefused,
+        "the session cap's refusal of the registration answers its token, not the sdk's English");
+  Check(!host.refusedSignIn_, "and keeps no sign-in for a device list to run again");
+  Check(host.requests.size() == 1, "and does not register again");
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -916,6 +967,7 @@ int main(int argc, char** argv) {
   TestAnOldBrowserOrWalletHandoffDoesNotStartAuth();
   TestQueuedSignOutProgressReadsTheCurrentTail();
   TestAClientLimitRefusalKeepsTheSignInForItsDeviceList();
+  TestASessionCapRefusalAnswersItsToken();
   std::cout << (checks - failures) << '/' << checks << " registration/logout checks passed\n";
   return failures ? 1 : 0;
 }

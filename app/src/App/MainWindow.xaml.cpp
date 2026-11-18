@@ -24,6 +24,7 @@
 #include "PageContext.h"
 #include "Paths.h"
 #include "ReferralShare.h"
+#include "SessionLimitNotice.h"  // a refused sign-in's retry, in the device list
 #include "StatsFormat.h"
 #include "Top200Binding.h"
 #include "UrColors.h"
@@ -2837,8 +2838,11 @@ winrt::fire_and_forget MainWindow::ShowManageDevicesSheet(bool forSignIn, hstrin
 void MainWindow::OfferSignInManageDevices(std::string const& error) {
   const char* key = urnw::clientlimit::SignInRefusalMessageKey(error);
   if (manageDevicesSheet_ && manageDevicesSheet_->ForSignIn()) {
-    // a retry of the refused sign-in answered: what it said, above the list
-    manageDevicesSheet_->SetMessage(key ? Loc(key) : hstring{urnw::Widen(error)});
+    // a retry of the refused sign-in answered: what it said, above the list,
+    // in words for either refusal token (the account's session cap can refuse
+    // the retry too, SessionLimitNotice.h), never the token
+    const char* words = urnw::sessionlimit::SignInRefusalKey(error);
+    manageDevicesSheet_->SetMessage(words ? Loc(words) : hstring{urnw::Widen(error)});
     return;
   }
   // The network's client limit refused the sign-in: the device list, where a

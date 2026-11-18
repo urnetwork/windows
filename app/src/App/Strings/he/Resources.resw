@@ -5754,7 +5754,7 @@
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>פרוקסי מתארח</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>לא ניתן היה להסיר את המכשיר. נסה שוב.</value>
@@ -7737,9 +7737,25 @@
     <value>ההתנתקות מההפעלה הזו נכשלה. נסו שוב.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>לקוח API</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>מכשיר מצומד</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>לקוח אחר</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>ההפעלה ב-{0} ({1}) תנותק.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>הפרוקסי המתארח הזה יפסיק לפעול. צרו פרוקסי חדש במקומו.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>ההפעלה ב-{} תנותק.</value>
@@ -7748,6 +7764,10 @@
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>כל שאר ההפעלות ברשימה הזו ינותקו. ההפעלה הזו תישאר מחוברת. כל מי שמכיר את פרטי ההתחברות שלכם עדיין יכול להתחבר שוב.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>כל שאר ההפעלות ברשימה הזו ינותקו, מלבד שרתי פרוקסי מתארחים. ההפעלה הזו תישאר מחוברת. כל מי שמכיר את פרטי ההתחברות שלכם עדיין יכול להתחבר שוב.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>להתנתק מכל ההפעלות האחרות?</value>
@@ -7804,6 +7824,22 @@
   <data name="sessions_empty" xml:space="preserve">
     <value>אין הפעלות פעילות</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>לקוחות API ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>שרתי פרוקסי מתארחים ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>לקוחות אחרים ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>מכשירים מצומדים ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>מזהה {}</value>
@@ -7869,13 +7905,29 @@
     <value>התחברויות מגרסאות ישנות של האפליקציה יופיעו כאן אחרי שיתחדשו. כדי לסיים את כל ההתחברויות, שנו את פרטי ההתחברות שלכם.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>יש יותר מדי הפעלות פעילות. נתקו את ההפעלות שאתם כבר לא משתמשים בהן בחשבון &gt; הפעלות, ואז נסו שוב.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, on a page where the user is signed in to the account (ur.io's hosted proxy creation). A button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>יש יותר מדי הפעלות פעילות. במכשיר שמחובר לחשבון הזה, עברו אל חשבון &gt; הפעלות, נתקו את ההפעלות שאתם כבר לא משתמשים בהן, ואז נסו שוב.</value>
+    <comment>Sign-in screens: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>טעינת ההפעלות נכשלה.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>פתיחת הפעלות</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>הרענון נכשל. מוצגת הרשימה האחרונה.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>הצגת עוד</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>התחברו שוב כדי לנהל את ההפעלות.</value>
@@ -9166,6 +9218,10 @@
   <data name="test_animation" xml:space="preserve">
     <value>בדיקת אנימציה</value>
     <comment>Get Pro screen: debug button that replays the Pro celebration animation.</comment>
+  </data>
+  <data name="test_purchases_in_test_builds_don_t_unlock_pro" xml:space="preserve">
+    <value>רכישות ניסיון בגרסאות ניסיון לא פותחות את Pro.</value>
+    <comment>Shown inline in the upgrade flow, and as the restore result, when the server refuses an App Store sandbox purchase (a TestFlight build) because the account is not one of its internal testers: the purchase report answers invalid with error code sandbox_purchase (sdk IsSandboxPurchaseRefusal). Test purchases are free, so they unlock nothing. Neutral on purpose: it must never name another way to pay (the App Store's anti-steering rule). Owner 2026-11-17: "Keep buttons, neutral notice" (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="thanks_for_building_the_new_internet_with_us" xml:space="preserve">
     <value>תודה שאתם בונים איתנו את האינטרנט החדש</value>

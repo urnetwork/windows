@@ -1190,9 +1190,14 @@ send_product_updates
 send_reset_link_2
 send_tao_to_mirror
 sessions_action_failed
+sessions_client_api_key
+sessions_client_device
+sessions_client_other
 sessions_confirm_body
+sessions_confirm_body_hosted_proxy
 sessions_confirm_body_no_place
 sessions_confirm_others_body
+sessions_confirm_others_body_keeps_proxies
 sessions_confirm_others_title
 sessions_confirm_self_body
 sessions_confirm_title
@@ -1207,6 +1212,10 @@ sessions_device_unknown
 sessions_device_web
 sessions_device_windows
 sessions_empty
+sessions_group_api_clients
+sessions_group_hosted_proxies
+sessions_group_other_clients
+sessions_group_paired_devices
 sessions_id
 sessions_kind_api_key_client
 sessions_kind_apple
@@ -1223,8 +1232,10 @@ sessions_last_use_unavailable
 sessions_last_used
 sessions_last_used_help
 sessions_legacy_note
+sessions_limit_reached_sign_in
 sessions_load_failed
 sessions_refresh_failed
+sessions_show_more
 sessions_sign_in_required
 sessions_sign_out_accessibility
 sessions_sign_out_all_others

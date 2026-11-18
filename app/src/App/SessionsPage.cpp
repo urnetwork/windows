@@ -19,7 +19,7 @@
 #include "BittensorKeyStore.h"  // this session's sign-out warns of a key that isn't backed up
 #include "SessionGlyphs.h"
 #include "SettingsSheets.h"  // rows::MakeSheet, rows::CopyToClipboard, rows::Lookup
-#include "StatsFormat.h"     // RelativeTime and the user's dates
+#include "StatsFormat.h"     // RelativeTime, the user's dates and digit grouping
 #include "Strings.h"
 #include "UrColors.h"
 
@@ -47,6 +47,10 @@ constexpr double kDeviceGlyphSize = 20;
 constexpr double kRowMinHeight = 72;
 
 constexpr wchar_t kCopyGlyph[] = L"\uE8C8";  // Copy
+// a group's heading: ChevronDown while it is closed, ChevronUp while it is
+// open, as the Earnings Why? disclosure row
+constexpr wchar_t kChevronDownGlyph[] = L"\uE70D";
+constexpr wchar_t kChevronUpGlyph[] = L"\uE70E";
 
 int64_t NowMillis() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -54,8 +58,8 @@ int64_t NowMillis() {
       .count();
 }
 
-// The page's words: the store's strings, the relative times against `nowMillis`
-// and the user's dates (StatsFormat.h).
+// The page's words: the store's strings, the relative times against `nowMillis`,
+// and the user's dates and digit grouping (StatsFormat.h).
 sessions::Text SessionsText(int64_t nowMillis) {
   sessions::Text text;
   text.localized = [](std::string_view key) { return Narrow(Localized(key)); };
@@ -68,6 +72,7 @@ sessions::Text SessionsText(int64_t nowMillis) {
   text.relative = [nowMillis](int64_t unixMillis) { return RelativeTime(unixMillis, nowMillis); };
   text.date = [](int64_t unixMillis) { return FormatLocalDate(unixMillis); };
   text.dateTime = [](int64_t unixMillis) { return FormatLocalDateTime(unixMillis); };
+  text.count = [](int64_t count) { return FormatLocalCount(count); };
   return text;
 }
 
@@ -196,6 +201,7 @@ void SessionsPage::Close() {
   snapshot_ = {};
   rendered_.reset();
   rowControls_.clear();
+  sectionControls_.clear();
   bulkButton_ = nullptr;
   tryAgainButton_ = nullptr;
   w_.SessionsHost().Children().Clear();
@@ -296,6 +302,7 @@ void SessionsPage::Render(bool force) {
     // the sign-in-required body's generic words (§5)
     rendered_.reset();
     rowControls_.clear();
+    sectionControls_.clear();
     bulkButton_ = nullptr;
     tryAgainButton_ = nullptr;
     host.Children().Clear();
@@ -321,6 +328,7 @@ void SessionsPage::RenderBody(sessions::View const& view) {
   auto host = w_.SessionsHost();
   host.Children().Clear();
   rowControls_.clear();
+  sectionControls_.clear();
   bulkButton_ = nullptr;
   tryAgainButton_ = nullptr;
 
@@ -368,7 +376,11 @@ void SessionsPage::RenderBody(sessions::View const& view) {
       if (view.refreshFailed) {
         AppendProse(host, Loc("sessions_refresh_failed"), colors::DangerBrush());
       }
+      // the device sign-ins and their Show more, then the client groups below
+      // them, then the bulk sign-out
       for (auto const& row : view.rows) AppendRow(host, row);
+      if (view.showMore) AppendShowMore(host, sessions::kGroupSignIns, hstring{});
+      for (auto const& group : view.groups) AppendGroup(host, group);
       AppendBulk(host, view);
       break;
   }
@@ -377,7 +389,9 @@ void SessionsPage::RenderBody(sessions::View const& view) {
   RestoreFocus(focused);
 }
 
-// One session (§3): the country circle, three lines, and Sign out.
+// One session (§3): the country circle, three lines, and Sign out. A client
+// group's row is the same row, named for its kind of client
+// (sessions::RowFor), and its sign-out runs the same way.
 void SessionsPage::AppendRow(Panel const& host, sessions::Row const& row) {
   Border box;
   box.MinHeight(kRowMinHeight);
@@ -497,11 +511,90 @@ void SessionsPage::AppendRow(Panel const& host, sessions::Row const& row) {
 
   box.Child(grid);
   host.Children().Append(box);
-  rowControls_.push_back(RowControls{sessionId, signOut, copy});
+  rowControls_.push_back(RowControls{
+      sessionId, signOut, copy, row.group.empty() ? std::string(sessions::kGroupSignIns) : row.group});
+}
+
+// "Show more" at the end of a section: the device sign-ins' or an open group's
+// next rows, through the controller. A pane row, like the disclosure rows.
+void SessionsPage::AppendShowMore(Panel const& host, std::string const& kind,
+                                  hstring const& section) {
+  Button more;
+  more.Style(rows::Lookup(L"UrPaneRowButtonStyle"));
+  TextBlock label;
+  if (auto found = rows::Lookup(L"UrRowTitleStyle")) label.Style(found);
+  label.Text(Loc("sessions_show_more"));
+  // the button's name says it
+  Automation::AutomationProperties::SetAccessibilityView(
+      label, Automation::Peers::AccessibilityView::Raw);
+  more.Content(label);
+  Automation::AutomationProperties::SetName(more, Loc("sessions_show_more"));
+  // which section: every section's Show more has the one name
+  if (!section.empty()) Automation::AutomationProperties::SetFullDescription(more, section);
+  more.Click([this, kind](auto const&, auto const&) { ShowMore(kind); });
+  host.Children().Append(more);
+  SectionFor(kind).showMore = more;
+}
+
+// A client group below the device sign-ins: its heading, which opens and
+// closes it, then while it is open its rows and Show more. The heading is the
+// app's disclosure row (the Earnings Why?, Account's Advanced): a pane row
+// button with its words and a chevron, named for a screen reader by its words,
+// and a heading of the page as the pane's group headers are. Opening a group
+// asks the controller, which publishes the open group's first rows at once.
+void SessionsPage::AppendGroup(Panel const& host, sessions::GroupView const& group) {
+  Button header;
+  header.Style(rows::Lookup(L"UrPaneRowButtonStyle"));
+  Grid content;
+  content.ColumnSpacing(8);
+  ColumnDefinition labelColumn, chevronColumn;
+  labelColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  chevronColumn.Width(GridLengthHelper::Auto());
+  content.ColumnDefinitions().Append(labelColumn);
+  content.ColumnDefinitions().Append(chevronColumn);
+  TextBlock label;
+  if (auto found = rows::Lookup(L"UrRowTitleStyle")) label.Style(found);
+  label.Text(H(group.label));
+  // "Hosted proxies (1,204+)" is the button's name; read once
+  Automation::AutomationProperties::SetAccessibilityView(
+      label, Automation::Peers::AccessibilityView::Raw);
+  content.Children().Append(label);
+  FontIcon chevron;
+  chevron.FontFamily(Media::FontFamily(kit::kIconFontFamily));
+  chevron.Glyph(group.expanded ? kChevronUpGlyph : kChevronDownGlyph);
+  chevron.FontSize(12);
+  chevron.Foreground(colors::MutedBrush());
+  chevron.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      chevron, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(chevron, 1);
+  content.Children().Append(chevron);
+  header.Content(content);
+  Automation::AutomationProperties::SetName(header, H(group.label));
+  Automation::AutomationProperties::SetHeadingLevel(
+      header, Automation::Peers::AutomationHeadingLevel::Level3);
+  const std::string kind = group.kind;
+  const bool expanded = group.expanded;
+  header.Click([this, kind, expanded](auto const&, auto const&) { SetGroupExpanded(kind, !expanded); });
+  host.Children().Append(header);
+  SectionFor(kind).header = header;
+
+  if (!group.expanded) return;
+  for (auto const& row : group.rows) AppendRow(host, row);
+  if (group.showMore) AppendShowMore(host, kind, H(group.label));
+}
+
+SessionsPage::SectionControls& SessionsPage::SectionFor(std::string const& kind) {
+  for (auto& section : sectionControls_) {
+    if (section.kind == kind) return section;
+  }
+  sectionControls_.push_back(SectionControls{kind});
+  return sectionControls_.back();
 }
 
 // "Sign out all other sessions", at the bottom of the list, with a current
-// session and at least one other (§4).
+// session and other sessions it signs out (§4; the controller counts them,
+// and the hosted proxies, which it keeps, are not among them).
 void SessionsPage::AppendBulk(Panel const& host, sessions::View const& view) {
   if (!view.bulkShown) return;
   const bool pending = view.bulk == sessions::ActionState::Pending;
@@ -546,8 +639,18 @@ SessionsPage::FocusTarget SessionsPage::FocusedTarget() const {
   const IInspectable focused = Input::FocusManager::GetFocusedElement(root);
   if (!focused) return target;
   for (auto const& row : rowControls_) {
-    if (row.signOut && focused == row.signOut) return {FocusKind::SignOut, row.sessionId};
-    if (row.copy && focused == row.copy) return {FocusKind::Copy, row.sessionId};
+    if (row.signOut && focused == row.signOut) {
+      return {FocusKind::SignOut, row.sessionId, row.section};
+    }
+    if (row.copy && focused == row.copy) return {FocusKind::Copy, row.sessionId, row.section};
+  }
+  for (auto const& section : sectionControls_) {
+    if (section.header && focused == section.header) {
+      return {FocusKind::GroupHeader, {}, section.kind};
+    }
+    if (section.showMore && focused == section.showMore) {
+      return {FocusKind::ShowMore, {}, section.kind};
+    }
   }
   if (bulkButton_ && focused == bulkButton_) return {FocusKind::Bulk, {}};
   if (tryAgainButton_ && focused == tryAgainButton_) return {FocusKind::TryAgain, {}};
@@ -555,20 +658,54 @@ SessionsPage::FocusTarget SessionsPage::FocusedTarget() const {
 }
 
 // The same control in the rebuilt body; when it is gone (its row was signed
-// out) or disabled (a sign-out is running), the next thing on its row, then
+// out, its group emptied, its section shows every row) or disabled (a sign-out
+// is running), the nearest thing before it: the next thing on its row, the
+// last row of a section whose Show more is gone, its group's heading. Then
 // Refresh, which is always there.
 void SessionsPage::RestoreFocus(FocusTarget const& target) {
   if (target.kind == FocusKind::None) return;
   const auto focus = [](Button const& button) {
     return button && button.IsEnabled() && button.Focus(FocusState::Programmatic);
   };
-  for (auto const& row : rowControls_) {
-    if (row.sessionId != target.sessionId) continue;
-    if (target.kind == FocusKind::SignOut && focus(row.signOut)) return;
-    if (focus(row.copy)) return;
+  const auto focusRow = [&focus](RowControls const& row) {
+    return focus(row.signOut) || focus(row.copy);
+  };
+  const SectionControls* section = nullptr;
+  for (auto const& controls : sectionControls_) {
+    if (controls.kind == target.section) section = &controls;
   }
-  if (target.kind == FocusKind::Bulk && focus(bulkButton_)) return;
-  if (target.kind == FocusKind::TryAgain && focus(tryAgainButton_)) return;
+  switch (target.kind) {
+    case FocusKind::SignOut:
+    case FocusKind::Copy:
+      for (auto const& row : rowControls_) {
+        if (row.sessionId != target.sessionId) continue;
+        if (target.kind == FocusKind::SignOut && focus(row.signOut)) return;
+        if (focus(row.copy)) return;
+      }
+      break;
+    case FocusKind::ShowMore: {
+      if (section && focus(section->showMore)) return;
+      // every row shown: the section's last one
+      const RowControls* last = nullptr;
+      for (auto const& row : rowControls_) {
+        if (row.section == target.section) last = &row;
+      }
+      if (last && focusRow(*last)) return;
+      break;
+    }
+    case FocusKind::Bulk:
+      if (focus(bulkButton_)) return;
+      break;
+    case FocusKind::TryAgain:
+      if (focus(tryAgainButton_)) return;
+      break;
+    case FocusKind::GroupHeader:
+    case FocusKind::None:
+      break;
+  }
+  // a group's heading: the target itself, or what is left above a gone row
+  // or Show more of its group
+  if (section && focus(section->header)) return;
   w_.SessionsRefreshButton().Focus(FocusState::Programmatic);
 }
 
@@ -576,6 +713,17 @@ void SessionsPage::RestoreFocus(FocusTarget const& target) {
 
 void SessionsPage::Refresh() {
   if (controller_) controller_->refresh();
+}
+
+// Presentation only: the controller requests nothing, keeps the group open
+// through reloads, and publishes the snapshot with its rows before it returns
+// (SessionsPage.h). Its focus comes back to the rebuilt heading.
+void SessionsPage::SetGroupExpanded(std::string const& kind, bool expanded) {
+  if (controller_) controller_->setGroupExpanded(kind, expanded);
+}
+
+void SessionsPage::ShowMore(std::string const& kind) {
+  if (controller_) controller_->showMoreSessions(kind);
 }
 
 void SessionsPage::CopyId(std::string const& sessionId) {
@@ -586,18 +734,22 @@ void SessionsPage::CopyId(std::string const& sessionId) {
 
 // Names the session, defaults to Cancel and signs out only on the explicit
 // button (ConfirmRemoveAuth's shape); the current session's warns that this
-// app signs out with it.
+// app signs out with it, and a hosted proxy's that the proxy stops working.
 winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
   if (w_.sheetOpen() || !rendered_) co_return;
-  std::optional<sessions::Confirmation> confirmation;
+  // a device sign-in's row or an open group's; read here, before the dialog,
+  // since a snapshot may rebuild rendered_ while it is up
+  sessions::Confirmation confirmation;
   bool current = false;
-  for (auto const& row : rendered_->rows) {
-    if (row.sessionId == sessionId) {
-      confirmation = sessions::ConfirmationFor(row, SessionsText(NowMillis()));
-      current = row.current;
-    }
+  std::string section;
+  if (const sessions::Row* row = sessions::FindRow(*rendered_, sessionId)) {
+    confirmation = sessions::ConfirmationFor(*row, SessionsText(NowMillis()));
+    current = row->current;
+    // where focus goes back to should the row be gone when the dialog closes
+    section = row->group.empty() ? std::string(sessions::kGroupSignIns) : row->group;
+  } else {
+    co_return;
   }
-  if (!confirmation) co_return;
   // This session's sign-out signs this app out: a one-tap Bittensor key here
   // whose phrase isn't known to be saved stays on this device, and the
   // confirmation says so.
@@ -605,7 +757,7 @@ winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
     std::string networkId;
     if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) networkId = *jwt->NetworkId;
     if (BittensorKeyNeedsBackup(networkId)) {
-      confirmation->body += "\n\n" + Narrow(std::wstring_view{Loc("bittensor_key_sign_out_message")});
+      confirmation.body += "\n\n" + Narrow(std::wstring_view{Loc("bittensor_key_sign_out_message")});
     }
   }
   // the controller this confirmation is for
@@ -614,12 +766,12 @@ winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
   w_.SetSheetOpen(true);
   bool confirmed = false;
   try {
-    auto dialog = rows::MakeSheet(self->Content().XamlRoot(), H(confirmation->title));
+    auto dialog = rows::MakeSheet(self->Content().XamlRoot(), H(confirmation.title));
     dialog.PrimaryButtonText(Loc("sign_out"));
     dialog.CloseButtonText(Loc("cancel"));
     dialog.DefaultButton(ContentDialogButton::Close);  // Enter must not sign out
     TextBlock body;
-    body.Text(H(confirmation->body));
+    body.Text(H(confirmation.body));
     body.FontSize(14);
     body.TextWrapping(TextWrapping::Wrap);
     body.MinWidth(320);
@@ -630,13 +782,15 @@ winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
   w_.SetSheetOpen(false);
   if (confirmed) SignOut(sessionId, generation);
   // back on the row the dialog was for, or its nearest neighbour
-  RestoreFocus({FocusKind::SignOut, sessionId});
+  RestoreFocus({FocusKind::SignOut, sessionId, section});
 }
 
+// "Sign out all other sessions?", which says the hosted proxies stay when the
+// list has any (the controller's bulk sign-out keeps them).
 winrt::fire_and_forget SessionsPage::ConfirmSignOutOthers() {
-  if (w_.sheetOpen()) co_return;
+  if (w_.sheetOpen() || !rendered_) co_return;
   const sessions::Confirmation confirmation =
-      sessions::BulkConfirmationFor(SessionsText(NowMillis()));
+      sessions::BulkConfirmationFor(*rendered_, SessionsText(NowMillis()));
   const uint64_t generation = fence_.Current();
   auto self = w_.get_strong();
   w_.SetSheetOpen(true);

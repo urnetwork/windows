@@ -35,6 +35,25 @@ bool LocalSystemTime(int64_t unixMillis, SYSTEMTIME& local) {
          ::SystemTimeToTzSpecificLocalTime(nullptr, &utc, &local);
 }
 
+// LOCALE_SGROUPING ("3;0", "3;2;0", "3") as NUMBERFMT's Grouping (3, 32, 30).
+// The string's last size repeats when a 0 follows it, and the number's last
+// digit repeats unless it is 0: so a closing 0 is dropped, and a 0 is added
+// where the string has none.
+UINT GroupingOf(std::wstring_view grouping) {
+  std::wstring sizes;
+  for (const wchar_t c : grouping) {
+    if (L'0' <= c && c <= L'9') sizes.push_back(c);
+  }
+  if (!sizes.empty() && sizes.back() == L'0') {
+    sizes.pop_back();
+  } else {
+    sizes.push_back(L'0');
+  }
+  UINT value = 0;
+  for (const wchar_t c : sizes) value = value * 10 + static_cast<UINT>(c - L'0');
+  return value;
+}
+
 // "2026-10-09", in UTC: a date that reads unambiguously when Windows cannot
 // format the local one.
 std::string UtcDate(int64_t unixMillis) {
@@ -224,6 +243,39 @@ std::string FormatLocalDateTime(int64_t unixMillis) {
     return UtcDate(unixMillis);
   }
   return Narrow(std::wstring(date) + L" " + time);
+}
+
+std::string FormatLocalCount(int64_t count) {
+  const std::wstring digits = std::to_wstring(count);
+  // The user's separators and grouping, with no fraction: a count is whole.
+  // Each keeps its default when Windows cannot read it; an empty one the user
+  // chose stays empty.
+  const auto info = [](LCTYPE type, const wchar_t* fallback) {
+    wchar_t value[16] = {};
+    if (!::GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, type, value, 16)) return std::wstring(fallback);
+    return std::wstring(value);
+  };
+  std::wstring decimalSeparator = info(LOCALE_SDECIMAL, L".");
+  std::wstring thousandSeparator = info(LOCALE_STHOUSAND, L",");
+  DWORD leadingZero = 1;
+  DWORD negativeOrder = 1;
+  ::GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_ILZERO | LOCALE_RETURN_NUMBER,
+                    reinterpret_cast<LPWSTR>(&leadingZero), sizeof(leadingZero) / sizeof(wchar_t));
+  ::GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_INEGNUMBER | LOCALE_RETURN_NUMBER,
+                    reinterpret_cast<LPWSTR>(&negativeOrder),
+                    sizeof(negativeOrder) / sizeof(wchar_t));
+  NUMBERFMTW format{};
+  format.NumDigits = 0;
+  format.LeadingZero = leadingZero;
+  format.Grouping = GroupingOf(info(LOCALE_SGROUPING, L"3;0"));
+  format.lpDecimalSep = decimalSeparator.data();
+  format.lpThousandSep = thousandSeparator.data();
+  format.NegativeOrder = negativeOrder;
+  wchar_t text[64] = {};
+  if (!::GetNumberFormatEx(LOCALE_NAME_USER_DEFAULT, 0, digits.c_str(), &format, text, 64)) {
+    return Narrow(digits);
+  }
+  return Narrow(text);
 }
 
 }  // namespace urnw

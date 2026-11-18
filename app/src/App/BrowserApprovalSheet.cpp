@@ -16,6 +16,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "SessionLimitNotice.h"  // a sign-in the account's session cap refused
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "Strings.h"
 #include "UrColors.h"
@@ -580,6 +581,13 @@ void BrowserApprovalSheet::OnRedeemed(SdkHost::ApprovedNetwork answer) {
     // never retried: a spent or refused code is spent, and the server answers an invalid, an
     // expired and a used one the same way
     LogWarn("browser sign-in sheet: the approval could not be redeemed");
+    // The account's cap of active sessions refused the sign-in the code was for (SdkHost's token,
+    // SessionLimitNotice.h): what to do, not a bad code. The person approves again once a session
+    // is signed out.
+    if (const char* key = sessionlimit::SignInRefusalMessageKey(answer.error)) {
+      ShowFailed(Loc(key));
+      return;
+    }
     ShowFailed(answer.failure == SdkHost::ApprovedNetwork::Failure::Transport
                    ? Loc("something_went_wrong")
                    : Loc("auth_code_error"));
@@ -619,6 +627,12 @@ void BrowserApprovalSheet::OnConfirmed(AuthResult const& result) {
   // the server's own text, as every other sign-in failure shows it; the code is spent, so the
   // person starts again
   LogWarn("browser sign-in sheet: the device could not be registered");
+  // a refusal the sign-in screens have words for (the account's session cap, the network's client
+  // limit: SdkHost's tokens, SessionLimitNotice.h) says what to do, never its token
+  if (const char* key = sessionlimit::SignInRefusalKey(result.error)) {
+    ShowFailed(Loc(key));
+    return;
+  }
   ShowFailed(result.error.empty() ? Loc("something_went_wrong") : H(result.error));
 }
 
