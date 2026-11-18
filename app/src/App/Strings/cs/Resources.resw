@@ -6376,8 +6376,8 @@ Získejte svůj bonus vytvořením sítě!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork stojí na největším, nejbezpečnějším a nejvíce
-decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</value>
+    <value>URnetwork stojí na decentralizovaném protokolu pro příchozí a odchozí provoz,
+který běží na zařízeních komunity ve velkém výběru zemí.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

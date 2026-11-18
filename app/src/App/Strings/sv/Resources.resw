@@ -6226,8 +6226,8 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork drivs av världens största, säkraste
-och mest decentraliserade in- och utgångsprotokoll.</value>
+    <value>URnetwork drivs av ett decentraliserat in- och utgångsprotokoll
+som körs på communityns enheter i ett stort urval av länder.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

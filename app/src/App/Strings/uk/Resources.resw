@@ -6378,8 +6378,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>В основі URnetwork — найбільший, найбезпечніший
-і найдецентралізованіший у світі протокол входу й виходу трафіку.</value>
+    <value>В основі URnetwork — децентралізований протокол входу й виходу трафіку,
+що працює на пристроях спільноти у великому виборі країн.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

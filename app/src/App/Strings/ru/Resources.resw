@@ -6450,8 +6450,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>В основе URnetwork — самый крупный, безопасный
-и децентрализованный в мире протокол входа и выхода трафика.</value>
+    <value>В основе URnetwork — децентрализованный протокол входа и выхода трафика,
+работающий на устройствах сообщества в большом выборе стран.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

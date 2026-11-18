@@ -6377,8 +6377,8 @@ który wysłaliśmy, aby zweryfikować twoją tożsamość.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork opiera się na największym, najbezpieczniejszym i najbardziej
-zdecentralizowanym na świecie protokole wejścia i wyjścia.</value>
+    <value>URnetwork opiera się na zdecentralizowanym protokole wejścia i wyjścia,
+działającym na urządzeniach społeczności w wielu krajach.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">

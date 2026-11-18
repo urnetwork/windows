@@ -6149,8 +6149,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork는 세계에서 가장 크고 안전하며 가장 분산화된
-인그레스·이그레스 프로토콜로 구동됩니다.</value>
+    <value>URnetwork는 분산형 인그레스·이그레스 프로토콜로 구동되며,
+다양한 국가의 커뮤니티 기기에서 실행됩니다.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
