@@ -7420,6 +7420,10 @@
     <value>명령줄</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
   </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>브라우저 확장 프로그램</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
+  </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the iOS app, before its app version. The operating system's name, unchanged in every language.</comment>
@@ -7538,7 +7542,7 @@
   </data>
   <data name="sessions_limit_reached_sign_in" xml:space="preserve">
     <value>활성 세션이 너무 많습니다. 이 계정에 로그인된 기기에서 계정 &gt; 세션으로 이동해 더 이상 사용하지 않는 세션에서 로그아웃한 후 다시 시도하세요.</value>
-    <comment>Sign-in screens: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
   </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>세션을 불러올 수 없습니다.</value>

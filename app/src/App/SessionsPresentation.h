@@ -47,7 +47,9 @@ struct LastUsed {
   std::string region;
   std::string country;
   std::string countryCode;  // lower-case ISO alpha-2, "" when unknown
-  std::string deviceType;   // android, ios, macos, windows, linux, web, cli, server, unknown
+  // the sdk's device kind (LastUsed.DeviceKind): android, ios, macos, windows,
+  // linux, web, extension (the browser extension), cli, server, unknown
+  std::string deviceType;
   std::string appVersion;   // "" when unknown
 
   bool operator==(const LastUsed&) const = default;
@@ -180,7 +182,10 @@ std::optional<LastUsed> LastUsedFrom(const SdkLastUsed& lastUsed) {
   out.region = lastUsed.getRegion();
   out.country = lastUsed.getCountry();
   out.countryCode = lastUsed.getCountryCode();
-  out.deviceType = lastUsed.getDeviceType();
+  // the sdk's kind names the browser extension; a type from an sdk without it
+  // is the same for every other device
+  out.deviceType = lastUsed.getDeviceKind();
+  if (out.deviceType.empty()) out.deviceType = lastUsed.getDeviceType();
   out.appVersion = lastUsed.getAppVersion();
   return out;
 }
@@ -258,6 +263,8 @@ constexpr const char* DeviceLabelKey(std::string_view deviceType) {
   if (deviceType == "windows") return "sessions_device_windows";
   if (deviceType == "linux") return "sessions_device_linux";
   if (deviceType == "web") return "sessions_device_web";
+  // the browser extension's own sign-in (urnet::SessionDeviceKindExtension)
+  if (deviceType == "extension") return "sessions_device_extension";
   if (deviceType == "cli") return "sessions_device_cli";
   if (deviceType == "server") return "sessions_device_server";
   return "sessions_device_unknown";
@@ -271,7 +278,8 @@ constexpr DeviceGlyph DeviceGlyphFor(std::string_view deviceType) {
   if (deviceType == "ios" || deviceType == "macos") return DeviceGlyph::Apple;
   if (deviceType == "windows") return DeviceGlyph::Windows;
   if (deviceType == "linux") return DeviceGlyph::Linux;
-  if (deviceType == "web") return DeviceGlyph::Web;
+  // the browser extension is a browser: the web logo
+  if (deviceType == "web" || deviceType == "extension") return DeviceGlyph::Web;
   if (deviceType == "cli") return DeviceGlyph::Cli;
   if (deviceType == "server") return DeviceGlyph::Server;
   return DeviceGlyph::Unknown;

@@ -7542,6 +7542,10 @@
     <value>कमांड लाइन</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
   </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>ब्राउज़र एक्सटेंशन</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
+  </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the iOS app, before its app version. The operating system's name, unchanged in every language.</comment>
@@ -7660,7 +7664,7 @@
   </data>
   <data name="sessions_limit_reached_sign_in" xml:space="preserve">
     <value>बहुत सारे सक्रिय सत्र हैं। इस खाते में साइन इन किए गए किसी डिवाइस पर खाता &gt; सत्र में जाएँ, उन सत्रों से साइन आउट करें जिनका आप अब उपयोग नहीं करते, फिर पुनः प्रयास करें।</value>
-    <comment>Sign-in screens: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
   </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>सत्र लोड नहीं हो सके।</value>

@@ -1206,6 +1206,7 @@ sessions_confirm_title
 sessions_copy_id
 sessions_device_android
 sessions_device_cli
+sessions_device_extension
 sessions_device_ios
 sessions_device_linux
 sessions_device_macos

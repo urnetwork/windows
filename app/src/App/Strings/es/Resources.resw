@@ -7617,6 +7617,10 @@ del mundo</value>
     <value>Línea de comandos</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
   </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>Extensión del navegador</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
+  </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the iOS app, before its app version. The operating system's name, unchanged in every language.</comment>
@@ -7735,7 +7739,7 @@ del mundo</value>
   </data>
   <data name="sessions_limit_reached_sign_in" xml:space="preserve">
     <value>Hay demasiadas sesiones activas. En un dispositivo con la sesión iniciada en esta cuenta, ve a Cuenta &gt; Sesiones, cierra las sesiones que ya no uses y vuelve a intentarlo.</value>
-    <comment>Sign-in screens: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
   </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>No se pudieron cargar las sesiones.</value>

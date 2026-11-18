@@ -107,6 +107,7 @@ const std::map<std::string, std::string, std::less<>> kEnglish = {
     {"sessions_device_windows", "Windows"},
     {"sessions_device_linux", "Linux"},
     {"sessions_device_web", "Web"},
+    {"sessions_device_extension", "Browser extension"},
     {"sessions_device_cli", "Command line"},
     {"sessions_device_server", "Server"},
     {"sessions_device_unknown", "Unknown device"},
@@ -342,6 +343,9 @@ struct FakeLastUsed {
   std::string getCountry() const { return value.country; }
   std::string getCountryCode() const { return value.countryCode; }
   std::string getDeviceType() const { return value.deviceType; }
+  // the sdk's device kind; empty reads as an sdk without it (the type)
+  std::string deviceKind;
+  std::string getDeviceKind() const { return deviceKind; }
   std::string getAppVersion() const { return value.appVersion; }
 };
 
@@ -868,6 +872,8 @@ void TestLabels() {
       {"windows", "Windows", ss::DeviceGlyph::Windows, urnw::glyph::kDeviceWindowsPath},
       {"linux", "Linux", ss::DeviceGlyph::Linux, urnw::glyph::kDeviceLinuxPath},
       {"web", "Web", ss::DeviceGlyph::Web, urnw::glyph::kDeviceWebPath},
+      // the browser extension's own sign-in, the sdk's device kind
+      {"extension", "Browser extension", ss::DeviceGlyph::Web, urnw::glyph::kDeviceWebPath},
       {"cli", "Command line", ss::DeviceGlyph::Cli, urnw::glyph::kDeviceCliPath},
       {"server", "Server", ss::DeviceGlyph::Server, urnw::glyph::kDeviceServerPath},
       {"unknown", "Unknown device", ss::DeviceGlyph::Unknown, urnw::glyph::kDeviceUnknownPath},
@@ -920,6 +926,23 @@ void TestLabels() {
             "a missing city is left out");
   CheckText("Germany", ss::PlaceText(Used("web", "", 0, "", "", "Germany", "de")), "country only");
   CheckText("", ss::PlaceText(Used("web", "", 0, "", "", "", "")), "no location at all");
+}
+
+// The rows read the sdk's device kind, which names the browser extension, and
+// the device type from an sdk without it.
+void TestDeviceKind() {
+  FakeLastUsed extension;
+  extension.present = true;
+  extension.value.deviceType = "web";
+  extension.deviceKind = "extension";
+  auto read = ss::LastUsedFrom(extension);
+  Check(read && read->deviceType == "extension", "the sdk's device kind names the browser extension");
+  CheckText("Browser extension", English(ss::DeviceLabelKey(read->deviceType)), "the extension's label");
+  FakeLastUsed older;
+  older.present = true;
+  older.value.deviceType = "web";
+  read = ss::LastUsedFrom(older);
+  Check(read && read->deviceType == "web", "an sdk without the kind keeps the device type");
 }
 
 void TestCircleColor() {
@@ -1859,6 +1882,7 @@ void TestSdkGroupsAndSessionLimit() {
 int main() {
   TestRelativeTime();
   TestLabels();
+  TestDeviceKind();
   TestCircleColor();
   TestRows();
   TestStates();
