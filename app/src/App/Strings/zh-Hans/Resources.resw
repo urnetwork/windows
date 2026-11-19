@@ -8380,8 +8380,8 @@
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>最多绑定 7 台设备，除非其他设备已在接受测量。每个设备群最多 7 台设备可优先接受验证者测量。已绑定但未被测量的设备没有头部分数，也已离开资金池，因此没有任何收益。</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+    <value>最多绑定 7 台设备，且只绑定直连设备，除非其他设备已在接受测量。每个设备群最多 7 台设备可优先接受验证者测量。已绑定但未被测量的设备没有头部分数，也已离开资金池，因此没有任何收益；代理槽位则完全没有头部分数。</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>席位只有在 SN25 验证者调整权重时才有收益，并按您的分数而非排名分配。所有入选的设备群共享一个通道：第 8 个纪元之前为矿工释放量的 3%，从第 8 个纪元起为 5%。</value>

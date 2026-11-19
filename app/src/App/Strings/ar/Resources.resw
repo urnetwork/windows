@@ -9019,8 +9019,8 @@
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>اربط 7 أجهزة على الأكثر، إلا إذا كانت الأجهزة الأخرى تخضع للقياس بالفعل. يحظى 7 أجهزة على الأكثر في كل أسطول بأولوية القياس لدى المدقِّق. الجهاز المربوط الذي لا يخضع للقياس لا يحصل على نتيجة في الفئة الرئيسية وقد غادر المجمّع، فلا يكسب شيئًا.</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+    <value>اربط 7 أجهزة على الأكثر، من الأجهزة المباشرة فقط، إلا إذا كانت الأجهزة الأخرى تخضع للقياس بالفعل. يحظى 7 أجهزة على الأكثر في كل أسطول بأولوية القياس لدى المدقِّق. الجهاز المربوط الذي لا يخضع للقياس لا يحصل على نتيجة في الفئة الرئيسية وقد غادر المجمّع، فلا يكسب شيئًا، ولا تحصل خانة البروكسي على أي نتيجة في الفئة الرئيسية.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>لا يدرّ المقعد أرباحًا إلا ما دام مدقِّق SN25 يوجّه أوزانه، وبما يتناسب مع نتيجتك لا مع ترتيبك. تتقاسم جميع الأساطيل المختارة قناة واحدة: 3% من إصدار المعدِّنين قبل الحقبة 8، و5% بدءًا من الحقبة 8.</value>
