@@ -158,6 +158,10 @@ class SettingsPage {
                                   bool withGroupHeader);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // The App version row of both version sections: a row that opens the bundled
+  // release note (ReleaseNotesSheet), or the plain value row when the note did
+  // not read.
+  void BuildAppVersionRow(winrt::Microsoft::UI::Xaml::Controls::Panel const& card);
   void BuildLicensesRows(winrt::Microsoft::UI::Xaml::Controls::Panel const& about,
                          winrt::Microsoft::UI::Xaml::Controls::Panel const& general);
   void BuildDangerSection();
@@ -230,6 +234,8 @@ class SettingsPage {
   // Connections > VLESS: the active space's VLESS server (VlessSheet.h). The
   // login screen's network sheet opens the same sheet before sign-in.
   winrt::fire_and_forget ShowVlessSheet();
+  // About > App version: the release note the app bundles.
+  winrt::fire_and_forget ShowReleaseNotesSheet();
 
   winrt::URnetwork::implementation::MainWindow& w_;
   // "Thanks for the feedback": a transient acknowledgement (iOS UrSnackBar)
@@ -341,6 +347,7 @@ class SettingsPage {
   std::shared_ptr<urnw::PostQuantumIdentitySheet> identitySheet_;
   std::shared_ptr<urnw::DeleteAccountSheet> deleteSheet_;
   std::shared_ptr<urnw::VlessSheet> vlessSheet_;
+  std::shared_ptr<urnw::ReleaseNotesSheet> releaseNotesSheet_;
 };
 
 }  // namespace urnw

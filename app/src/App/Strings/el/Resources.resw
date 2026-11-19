@@ -7168,6 +7168,10 @@
     <value>Περιοχές</value>
     <comment>Provider list group title for regions</comment>
   </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Σημειώσεις έκδοσης</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
+  </data>
   <data name="reliability" xml:space="preserve">
     <value>Αξιοπιστία</value>
     <comment>Call to action</comment>

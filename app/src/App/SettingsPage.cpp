@@ -27,6 +27,7 @@
 #include "PageContext.h"
 #include "PaymentPastDueSdk.h"
 #include "PaymentRefusal.h"
+#include "ReleaseNotes.h"  // the App version row's note (ReleaseNotesSheet)
 #include "BittensorKeySheets.h"  // the sign-out warning while the key isn't backed up
 #include "Strings.h"
 #include "SupportContact.h"
@@ -474,8 +475,7 @@ void SettingsPage::BuildVersionFoldSection(Panel const& host) {
   auto card = Card(host);
   versionValueFold_ = ValueRow(card, Loc("version_info"));
   // the build's own stamp (Common/Version.h), verbatim - see the primary
-  ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
-             urnw::version::kString);
+  BuildAppVersionRow(card);
   updateStateValueFold_ = ValueRow(card, Loc("update"));
   auto checkNow = ButtonRow(
       card, Loc("dev_check_updates"),
@@ -832,9 +832,9 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   // release tags, the update banner and the VERSIONINFO resource all speak this
   // exact string, so About must show it verbatim. "0.0.0-dev" outside CI is the
   // correct answer, not a bug. Applied here, not in LoadSettings — it is a
-  // compile-time constant and needs no round trip.
-  ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
-             urnw::version::kString);
+  // compile-time constant and needs no round trip. Tapping it opens the release
+  // note the app bundles (BuildAppVersionRow).
+  BuildAppVersionRow(card);
 
   // THE UPDATE STATE, next to the version it describes (beta spec §5). The
   // auto-check toggle lives on the General pane; what this pane had no surface
@@ -861,6 +861,30 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   // check fired before this destination was ever opened) must not be lost to
   // having arrived early. Same bind-then-replay shape as the window's.
   ApplyUpdateCheck(urnw::pages::Updates().Current());
+}
+
+// THE APP VERSION opens the release note the app bundles, as tapping the
+// version in Account does on the other apps: a whole-row button in pane mode
+// (NavRow), the stamp as its value. Without a note (ReleaseNotesSheet::Bundled:
+// the file is missing or is not the note's shape) it stays the plain value row
+// it was, because a row that opens an empty sheet is worse than one that opens
+// nothing.
+void SettingsPage::BuildAppVersionRow(Panel const& card) {
+  const hstring label = Missing("app_version", L"App version");
+  if (!urnw::ReleaseNotesSheet::Bundled()) {
+    ApplyValue(ValueRow(card, label), urnw::version::kString);
+    return;
+  }
+  TextBlock value{nullptr};
+  auto row = NavRow(card, label, value);
+  ApplyValue(value, urnw::version::kString);
+  // The row's name is its label, and a pane row keeps its value out of the
+  // automation tree (kit::MakePaneTwoLineRowButton), so the stamp the plain row
+  // let a screen reader read is the row's description, and where the row leads
+  // is its help text: release_notes, the store's hint for this row.
+  Automation::AutomationProperties::SetFullDescription(row, value.Text());
+  Automation::AutomationProperties::SetHelpText(row, Loc("release_notes"));
+  row.Click([this](auto const&, auto const&) { ShowReleaseNotesSheet(); });
 }
 
 // ---- the update checker (beta spec §5) --------------------------------------
@@ -1784,6 +1808,22 @@ winrt::fire_and_forget SettingsPage::ShowVlessSheet() {
   } catch (...) {
   }
   vlessSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+winrt::fire_and_forget SettingsPage::ShowReleaseNotesSheet() {
+  if (w_.sheetOpen()) co_return;
+  // the row only opens this with a note to show (BuildAppVersionRow)
+  auto const* note = urnw::ReleaseNotesSheet::Bundled();
+  if (!note) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    releaseNotesSheet_ = urnw::ReleaseNotesSheet::Create(self->Content().XamlRoot(), *note);
+    co_await releaseNotesSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  releaseNotesSheet_.reset();
   w_.SetSheetOpen(false);
 }
 
