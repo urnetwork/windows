@@ -2459,13 +2459,15 @@ releasenotes::Note const* ReleaseNotesSheet::Bundled() {
 }
 
 std::shared_ptr<ReleaseNotesSheet> ReleaseNotesSheet::Create(XamlRoot const& root,
-                                                             releasenotes::Note const& note) {
+                                                             releasenotes::Note const& note,
+                                                             std::string const& version) {
   auto sheet = std::shared_ptr<ReleaseNotesSheet>(new ReleaseNotesSheet());
-  sheet->Build(root, note);
+  sheet->Build(root, note, version);
   return sheet;
 }
 
-void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& note) {
+void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& note,
+                              std::string const& version) {
   dialog_ = MakeSheet(root, Loc("release_notes"));
   dialog_.DefaultButton(ContentDialogButton::Close);
 
@@ -2485,14 +2487,12 @@ void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& no
       title, Automation::Peers::AutomationHeadingLevel::Level2);
   content.Children().Append(title);
 
-  // The note's own version and day with a middle dot between them, as every
-  // app shows them ("2026.11", "Nov 19, 2026"); the running build is the App
-  // version row's. Both are data, so the dot hides no string from the store.
-  std::wstring stamp = Widen(note.version);
+  // The running build's version, exactly as the App version row that opened
+  // the sheet shows it, with the note's date (MetaLine; owner 2026-11-19). The
+  // note's own version is not shown.
   const std::wstring day = note.date.empty() ? std::wstring() : NoteDate(note.date);
-  if (!stamp.empty() && !day.empty()) stamp += L" \u00B7 ";
-  stamp += day;
-  if (!stamp.empty()) Supporting(content, hstring{stamp});
+  const std::wstring meta = releasenotes::MetaLine(Widen(version), day);
+  if (!meta.empty()) Supporting(content, hstring{meta});
 
   if (!note.intro.empty()) content.Children().Append(NoteLine(note.intro));
 

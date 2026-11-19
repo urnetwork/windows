@@ -78,28 +78,35 @@ func TestReleaseNotesShipBesideTheExe(t *testing.T) {
 }
 
 // The sheet shows the note as every app does (localizations README, "Release
-// notes"): titled release_notes, then the note's title, its own version and
-// date (never the running build, which is the App version row's), its intro,
-// then each section's heading over its bullets, in the note's own direction.
-// The date is the reader's medium date of a calendar day: midnight UTC of the
-// day, formatted in UTC.
+// notes"): titled release_notes, then the note's title, the running build's
+// version as the App version row shows it with the note's date (owner
+// 2026-11-19; never the note's own version), its intro, then each section's
+// heading over its bullets, in the note's own direction. The date is the
+// reader's medium date of a calendar day: midnight UTC of the day, formatted in
+// UTC.
 func TestReleaseNotesTheSheetShowsTheNote(t *testing.T) {
 	sheets := stripComments(readAppSource(t, "SettingsSheets.cpp"))
 	build := definitionBody(t, "SettingsSheets.cpp", sheets,
-		"void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& note) {")
+		"void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& note,")
 	signOutRequireInOrder(t, "ReleaseNotesSheet::Build", build,
 		`MakeSheet\(root, Loc\("release_notes"\)\);`,
 		`content\.FlowDirection\(releasenotes::IsRightToLeft\(note\.locale\) \? FlowDirection::RightToLeft\s+: FlowDirection::LeftToRight\);`,
 		`NoteLine\(note\.title\)`,
-		`Widen\(note\.version\)`,
 		`NoteDate\(note\.date\)`,
+		`releasenotes::MetaLine\(Widen\(version\), day\)`,
 		`NoteLine\(note\.intro\)`,
 		`section\.heading`,
 		`NoteLine\(item\)`,
 		`dialog_\.Content\(scroll\);`)
-	if strings.Contains(build, "version::kString") {
-		t.Error("ReleaseNotesSheet::Build shows the running build; the sheet names the note's own version")
+	if strings.Contains(build, "note.version") {
+		t.Error("ReleaseNotesSheet::Build shows the note's own version; the line names the running build (owner 2026-11-19)")
 	}
+	if strings.Contains(build, "version::kString") {
+		t.Error("ReleaseNotesSheet::Build reads the running build itself; it shows the string the App version row hands it")
+	}
+	create := definitionBody(t, "SettingsSheets.cpp", sheets,
+		"std::shared_ptr<ReleaseNotesSheet> ReleaseNotesSheet::Create(XamlRoot const& root,")
+	provideRequire(t, "ReleaseNotesSheet::Create", create, "sheet->Build(root, note, version);")
 	date := definitionBody(t, "SettingsSheets.cpp", sheets, "std::wstring NoteDate(std::string const& date) {")
 	signOutRequireInOrder(t, "NoteDate", date,
 		`releasenotes::ParseDay\(date\);`,
@@ -111,7 +118,8 @@ func TestReleaseNotesTheSheetShowsTheNote(t *testing.T) {
 
 // Both version sections (About's, and its fold copy at the foot of General)
 // build the App version row in one place, which opens the note and is the
-// plain value row when there is none.
+// plain value row when there is none. The sheet names the running build by the
+// very string the row shows (urnw::version::kString).
 func TestReleaseNotesTheAppVersionRowOpensThem(t *testing.T) {
 	settings := stripComments(readAppSource(t, "SettingsPage.cpp"))
 	for _, signature := range []string{
@@ -140,6 +148,6 @@ func TestReleaseNotesTheAppVersionRowOpensThem(t *testing.T) {
 	signOutRequireInOrder(t, "SettingsPage::ShowReleaseNotesSheet", show,
 		`urnw::ReleaseNotesSheet::Bundled\(\);`,
 		`if \(!note\) co_return;`,
-		`urnw::ReleaseNotesSheet::Create\(self->Content\(\)\.XamlRoot\(\), \*note\);`,
+		`urnw::ReleaseNotesSheet::Create\(self->Content\(\)\.XamlRoot\(\), \*note,\s+urnw::version::kString\);`,
 		`releaseNotesSheet_->Dialog\(\)\.ShowAsync\(\);`)
 }

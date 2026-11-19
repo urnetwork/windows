@@ -1,7 +1,8 @@
 // Executable spec for the bundled release note (App/ReleaseNotes.h): the shape
 // the localization store generates, the one locale of it shown for the UI
 // language by the rule every app follows (the store's README, "Release notes"),
-// the direction it reads in, its day, and every way a file is no note at all.
+// the direction it reads in, its day, the line under its title, and every way a
+// file is no note at all.
 // Run against the same header the app compiles, on any host with a C++20
 // compiler and nlohmann/json.
 //
@@ -277,6 +278,22 @@ void TestTheDayCountsFromTheEpoch() {
   Check(consecutive, "every day of 2024 to 2029 is one after the day before");
 }
 
+// The line under the note's title (owner 2026-11-19): the running build's
+// version, exactly as the App version row shows it, then the note's date as the
+// reader's format writes it, with a middle dot between them. The note's own
+// version is still read (Note::version) but is never handed to it.
+void TestTheLineUnderTheTitle() {
+  Check(MetaLine(L"2026.11.19-1101907820", L"Nov 19, 2026") == L"2026.11.19-1101907820 · Nov 19, 2026",
+        "the running build, a middle dot, the note's date");
+  Check(MetaLine(L"0.0.0-dev", L"19.11.2026") == L"0.0.0-dev · 19.11.2026",
+        "a dev build and another date format, each verbatim");
+  Check(MetaLine(L"2026.11.19-1101907820", L"") == L"2026.11.19-1101907820", "no date: the version alone, no dot");
+  Check(MetaLine(L"", L"Nov 19, 2026") == L"Nov 19, 2026", "no version: the date alone, no dot");
+  Check(MetaLine(L"", L"").empty(), "neither: no line");
+  const auto note = Parse(kNote, "en");
+  Check(note.has_value() && note->version == "2026.11", "the note still carries its own version, unshown");
+}
+
 void TestTheShippedAssetReads(const std::string& path) {
   const std::string body = ReadFile(path);
   Check(!body.empty(), "read " + path);
@@ -311,6 +328,7 @@ int main(int argc, char** argv) {
   TestWithinANoteTheMistypedReadsAsEmpty();
   TestTheDateReadsAsADay();
   TestTheDayCountsFromTheEpoch();
+  TestTheLineUnderTheTitle();
   TestTheShippedAssetReads(asset);
   std::cout << (gCases - gFailures) << "/" << gCases << " release notes checks passed\n";
   return gFailures == 0 ? 0 : 1;

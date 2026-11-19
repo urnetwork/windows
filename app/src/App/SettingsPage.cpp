@@ -1819,7 +1819,10 @@ winrt::fire_and_forget SettingsPage::ShowReleaseNotesSheet() {
   auto self = w_.get_strong();
   w_.SetSheetOpen(true);
   try {
-    releaseNotesSheet_ = urnw::ReleaseNotesSheet::Create(self->Content().XamlRoot(), *note);
+    // the line under the note's title names the running build, exactly as the
+    // App version row shows it (BuildAppVersionRow's urnw::version::kString)
+    releaseNotesSheet_ = urnw::ReleaseNotesSheet::Create(self->Content().XamlRoot(), *note,
+                                                         urnw::version::kString);
     co_await releaseNotesSheet_->Dialog().ShowAsync();
   } catch (...) {
   }

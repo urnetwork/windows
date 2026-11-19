@@ -16,9 +16,10 @@
 // pt) and then another region of it (pt-PT -> pt-BR), never across Chinese
 // scripts (the store's zh is Simplified, zh-HK Traditional); else en. It is
 // laid out in its own language's direction (IsRightToLeft), so the English
-// fallback reads left to right in an Arabic or Hebrew UI. Under its title it
-// names its own version and its date, a calendar day no time zone moves
-// (EpochDays).
+// fallback reads left to right in an Arabic or Hebrew UI. The line under its
+// title is the running build's version, as the App version row shows it, with
+// the note's date, a calendar day no time zone moves (MetaLine, EpochDays;
+// owner 2026-11-19): the note's own version is read but not shown.
 //
 // The file is read the way Common/ReleaseJson.h reads another service's JSON:
 // every read is a find and a type check, so a file that is not this shape is no
@@ -51,7 +52,8 @@ struct Section {
 
 // The note, in the one locale shown.
 struct Note {
-  // the release the note describes, as people see it ("2026.11")
+  // the release the note describes, as people see it ("2026.11"); not shown,
+  // since the line under the title names the running build (MetaLine)
   std::string version;
   // the release day as the file spells it, YYYY-MM-DD ("" when it has none)
   std::string date;
@@ -177,6 +179,18 @@ inline std::string PickLocale(std::vector<std::string> const& locales, std::stri
     if (detail::SameTag(locale, "en")) return locale;
   }
   return {};
+}
+
+// The line under the note's title (owner 2026-11-19): `runningVersion`, the
+// running build's version exactly as the tapped App version row shows it, then
+// `date`, the note's date as the reader's format writes it, with a middle dot
+// between them; either alone when the other is empty. Never the note's own
+// version. Both are data, so the dot hides no string from the store.
+inline std::wstring MetaLine(std::wstring_view runningVersion, std::wstring_view date) {
+  std::wstring line(runningVersion);
+  if (!line.empty() && !date.empty()) line += L" \u00B7 ";
+  line += date;
+  return line;
 }
 
 // Whether a locale's text reads right to left: the store's Arabic and Hebrew,
