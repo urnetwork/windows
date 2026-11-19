@@ -7703,6 +7703,10 @@
     <value>المناطق</value>
     <comment>Provider list group title for regions</comment>
   </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>ملاحظات الإصدار</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
+  </data>
   <data name="reliability" xml:space="preserve">
     <value>الموثوقية</value>
     <comment>Call to action</comment>

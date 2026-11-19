@@ -1143,6 +1143,7 @@ referral_toast_joined
 referrals
 refresh
 regions
+release_notes
 reliability
 reliability_settings
 reliability_weight
