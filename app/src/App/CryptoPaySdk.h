@@ -74,6 +74,9 @@ inline CryptoInvoiceView StateFromSdk(const urnet::CryptoInvoiceState& state) {
   view.priceUsd = state.price_usd;
   view.expiresAt = state.expires_at;
   view.secondsLeft = state.seconds_left;
+  // a payment sent within an ended quote may still confirm (Bitcoin's grace,
+  // mmm/BTCPAY.md §16.8); false from an sdk before it
+  view.awaitingConfirmation = state.awaiting_confirmation;
   view.status = state.status;
   view.reviewReason = state.review_reason;
   view.received = state.received;
@@ -94,12 +97,17 @@ inline CoinLines LinesFromSdk(const urnet::CryptoAssetLines& sdkLines) {
   lines.networkWarning = CoinLine{sdkLines.network_warning_key, sdkLines.network_warning};
   lines.noPaymentLinkNote =
       CoinLine{sdkLines.no_payment_link_note_key, sdkLines.no_payment_link_note};
+  lines.confirmationNote = CoinLine{sdkLines.confirmation_note_key, sdkLines.confirmation_note};
+  lines.awaitingConfirmationNote =
+      CoinLine{sdkLines.awaiting_confirmation_note_key, sdkLines.awaiting_confirmation_note};
   return lines;
 }
 
 // A coin's lines (urnet::cryptoAssetLinesFor): the network it is sent on, the
-// warning beside its address, and TAO's note under its address-only QR. None
-// for anything else, and none when the sdk refuses.
+// warning beside its address, TAO's note under its address-only QR, and
+// Bitcoin's two of its confirmation grace (mmm/BTCPAY.md §16.8), the note with
+// the countdown and the line in place of the expired copy. None for anything
+// else, and none when the sdk refuses.
 inline CoinLines LinesFor(const std::string& asset) {
   if (!IsCoin(asset)) return CoinLines{};
   try {

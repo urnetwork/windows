@@ -169,8 +169,9 @@ var catalogNonLookupLiteralReasons = map[string]string{
 // each with where: the crypto payment row's labels, which the sdk hands out as
 // a store key with its English (urnet::cryptoPaymentTabs' label_key and
 // urnet::cryptoAssetLabelKey), and each coin's own lines, its network, its
-// network's warning and TAO's note under its QR (urnet::cryptoAssetLinesFor),
-// each looked up by CryptoPayViews.cpp PaymentLabel. crypto_pay_test.go
+// network's warning, TAO's note under its QR and Bitcoin's two of its
+// confirmation grace (urnet::cryptoAssetLinesFor), each looked up by
+// CryptoPayViews.cpp PaymentLabel. crypto_pay_test.go
 // TestCryptoPayStrings holds each to the catalog and TestCryptoPayAgreesWithTheSdk
 // to the sdk's keys. Every other lookup is a call or a key literal of an app
 // source the scan reads.
@@ -197,6 +198,11 @@ var catalogUnscannedTaggedKeyReasons = map[string]string{
 	"crypto_invoice_eth_network_only":     cryptoPaySdkLineReason,
 	"crypto_invoice_sol_network_only":     cryptoPaySdkLineReason,
 	"crypto_invoice_tao_no_payment_link":  cryptoPaySdkLineReason,
+
+	// Bitcoin's confirmation grace (mmm/BTCPAY.md §16.8): the note with the
+	// countdown, and the line in place of the expired copy
+	"crypto_invoice_bitcoin_confirmation_time":     cryptoPaySdkLineReason,
+	"crypto_invoice_bitcoin_awaiting_confirmation": cryptoPaySdkLineReason,
 }
 
 const cryptoPaySdkLabelReason = "a crypto payment label the sdk hands out by its key " +

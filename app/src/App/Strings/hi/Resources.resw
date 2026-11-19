@@ -2099,6 +2099,14 @@
     <value>Pro के एक साल के लिए एक बार का भुगतान। यह नवीनीकृत नहीं होता, और इसमें मुफ़्त ट्रायल नहीं है।</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>यह दर समाप्त हो गई है। इसके समाप्त होने से पहले भेजा गया आपका भुगतान पुष्टि होते ही इसी कीमत पर जमा किया जाता है, जिसमें 3 घंटे तक लग सकते हैं। अगर आपने कोई भुगतान नहीं भेजा है, तो दूसरे तरीके से भुगतान करें।</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Bitcoin भुगतानों की पुष्टि में 3 घंटे तक लग सकते हैं। दर समाप्त होने से पहले भेजा गया भुगतान इसी कीमत पर जमा किया जाता है।</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>इस पते पर केवल Bitcoin नेटवर्क पर Bitcoin भेजें। किसी अन्य नेटवर्क पर भेजे गए Bitcoin जमा नहीं होंगे।</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
