@@ -1259,8 +1259,16 @@ func TestAccountSignInRequiredKeepsTheDeviceAndShowsTheNotice(t *testing.T) {
 		"apiLogoutSub_.emplace(",
 		"apiAccountSignInSub_.reset();",
 		"apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this,api=api_->handle()]{"+
-			"if(!loggedIn_.load(std::memory_order_acquire)||!onAccountSignInRequired_)return;"+
+			"if(!onAccountSignInRequired_)return;"+
 			"onAccountSignInRequired_(authlogout::AccountSignInCause(api));}));")
+	// the sdk's report of a notice kept across a restart comes as the listener
+	// is added, before Initialize reads whether the app is signed in: the
+	// controller decides on the UI thread (AccountSignInStepFor), not this
+	// listener
+	bind := sessionsCode(definitionBody(t, "SdkHost.cpp", host, "void SdkHost::BindApiLocked() {"))
+	if at := strings.Index(bind, "apiAccountSignInSub_.emplace("); at < 0 || strings.Contains(bind[at:], "loggedIn_") {
+		t.Error("SdkHost::BindApiLocked drops an account sign-in report by its own reading of the sign-in")
+	}
 	if count := strings.Count(host, "addAccountSignInRequiredListener("); count != 1 {
 		t.Errorf("SdkHost.cpp subscribes to the account sign-in %d times; BindApiLocked does, for every Api", count)
 	}
@@ -1328,12 +1336,19 @@ func TestAccountSignInRequiredKeepsTheDeviceAndShowsTheNotice(t *testing.T) {
 	if count := strings.Count(sessionsCode(controller), "accountSignInNotice_="); count != 1 {
 		t.Errorf("AppController.cpp sets the account sign-in notice from %d places; SetAccountSignInNotice only", count)
 	}
+	// the close also ends the notice the sdk keeps across restarts
 	requireSessionsOrder(t, "AppController::DismissAccountSignInNotice",
 		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::DismissAccountSignInNotice() {")),
-		"SetAccountSignInNotice(authlogout::AccountSignInNotice::None);")
-	requireSessionsOrder(t, "AppController::OnAuthState",
-		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthState(AuthState state, const std::string& error) {")),
-		"if(state==AuthState::LoggedIn||state==AuthState::LoggedOut){ownSessionSignOut_=false;"+
+		"SetAccountSignInNotice(authlogout::AccountSignInNotice::None);", "sdk_.DismissAccountSignInNotice();")
+	requireSessionsOrder(t, "SdkHost::DismissAccountSignInNotice",
+		sessionsCode(definitionBody(t, "SdkHost.cpp", stripComments(readAppSource(t, "SdkHost.cpp")), "void SdkHost::DismissAccountSignInNotice() {")),
+		"std::lock_guard<std::mutex>lock(mutex_);", "if(api_)api_->dismissAccountSignInNotice();")
+	// a sign-in starting or a sign-out ends the notice; LoggedIn does not, so
+	// the notice the sdk reports again at a start from the stored sign-in stays
+	onAuthState := sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthState(AuthState state, const std::string& error) {"))
+	requireSessionsOrder(t, "AppController::OnAuthState", onAuthState,
+		"if(state==AuthState::LoggedIn||state==AuthState::LoggedOut){ownSessionSignOut_=false;}",
+		"if(state==AuthState::Authenticating||state==AuthState::LoggedOut){"+
 			"SetAccountSignInNotice(authlogout::AccountSignInNotice::None);}")
 	// a refusal while the window was hidden shows on the next show, and a
 	// closed notice does not come back

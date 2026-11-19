@@ -1005,6 +1005,10 @@ class SdkHost {
   // one that began before the click installs nothing, so the tail never signs
   // out an account that signed in after it began.
   void Logout();
+  // The user closed the account sign-in notice: the sdk keeps the notice in
+  // the device's local state, and reports it again after a restart, until this
+  // ends it there (Api::dismissAccountSignInNotice). UI thread.
+  void DismissAccountSignInNotice();
   // Told true as a sign-out begins and false once its tail has ended, after
   // LoggedOut; on the clicking thread or the tail's, and it only marshals.
   void SetSignOutProgressHandler(std::function<void(bool signingOut)> handler) {

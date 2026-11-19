@@ -601,10 +601,14 @@ void SdkHost::BindApiLocked() {
   // the main window says the account needs a sign-in again (AppController::
   // OnAccountSignInRequired, AuthLogoutNotice.h). The report's cause is read
   // here, by the Api's handle, before the hop (AuthLogoutCause.h
-  // AccountSignInCause). On an sdk thread: the handler marshals.
+  // AccountSignInCause). On an sdk thread: the handler marshals. The sdk
+  // keeps the notice across restarts and reports it again as this listener is
+  // added, from the space's start, before this host has read whether it is
+  // signed in: the controller decides on the UI thread whether a report still
+  // applies (AccountSignInStepFor with IsLoggedIn), so none is dropped here.
   apiAccountSignInSub_.reset();
   apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this, api = api_->handle()] {
-    if (!loggedIn_.load(std::memory_order_acquire) || !onAccountSignInRequired_) return;
+    if (!onAccountSignInRequired_) return;
     onAccountSignInRequired_(authlogout::AccountSignInCause(api));
   }));
 }
@@ -9127,6 +9131,11 @@ void SdkHost::RemoveAbandonedClientLocked(const std::optional<std::string>& clie
 }
 
 // See the contract in the header.
+void SdkHost::DismissAccountSignInNotice() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (api_) api_->dismissAccountSignInNotice();
+}
+
 void SdkHost::Logout() {
   // One sign-out at a time: a click while one runs joins it (SignOutRun.h).
   // Its sign-out controls are disabled meanwhile, so this is a second sign-out

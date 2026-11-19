@@ -609,6 +609,8 @@ void AppController::SetAccountSignInNotice(authlogout::AccountSignInNotice notic
 void AppController::DismissAccountSignInNotice() {
   LogInfo("app: account sign-in notice -> closed");
   SetAccountSignInNotice(authlogout::AccountSignInNotice::None);
+  // the sdk keeps the notice across restarts until the close ends it there
+  sdk_.DismissAccountSignInNotice();
 }
 
 void AppController::OnAuthState(AuthState state, const std::string& error) {
@@ -616,10 +618,15 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
   authState_ = state;
   authError_ = error;
   authErrorUndelivered_ = !error.empty();
-  // a sign-in or a sign-out ends the Sessions page's sign-out of this session,
-  // and the account sign-in notice
+  // a sign-in or a sign-out ends the Sessions page's sign-out of this session
   if (state == AuthState::LoggedIn || state == AuthState::LoggedOut) {
     ownSessionSignOut_ = false;
+  }
+  // and the account sign-in notice: a sign-in starting (every one pushes
+  // Authenticating first) or a sign-out. Not LoggedIn: a start from the stored
+  // sign-in reports LoggedIn too, and the sdk reports the notice it keeps
+  // across restarts again then, which LoggedIn would wipe
+  if (state == AuthState::Authenticating || state == AuthState::LoggedOut) {
     SetAccountSignInNotice(authlogout::AccountSignInNotice::None);
   }
   // A browser approval is a sign-in this app started and waits on. Any OTHER sign-in
