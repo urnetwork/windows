@@ -1984,7 +1984,9 @@ void UpgradeSheet::PayAnotherWay() {
   methods_.Select(cryptopay::kMethodCard);
   ShowPage(Page::Products);
   ApplyPrices();
-  // forgotten while nothing was received (another way is offered only then)
+  // forgotten while nothing was received (another way is offered only then),
+  // or put away while a payment sent in time may still confirm (Bitcoin's
+  // grace, mmm/BTCPAY.md §16.8: the sdk's awaiting_confirmation)
   invoice_.Dismiss();
 }
 

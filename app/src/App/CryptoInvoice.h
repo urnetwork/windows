@@ -77,8 +77,11 @@ class CryptoInvoiceStore {
   bool Resume();
   void Requote();
   // "Pay another way" (offered only while nothing was received, or after a
-  // failure): the invoice is forgotten. A sheet's Close does not dismiss; it
-  // only stops showing the invoice, which stays saved (CONTRACT §6.2.1).
+  // failure): the invoice is forgotten, or only put away while a payment sent
+  // within its quote may still confirm (the sdk's awaiting_confirmation,
+  // Bitcoin's grace, mmm/BTCPAY.md §16.8), and then it comes back at the next
+  // Resume. A sheet's Close does not dismiss; it only stops showing the
+  // invoice, which stays saved (CONTRACT §6.2.1).
   void Dismiss();
   // The last method chosen on this device ("" when none), and a new choice.
   std::string PaymentMethod() const;

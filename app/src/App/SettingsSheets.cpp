@@ -5,11 +5,16 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Windows.Globalization.DateTimeFormatting.h>
 #include <winrt/Windows.Storage.Streams.h>
 
 #include "AddSignIn.h"
@@ -19,6 +24,7 @@
 #include "Log.h"
 #include "PageContext.h"
 #include "BittensorKeyStore.h"  // the one-tap key's warning, and its removal with the account
+#include "ReleaseNotes.h"
 #include "SessionLimitNotice.h"  // the session cap's refusal of a verification's session
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
@@ -2374,6 +2380,168 @@ void DeleteAccountSheet::Submit() {
       self->errorText_.Visibility(Visibility::Visible);
     });
   });
+}
+
+// ---- ReleaseNotesSheet -----------------------------------------------------
+
+namespace {
+
+// The running exe's folder, which holds Assets; empty when it cannot be read.
+// CryptoPayViews.cpp's ExeDir, for the same reason: the app is unpackaged, so
+// what App.vcxproj copies to $(OutDir)Assets sits beside the exe and there is
+// no package install folder to ask for it.
+std::filesystem::path ExeDir() {
+  std::wstring path(MAX_PATH, L'\0');
+  for (;;) {
+    const DWORD n = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    if (n == 0) return {};
+    if (n < path.size()) {
+      path.resize(n);
+      return std::filesystem::path(std::move(path)).parent_path();
+    }
+    if (path.size() >= 0x8000) return {};  // beyond the NT path limit: give up
+    path.resize(path.size() * 2);
+  }
+}
+
+// The note's day in the reader's medium date format ("Nov 19, 2026": the
+// abbreviated month, DateTimeFormatter's nearest to a medium style), or as the
+// file spells it when it is not a day the formatter can write. A calendar day,
+// not an instant: midnight UTC of the day, formatted in UTC, so no time zone
+// moves it to the day before or after.
+std::wstring NoteDate(std::string const& date) {
+  const auto day = releasenotes::ParseDay(date);
+  if (!day) return Widen(date);
+  try {
+    winrt::Windows::Globalization::DateTimeFormatting::DateTimeFormatter formatter(
+        L"month.abbreviated day year");
+    const std::chrono::sys_seconds midnight{
+        std::chrono::seconds{releasenotes::EpochDays(*day) * 86'400}};
+    return std::wstring{formatter.Format(winrt::clock::from_sys(midnight), L"UTC")};
+  } catch (...) {
+    return Widen(date);
+  }
+}
+
+// A line of the note's own text, which is data from the store's note rather
+// than a key: 14pt, wrapping.
+TextBlock NoteLine(std::string const& text) {
+  TextBlock line;
+  line.Text(H(text));
+  line.FontSize(14);
+  line.TextWrapping(TextWrapping::Wrap);
+  return line;
+}
+
+}  // namespace
+
+releasenotes::Note const* ReleaseNotesSheet::Bundled() {
+  // Read on first use, the About pane's first build: a small file on a local
+  // disk, read on the UI thread as CryptoPayViews reads the coin marks. The UI
+  // language is fixed for the process (PrimaryLanguage), so one read serves
+  // every row and every opening after it.
+  static const std::optional<releasenotes::Note> note = []() -> std::optional<releasenotes::Note> {
+    try {
+      const std::filesystem::path dir = ExeDir();
+      if (dir.empty()) return std::nullopt;
+      std::ifstream in(dir / L"Assets" / L"ReleaseNotes.json", std::ios::binary);
+      if (!in) {
+        LogWarn("settings: the bundled release note is missing");
+        return std::nullopt;
+      }
+      std::ostringstream body;
+      body << in.rdbuf();
+      auto parsed = releasenotes::Parse(body.str(), PrimaryLanguage());
+      if (!parsed) LogWarn("settings: the bundled release note is not the note's shape");
+      return parsed;
+    } catch (const std::exception& e) {
+      LogWarn("settings: reading the bundled release note failed: {}", e.what());
+    } catch (...) {
+      LogWarn("settings: reading the bundled release note failed");
+    }
+    return std::nullopt;
+  }();
+  return note ? &*note : nullptr;
+}
+
+std::shared_ptr<ReleaseNotesSheet> ReleaseNotesSheet::Create(XamlRoot const& root,
+                                                             releasenotes::Note const& note,
+                                                             std::string const& version) {
+  auto sheet = std::shared_ptr<ReleaseNotesSheet>(new ReleaseNotesSheet());
+  sheet->Build(root, note, version);
+  return sheet;
+}
+
+void ReleaseNotesSheet::Build(XamlRoot const& root, releasenotes::Note const& note,
+                              std::string const& version) {
+  dialog_ = MakeSheet(root, Loc("release_notes"));
+  dialog_.DefaultButton(ContentDialogButton::Close);
+
+  StackPanel content;
+  content.MinWidth(sheetfit::Width(root, 420));
+  content.Spacing(12);
+  // The note reads in its own language's direction, whatever the UI's: the
+  // English fallback left to right in an Arabic or Hebrew UI. The sheet's
+  // title and its Close button are the UI's.
+  content.FlowDirection(releasenotes::IsRightToLeft(note.locale) ? FlowDirection::RightToLeft
+                                                                  : FlowDirection::LeftToRight);
+
+  TextBlock title = NoteLine(note.title);
+  title.FontSize(18);
+  title.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+  Automation::AutomationProperties::SetHeadingLevel(
+      title, Automation::Peers::AutomationHeadingLevel::Level2);
+  content.Children().Append(title);
+
+  // The running build's version, exactly as the App version row that opened
+  // the sheet shows it, with the note's date (MetaLine; owner 2026-11-19). The
+  // note's own version is not shown.
+  const std::wstring day = note.date.empty() ? std::wstring() : NoteDate(note.date);
+  const std::wstring meta = releasenotes::MetaLine(Widen(version), day);
+  if (!meta.empty()) Supporting(content, hstring{meta});
+
+  if (!note.intro.empty()) content.Children().Append(NoteLine(note.intro));
+
+  for (auto const& section : note.sections) {
+    StackPanel group;
+    group.Spacing(6);
+    if (!section.heading.empty()) {
+      TextBlock heading = NoteLine(section.heading);
+      heading.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+      Automation::AutomationProperties::SetHeadingLevel(
+          heading, Automation::Peers::AutomationHeadingLevel::Level3);
+      group.Children().Append(heading);
+    }
+    for (auto const& item : section.items) {
+      Grid row;
+      row.ColumnSpacing(8);
+      ColumnDefinition mark, words;
+      mark.Width(GridLength{0, GridUnitType::Auto});
+      words.Width(GridLength{1, GridUnitType::Star});
+      row.ColumnDefinitions().Append(mark);
+      row.ColumnDefinitions().Append(words);
+      TextBlock dot;
+      dot.Text(L"\u2022");
+      dot.FontSize(14);
+      // the list's shape, not a word for a screen reader to say before each item
+      Automation::AutomationProperties::SetAccessibilityView(
+          dot, Automation::Peers::AccessibilityView::Raw);
+      row.Children().Append(dot);
+      TextBlock line = NoteLine(item);
+      Grid::SetColumn(line, 1);
+      row.Children().Append(line);
+      group.Children().Append(row);
+    }
+    content.Children().Append(group);
+  }
+
+  // A note can outgrow the window, and a ContentDialog clips its content rather
+  // than scrolling it (SheetFit.h): the body scrolls within a clamped height.
+  ScrollViewer scroll;
+  scroll.MaxHeight(sheetfit::Height(root, 520));
+  scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+  scroll.Content(content);
+  dialog_.Content(scroll);
 }
 
 }  // namespace urnw

@@ -276,7 +276,7 @@ func TestLogUploadNegativeControls(t *testing.T) {
 			headerName: "AppLogFiles.h",
 			find:       "    if (a.lastWriteTime != b.lastWriteTime) return a.lastWriteTime > b.lastWriteTime;",
 			replace:    "    if (a.lastWriteTime != b.lastWriteTime) return a.lastWriteTime < b.lastWriteTime;",
-			want:       "app logs: the newest first, files written at once in name order",
+			want:       "app logs: then the newest first, files written at once in name order",
 		},
 	}
 	for _, control := range controls {

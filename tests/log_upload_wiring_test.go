@@ -388,7 +388,7 @@ func TestLogUploadWiringTheAppsLogFilesRideAsTheApp(t *testing.T) {
 		"if (!applogs::LooksLikeLocalDirectory(dir)) return files;", "::FindFirstFileExW(")
 	provideRequire(t, "OpenAppLogHandles", open,
 		"FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT |",
-		"if (!applogs::LooksLikeGlogFileName(name)) continue;",
+		"if (!applogs::LooksLikeAppLogFileName(name)) continue;",
 		"applogs::PickAppLogFiles(std::move(entries))",
 		"FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT",
 		"::GetFileType(handle) != FILE_TYPE_DISK",

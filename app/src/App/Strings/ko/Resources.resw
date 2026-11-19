@@ -2080,6 +2080,14 @@
     <value>Pro 1년 이용을 위한 일회성 결제입니다. 자동 갱신되지 않으며 무료 체험이 없습니다.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>이 견적은 만료되었습니다. 만료 전에 보낸 결제는 확인되는 대로 이 가격으로 입금 처리되며, 최대 3시간이 걸릴 수 있습니다. 결제를 보내지 않았다면 다른 방법으로 결제하세요.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Bitcoin 결제는 확인까지 최대 3시간이 걸릴 수 있습니다. 견적이 만료되기 전에 보낸 결제는 이 가격으로 입금 처리됩니다.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>이 주소로는 Bitcoin 네트워크의 Bitcoin만 보내세요. 다른 네트워크로 보낸 Bitcoin은 입금 처리되지 않습니다.</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
@@ -6149,8 +6157,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork는 세계에서 가장 크고 안전하며 가장 분산화된
-인그레스·이그레스 프로토콜로 구동됩니다.</value>
+    <value>URnetwork는 분산형 인그레스·이그레스 프로토콜로 구동되며,
+다양한 국가의 커뮤니티 기기에서 실행됩니다.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7051,6 +7059,10 @@
   <data name="regions" xml:space="preserve">
     <value>지역</value>
     <comment>Provider list group title for regions</comment>
+  </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>릴리스 노트</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
   </data>
   <data name="reliability" xml:space="preserve">
     <value>신뢰성</value>

@@ -2172,6 +2172,14 @@ richtig auf</value>
     <value>Eine einmalige Zahlung für ein Jahr Pro. Sie verlängert sich nicht, und es gibt keine kostenlose Testphase.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>Dieser Kurs ist abgelaufen. Eine Zahlung, die du vor seinem Ablauf gesendet hast, wird nach der Bestätigung zu diesem Preis gutgeschrieben. Das kann bis zu 3 Stunden dauern. Wenn du keine gesendet hast, bezahle anders.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Bitcoin-Zahlungen können bis zu 3 Stunden für die Bestätigung brauchen. Eine Zahlung, die vor Ablauf des Kurses gesendet wurde, wird zu diesem Preis gutgeschrieben.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>Sende an diese Adresse nur Bitcoin über das Bitcoin-Netzwerk. Bitcoin, die über ein anderes Netzwerk gesendet werden, werden nicht gutgeschrieben.</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
@@ -6297,8 +6305,8 @@ gesendet haben, um deine Identität zu überprüfen.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork basiert auf dem weltweit größten, sichersten
-und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
+    <value>URnetwork basiert auf einem dezentralen Ingress- und Egress-Protokoll,
+das auf Community-Geräten in einer großen Auswahl an Ländern läuft.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7239,6 +7247,10 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
   <data name="regions" xml:space="preserve">
     <value>Regionen</value>
     <comment>Provider list group title for regions</comment>
+  </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Versionshinweise</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
   </data>
   <data name="reliability" xml:space="preserve">
     <value>Zuverlässigkeit</value>
@@ -8560,8 +8572,8 @@ der Welt</value>
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>Binde höchstens 7 Geräte, es sei denn, die übrigen werden bereits gemessen. Pro Flotte werden höchstens 7 Geräte vorrangig vom Validator gemessen. Ein gebundenes Gerät, das nicht gemessen wird, erhält keinen Head-Score und hat den Pool verlassen, verdient also nichts.</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+    <value>Binde höchstens 7 Geräte, nur direkte, es sei denn, die übrigen werden bereits gemessen. Pro Flotte werden höchstens 7 Geräte vorrangig vom Validator gemessen. Ein gebundenes Gerät, das nicht gemessen wird, erhält keinen Head-Score und hat den Pool verlassen, verdient also nichts, und ein Proxy-Slot erhält überhaupt keinen Head-Score.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>Ein Platz zahlt nur, solange der SN25-Validator seine Gewichte steuert, und zwar im Verhältnis zu deinem Score, nicht zu deinem Rang. Alle ausgewählten Flotten teilen sich einen Kanal: 3 % der Miner-Emission vor Epoche 8 und 5 % ab Epoche 8.</value>

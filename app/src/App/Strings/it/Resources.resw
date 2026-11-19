@@ -2100,6 +2100,14 @@ modo giusto</value>
     <value>Un pagamento una tantum per un anno di Pro. Non si rinnova e non include una prova gratuita.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>Questa quotazione è scaduta. Un pagamento inviato prima della scadenza viene accreditato a questo prezzo non appena confermato, il che può richiedere fino a 3 ore. Se non ne hai inviato uno, paga in altro modo.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>I pagamenti in Bitcoin possono richiedere fino a 3 ore per essere confermati. Un pagamento inviato prima della scadenza della quotazione viene accreditato a questo prezzo.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>Invia a questo indirizzo solo Bitcoin sulla rete Bitcoin. I Bitcoin inviati su un'altra rete non verranno accreditati.</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
@@ -6226,8 +6234,8 @@ Richiedi il tuo bonus creando una rete!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork si basa sul protocollo di ingresso e uscita
-più grande, sicuro e decentralizzato al mondo.</value>
+    <value>URnetwork si basa su un protocollo di ingresso e uscita decentralizzato,
+eseguito sui dispositivi della community in un'ampia scelta di paesi.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7168,6 +7176,10 @@ più grande, sicuro e decentralizzato al mondo.</value>
   <data name="regions" xml:space="preserve">
     <value>Regioni</value>
     <comment>Provider list group title for regions</comment>
+  </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Note di rilascio</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
   </data>
   <data name="reliability" xml:space="preserve">
     <value>Affidabilità</value>

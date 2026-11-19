@@ -2252,6 +2252,14 @@
     <value>دفعة لمرة واحدة مقابل عام من Pro. لا تتجدد تلقائيًا، ولا تتضمن تجربة مجانية.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>انتهت صلاحية عرض السعر هذا. يُحتسب الدفع الذي أرسلته قبل انتهائه بهذا السعر بعد تأكيده، وقد يستغرق ذلك ما يصل إلى 3 ساعات. إذا لم ترسل دفعة، فادفع بطريقة أخرى.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>قد يستغرق تأكيد مدفوعات Bitcoin ما يصل إلى 3 ساعات. يُحتسب الدفع المُرسَل قبل انتهاء صلاحية عرض السعر بهذا السعر.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>أرسل Bitcoin على شبكة Bitcoin فقط إلى هذا العنوان. لن تُحتسب عملات Bitcoin المُرسَلة عبر أي شبكة أخرى.</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
@@ -6600,8 +6608,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>تعمل URnetwork ببروتوكول الدخول والخروج الأكبر
-والأكثر أمانًا ولامركزية في العالم.</value>
+    <value>تعمل URnetwork ببروتوكول دخول وخروج لامركزي
+يعمل على أجهزة المجتمع في مجموعة كبيرة من البلدان.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7702,6 +7710,10 @@
   <data name="regions" xml:space="preserve">
     <value>المناطق</value>
     <comment>Provider list group title for regions</comment>
+  </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>ملاحظات الإصدار</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
   </data>
   <data name="reliability" xml:space="preserve">
     <value>الموثوقية</value>
@@ -9071,8 +9083,8 @@
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>اربط 7 أجهزة على الأكثر، إلا إذا كانت الأجهزة الأخرى تخضع للقياس بالفعل. يحظى 7 أجهزة على الأكثر في كل أسطول بأولوية القياس لدى المدقِّق. الجهاز المربوط الذي لا يخضع للقياس لا يحصل على نتيجة في الفئة الرئيسية وقد غادر المجمّع، فلا يكسب شيئًا.</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+    <value>اربط 7 أجهزة على الأكثر، من الأجهزة المباشرة فقط، إلا إذا كانت الأجهزة الأخرى تخضع للقياس بالفعل. يحظى 7 أجهزة على الأكثر في كل أسطول بأولوية القياس لدى المدقِّق. الجهاز المربوط الذي لا يخضع للقياس لا يحصل على نتيجة في الفئة الرئيسية وقد غادر المجمّع، فلا يكسب شيئًا، ولا تحصل خانة البروكسي على أي نتيجة في الفئة الرئيسية.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>لا يدرّ المقعد أرباحًا إلا ما دام مدقِّق SN25 يوجّه أوزانه، وبما يتناسب مع نتيجتك لا مع ترتيبك. تتقاسم جميع الأساطيل المختارة قناة واحدة: 3% من إصدار المعدِّنين قبل الحقبة 8، و5% بدءًا من الحقبة 8.</value>
