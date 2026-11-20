@@ -5,16 +5,19 @@
 // Account's place, like the Refer and earn page; "‹ Account" and any rail
 // navigation close it.
 //
-// The sdk's ClientSessionViewController does the work: it lists the sessions,
-// polls every 30 seconds while it is visible, carries each revoke's operation
-// id through retries and a 202's pending state, refuses a response for an
-// older login, and after a confirmed sign-out of this session rejects the
-// credential, which SdkHost's Api logout listener turns into the app's normal
-// sign-out. The page opens one on the in-process Api when it opens and closes
-// it when it closes; in between it tells it when it is visible (the page shown
-// and the window presenting) and when the window comes to the foreground, and
-// renders what it publishes. SessionsPresentation.h decides everything before
-// the XAML.
+// The sdk's ClientSessionViewController does the work: it lists the sessions
+// (every page of them), sorts them into the device sign-ins and the client
+// groups below them (hosted proxies, API clients, paired devices, other
+// clients) with their counts, polls every 30 seconds while it is visible,
+// carries each revoke's operation id through retries and a 202's pending
+// state, refuses a response for an older login, and after a confirmed sign-out
+// of this session rejects the credential, which SdkHost's Api logout listener
+// turns into the app's normal sign-out. The page opens one on the in-process
+// Api when it opens and closes it when it closes; in between it tells it when
+// it is visible (the page shown and the window presenting), when the window
+// comes to the foreground, which groups are open and when a section shows
+// more, and renders what it publishes. SessionsPresentation.h decides
+// everything before the XAML.
 //
 // Threading is WalletPage's provider status: the controller publishes on its
 // own thread, where the listener reads the snapshot into plain values; the
@@ -22,7 +25,11 @@
 // through the window's weak reference, and dropped once the page is destroyed
 // (alive_) or the controller it came from is closed (fence_). Everything else
 // here runs on the UI thread, and every call it makes into the controller
-// returns at once: the controller's requests run on its own goroutines.
+// returns at once: the controller's requests run on its own goroutines. Opening
+// or closing a group and Show more are presentation only and request nothing;
+// the controller publishes their snapshot before it returns, on this thread,
+// where the listener reads it (the rows shown, a page of 50 at a time) and
+// queues it like any other.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -72,16 +79,28 @@ class SessionsPage {
 
  private:
   // the body's controls a rebuild puts keyboard focus back on
-  enum class FocusKind { None, SignOut, Copy, Bulk, TryAgain };
+  enum class FocusKind { None, SignOut, Copy, Bulk, TryAgain, GroupHeader, ShowMore };
   struct FocusTarget {
     FocusKind kind = FocusKind::None;
     std::string sessionId;
+    // the section of the row, the group of the heading, or the section of the
+    // Show more: a group's kind, or sessions::kGroupSignIns
+    std::string section;
   };
   // one row's controls, by the session they act on
   struct RowControls {
     std::string sessionId;
     winrt::Microsoft::UI::Xaml::Controls::Button signOut{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button copy{nullptr};
+    // its section: its group's kind, or sessions::kGroupSignIns
+    std::string section;
+  };
+  // one section's controls: a group's heading (none for the device sign-ins)
+  // and its Show more, when it has one
+  struct SectionControls {
+    std::string kind;
+    winrt::Microsoft::UI::Xaml::Controls::Button header{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::Button showMore{nullptr};
   };
 
   void Build();  // idempotent: the header's handlers
@@ -97,12 +116,24 @@ class SessionsPage {
   void RenderBody(sessions::View const& view);
   void AppendRow(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
                  sessions::Row const& row);
+  // Show more under the section `kind`; `section` names the section for a
+  // screen reader ("" for the device sign-ins, which have no heading)
+  void AppendShowMore(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
+                      std::string const& kind, winrt::hstring const& section);
+  // a client group: its heading, then while it is open its rows and Show more
+  void AppendGroup(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
+                   sessions::GroupView const& group);
   void AppendBulk(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
                   sessions::View const& view);
+  SectionControls& SectionFor(std::string const& kind);
   FocusTarget FocusedTarget() const;
   void RestoreFocus(FocusTarget const& target);
   // the header's Refresh and the failed load's Try again
   void Refresh();
+  // a group's heading: opens or closes it (SetGroupExpanded)
+  void SetGroupExpanded(std::string const& kind, bool expanded);
+  // a section's Show more: its next rows (ShowMoreSessions)
+  void ShowMore(std::string const& kind);
   void CopyId(std::string const& sessionId);
   // every sign-out asks first (§4); Cancel is the default
   winrt::fire_and_forget ConfirmSignOut(std::string sessionId);
@@ -132,6 +163,7 @@ class SessionsPage {
   std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 
   std::vector<RowControls> rowControls_;
+  std::vector<SectionControls> sectionControls_;
   winrt::Microsoft::UI::Xaml::Controls::Button bulkButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button tryAgainButton_{nullptr};
 };

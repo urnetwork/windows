@@ -16,6 +16,7 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "SessionLimitNotice.h"  // a sign-in the account's session cap refused
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
 #include "Strings.h"
@@ -647,7 +648,7 @@ void LoginPage::ApplyLoginRouting(urnw::LoginRouting const& routing) {
     default:
       ShowLoginErrorFor(LoginStep::Initial, routing.error.empty()
                                                 ? Loc("there_was_an_error_logging_in")
-                                                : H(routing.error));
+                                                : MapAuthErrorForDisplay(routing.error));
       w_.NoteReachFailure(routing.error);
       break;
   }
@@ -692,7 +693,9 @@ void LoginPage::OnSignIn(IInspectable const&, RoutedEventArgs const&) {
           self->VerifyInfo().IsOpen(true);
         }
       } else if (!r.ok && !r.error.empty()) {
-        page.ShowLoginErrorFor(LoginStep::Password, H(r.error));
+        // the relay's mapping: it showed the same error on this step just
+        // before, and a raw token here would replace its words
+        page.ShowLoginErrorFor(LoginStep::Password, page.MapAuthErrorForDisplay(r.error));
         self->NoteReachFailure(r.error);
       }
     });
@@ -978,7 +981,7 @@ void LoginPage::OnCreateNetwork(IInspectable const&, RoutedEventArgs const&) {
         page.EnterVerifyStep(page.loginUserAuth_);
         page.ShowVerifySendError(r.verify_send);
       } else if (!r.ok && !r.error.empty()) {
-        page.ShowLoginErrorFor(LoginStep::Create, H(r.error));
+        page.ShowLoginErrorFor(LoginStep::Create, page.MapAuthErrorForDisplay(r.error));
         self->NoteReachFailure(r.error);
       } else if (r.ok) {
         page.newNetworkPending_ = true;
@@ -1057,7 +1060,12 @@ void LoginPage::SubmitVerifyCode() {
       if (!r.ok) {
         // clear the entered code so retyping can resubmit (macOS parity)
         self->VerifyCodeBox().Text(L"");
-        page.ShowLoginErrorFor(LoginStep::Verify, Loc("verify_input_invalid"));
+        // A sign-in the session cap or the client limit refused after the
+        // code says what to do instead: the code was right, and "invalid"
+        // would send the user to retype it. Any other failure is the code's.
+        const bool refused = urnw::sessionlimit::SignInRefusalKey(r.error) != nullptr;
+        page.ShowLoginErrorFor(LoginStep::Verify, refused ? page.MapAuthErrorForDisplay(r.error)
+                                                          : Loc("verify_input_invalid"));
       } else if (page.verifyIsNewNetwork_) {
         page.verifyIsNewNetwork_ = false;
         page.newNetworkPending_ = true;
@@ -1218,7 +1226,7 @@ void LoginPage::SignInWithAuthCode(std::string code) {
       page.walletSignInInFlight_ = false;
       page.SetWalletSignInEnabled(true);
       if (!r.ok && !r.error.empty()) {
-        page.ShowLoginErrorFor(LoginStep::Initial, H(r.error));
+        page.ShowLoginErrorFor(LoginStep::Initial, page.MapAuthErrorForDisplay(r.error));
         self->NoteReachFailure(r.error);
       }
     });
@@ -1475,16 +1483,21 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
 // replays it once, until a presented window has shown it). Both go through here
 // so the two can never disagree — before they shared the mapping, the raw token
 // flashed on the failure itself and the next replay replaced the mapped
-// sentence with it for good.
+// sentence with it for good. Every other step's own answer shows its error
+// through here too: the relay shows a registration's refusal first, and the
+// step's answer lands after it.
 hstring LoginPage::MapAuthErrorForDisplay(std::string const& error) {
   if (error == "not_configured") {
     return Adv("adv_sso_not_configured",
                L"Provider sign-in isn't available on this network yet — use "
                L"email or browser sign-in");
   }
-  // the network's client limit refused this device (SdkHost::RegisterNetworkClient):
-  // what to do for the plan, as the connect screen's notice says it
-  if (const char* key = urnw::clientlimit::SignInRefusalMessageKey(error)) {
+  // the account's cap of active sessions refused this sign-in (SdkHost's token,
+  // SessionLimitNotice.h): sign out sessions on a device that is signed in. Or
+  // the network's client limit refused this device
+  // (SdkHost::RegisterNetworkClient): what to do for the plan, as the connect
+  // screen's notice says it.
+  if (const char* key = urnw::sessionlimit::SignInRefusalKey(error)) {
     return Loc(key);
   }
   return H(error);
@@ -1608,8 +1621,9 @@ void LoginPage::OnSeedphraseSubmit(IInspectable const&, RoutedEventArgs const&) 
       page.seedphraseLoggingIn_ = false;
       page.ValidateSeedphrase();
       if (!r.ok) {
-        page.ShowLoginErrorFor(LoginStep::Seedphrase,
-                               r.error.empty() ? Loc("seedphrase_login_failed") : H(r.error));
+        page.ShowLoginErrorFor(LoginStep::Seedphrase, r.error.empty()
+                                                          ? Loc("seedphrase_login_failed")
+                                                          : page.MapAuthErrorForDisplay(r.error));
       }
       // success: the auth state relay swaps the panel for the home view
     });
@@ -1669,7 +1683,7 @@ void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const
       if (!account.ok) {
         page.ShowLoginErrorFor(LoginStep::Instant, account.error.empty()
                                                        ? Loc("instant_account_failed")
-                                                       : H(account.error));
+                                                       : page.MapAuthErrorForDisplay(account.error));
         return;
       }
       page.ShowSeedphraseSheet(account.seedphrase);

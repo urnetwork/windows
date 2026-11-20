@@ -1650,7 +1650,7 @@
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>ยุบแล้ว</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>ยังตัดสินใจไม่ได้ใช่ไหม?</value>
@@ -4478,7 +4478,7 @@
   </data>
   <data name="expanded" xml:space="preserve">
     <value>ขยายแล้ว</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>หมดอายุ</value>
@@ -5594,7 +5594,7 @@
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>พร็อกซีที่โฮสต์ไว้</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>นำอุปกรณ์ออกไม่ได้ ลองอีกครั้ง</value>
@@ -7377,9 +7377,25 @@
     <value>ออกจากระบบเซสชันนี้ไม่ได้ ลองอีกครั้ง</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>ไคลเอนต์ API</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>อุปกรณ์ที่จับคู่</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>ไคลเอนต์อื่น</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>{0} ที่ {1} จะออกจากระบบ</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>พร็อกซีที่โฮสต์ไว้นี้จะหยุดทำงาน สร้างพร็อกซีใหม่เพื่อแทนที่</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>{} จะออกจากระบบ</value>
@@ -7388,6 +7404,10 @@
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>เซสชันอื่นทั้งหมดในรายการนี้จะออกจากระบบ เซสชันนี้จะยังคงลงชื่อเข้าใช้อยู่ ผู้ที่รู้ข้อมูลการลงชื่อเข้าใช้ของคุณยังลงชื่อเข้าใช้อีกครั้งได้</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>เซสชันอื่นทั้งหมดในรายการนี้จะออกจากระบบ ยกเว้นพร็อกซีที่โฮสต์ไว้ เซสชันนี้จะยังคงลงชื่อเข้าใช้อยู่ ผู้ที่รู้ข้อมูลการลงชื่อเข้าใช้ของคุณยังลงชื่อเข้าใช้อีกครั้งได้</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>ออกจากระบบเซสชันอื่นทั้งหมดหรือไม่</value>
@@ -7412,6 +7432,10 @@
   <data name="sessions_device_cli" xml:space="preserve">
     <value>บรรทัดคำสั่ง</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
+  </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>ส่วนขยายเบราว์เซอร์</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
   </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
@@ -7444,6 +7468,22 @@
   <data name="sessions_empty" xml:space="preserve">
     <value>ไม่มีเซสชันที่ใช้งานอยู่</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>ไคลเอนต์ API ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>พร็อกซีที่โฮสต์ไว้ ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>ไคลเอนต์อื่นๆ ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>อุปกรณ์ที่จับคู่ ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7509,13 +7549,29 @@
     <value>การลงชื่อเข้าใช้จากแอปเวอร์ชันเก่าจะแสดงที่นี่เมื่อมีการต่ออายุ หากต้องการยุติการลงชื่อเข้าใช้ทั้งหมด ให้เปลี่ยนข้อมูลการลงชื่อเข้าใช้ของคุณ</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>มีเซสชันที่ใช้งานอยู่มากเกินไป ออกจากระบบเซสชันที่คุณไม่ได้ใช้แล้วใน บัญชี &gt; เซสชัน แล้วลองอีกครั้ง</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>มีเซสชันที่ใช้งานอยู่มากเกินไป บนอุปกรณ์ที่ลงชื่อเข้าใช้บัญชีนี้อยู่ ไปที่ บัญชี &gt; เซสชัน แล้วออกจากระบบเซสชันที่คุณไม่ได้ใช้แล้ว จากนั้นลองอีกครั้ง</value>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>โหลดเซสชันไม่ได้</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>เปิดเซสชัน</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>รีเฟรชไม่ได้ กำลังแสดงรายการล่าสุด</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>แสดงเพิ่มเติม</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>ลงชื่อเข้าใช้อีกครั้งเพื่อจัดการเซสชัน</value>

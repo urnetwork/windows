@@ -25,6 +25,7 @@
 #include "PageContext.h"
 #include "BittensorKeyStore.h"  // the one-tap key's warning, and its removal with the account
 #include "ReleaseNotes.h"
+#include "SessionLimitNotice.h"  // the session cap's refusal of a verification's session
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
 #include "Strings.h"
@@ -831,7 +832,10 @@ class SdkGuestConversionSession : public GuestConversionSession {
   }
 
   // authVerify without SdkHost::VerifyCode's sign-in: the returned jwt is for
-  // this same network, and the session already holds one.
+  // this same network, and the session already holds one. The server still
+  // mints a session for it, so the account's session cap can refuse it: this
+  // signed-in device then says so with its own way to free one
+  // (sessions_limit_reached), not the sdk's English.
   void VerifyCode(std::string const& userAuth, std::string const& code,
                   std::function<void(std::string error)> done) override {
     urnet::AuthVerifyArgs args;
@@ -840,7 +844,9 @@ class SdkGuestConversionSession : public GuestConversionSession {
     sdk_.api().authVerify(args, [queue = queue_, alive = alive_, done = std::move(done)](
                                     std::optional<urnet::AuthVerifyResult> result,
                                     std::optional<std::string> err) {
-      std::string error = ServerError(result, err);
+      std::string error = result && result->error && urnw::sessionlimit::LimitReached(result->error->code)
+                              ? Narrow(Localized("sessions_limit_reached"))
+                              : ServerError(result, err);
       queue.TryEnqueue([alive, done, error] {
         if (*alive) done(error);
       });

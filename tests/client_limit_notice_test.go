@@ -223,17 +223,22 @@ func TestClientLimitNoticeWindowWiring(t *testing.T) {
 }
 
 // A sign-in the limit refused: the registration hands the page the sdk's
-// decision as a token ahead of the server's message, and the page shows the
-// words for it.
+// decision as a token ahead of the server's message (and ahead of the session
+// cap's token, which every other refusal's message is read through), and the
+// page shows the words for it through the lookup of either token
+// (SessionLimitNotice.h SignInRefusalKey, which the sessions spec holds to
+// the client limit's words).
 func TestClientLimitSignInRefusalWiring(t *testing.T) {
 	source := sdkHostSource(t)
 	register := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::RegisterNetworkClient(")
 	provideRequireOrder(t, "RegisterNetworkClient", register,
 		"clientlimit::SignInRefusalToken(result->error->client_limit_prompt)",
-		"AuthResult r{false, false, result->error->message};")
+		"sessionlimit::SignInErrorOf(result->error)")
 	provideRequire(t, "RegisterNetworkClient", register, "complete(AuthResult{false, false, *token});")
 	login := stripComments(readAppSource(t, "LoginPage.cpp"))
 	mapped := definitionBody(t, "LoginPage.cpp", login, "hstring LoginPage::MapAuthErrorForDisplay(")
 	provideRequireOrder(t, "MapAuthErrorForDisplay", mapped,
-		"urnw::clientlimit::SignInRefusalMessageKey(error)", "return H(error);")
+		"urnw::sessionlimit::SignInRefusalKey(error)", "return H(error);")
+	lookup := stripComments(readAppSource(t, "SessionLimitNotice.h"))
+	provideRequire(t, "SessionLimitNotice.h", lookup, "return clientlimit::SignInRefusalMessageKey(error);")
 }

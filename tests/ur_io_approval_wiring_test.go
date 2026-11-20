@@ -243,7 +243,8 @@ func TestRedeemHoldsTheCredentialUntilConfirmed(t *testing.T) {
 		regexp.QuoteMeta("const std::uint64_t flow = approvalFlow_.load(std::memory_order_acquire);"),
 		regexp.QuoteMeta("if (err || !result) {"),
 		regexp.QuoteMeta("ApprovedNetwork::Failure::Transport"),
-		regexp.QuoteMeta("if (result->error && !result->error->message.empty()) {"),
+		// a refusal, the session cap's as its token (SessionLimitNotice.h)
+		regexp.QuoteMeta("if (std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {"),
 		regexp.QuoteMeta("ApprovedNetwork::Failure::Refused"),
 		regexp.QuoteMeta(`JwtClaimString(result->by_jwt, "network_name")`),
 		regexp.QuoteMeta("if (!networkName || networkName->empty()) {"),

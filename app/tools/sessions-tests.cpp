@@ -9,23 +9,35 @@
 // hours, days and the 7-day date cut-over, the pending, failed and bulk
 // states and their words, the confirmations, the error states (sign-in
 // required and the trusted remote sign-out among them) and the fence that
-// drops an old controller's snapshots. And the app-wide half of §5
-// (App/AuthLogoutNotice.h): the logout cause the sdk reports mapped to the
-// sign-in page's notice, shown once, for one sign-out per rejection, never
-// for the app's own sign-out. The WinUI half (App/SessionsPage.cpp, the
-// sign-in page) cannot be built off Windows; this is every decision it makes
-// before it touches a XAML object, run on the same headers the app compiles.
+// drops an old controller's snapshots. The sessions at scale: the device
+// sign-ins' Show more, the client groups below them (each kind's heading
+// with its count in the user's grouping and "+" while the list is
+// truncated, its row label, its rows only while open, its Show more), the
+// hosted proxy's confirmation, "Sign out all other sessions" offered by the
+// controller's count and its body when hosted proxies stay, and the empty
+// state. And the app-wide half of §5 (App/AuthLogoutNotice.h): the logout
+// cause the sdk reports mapped to the sign-in page's notice, shown once, for
+// one sign-out per rejection, never for the app's own sign-out; and a
+// sign-in the account's session cap refused (App/SessionLimitNotice.h): the
+// token SdkHost hands the sign-in screens for it and the words they show.
+// The WinUI half (App/SessionsPage.cpp, the sign-in page) cannot be built off
+// Windows; this is every decision it makes before it touches a XAML object,
+// run on the same headers the app compiles.
 //
 //   c++ -std=c++20 -I ../src/App sessions-tests.cpp -o /tmp/sessions-tests && /tmp/sessions-tests
 //
 // With URNW_SESSIONS_TESTS_SDK the snapshot reader also runs on the generated
-// header's own classes (urnet::ClientSessionSnapshot and its family), over a
-// fake of the C ABI functions they call: the real wrapper's handles, strings
-// and lists are what SnapshotFrom reads, and every handle it takes is released
-// once. So do the logout listeners' reads of the cause (App/AuthLogoutCause.h)
-// and the wrapper's own getters, against the header's constant. The header
-// needs nlohmann/json; both are system includes because the generated code
-// does not build with -Wextra -Werror:
+// header's own classes (urnet::ClientSessionSnapshot and its family, the
+// groups among them), over a fake of the C ABI functions they call: the real
+// wrapper's handles, strings and lists are what SnapshotFrom reads, and every
+// handle it takes is released once. So do the logout listeners' reads of the
+// cause (App/AuthLogoutCause.h) and the wrapper's own getters, against the
+// header's constant, and the account sign-in listener's read of its own
+// report's cause; the group kinds and the session cap's error code are the
+// header's, and the session cap's refusal reads the same through the
+// header's own result structs. The header needs nlohmann/json; both are
+// system includes because the generated code does not build with -Wextra
+// -Werror:
 //
 //   c++ -std=c++20 -Wall -Wextra -Werror -DURNW_SESSIONS_TESTS_SDK -I ../src/App -isystem <dir of urnetwork_sdk.hpp> -isystem <dir of nlohmann/> sessions-tests.cpp -o ...
 //
@@ -43,6 +55,7 @@
 
 #include "AuthLogoutNotice.h"
 #include "RelativeTimeSpan.h"
+#include "SessionLimitNotice.h"
 #include "SessionsPresentation.h"
 
 #if defined(URNW_SESSIONS_TESTS_SDK)
@@ -52,6 +65,7 @@
 
 namespace al = urnw::authlogout;
 namespace rt = urnw::relativetime;
+namespace sl = urnw::sessionlimit;
 namespace ss = urnw::sessions;
 
 namespace {
@@ -93,6 +107,7 @@ const std::map<std::string, std::string, std::less<>> kEnglish = {
     {"sessions_device_windows", "Windows"},
     {"sessions_device_linux", "Linux"},
     {"sessions_device_web", "Web"},
+    {"sessions_device_extension", "Browser extension"},
     {"sessions_device_cli", "Command line"},
     {"sessions_device_server", "Server"},
     {"sessions_device_unknown", "Unknown device"},
@@ -125,6 +140,22 @@ const std::map<std::string, std::string, std::less<>> kEnglish = {
     {"sessions_sign_out_others_failed", "Couldn't sign out the other sessions. Try again."},
     {"sessions_sign_in_required", "Sign in again to manage sessions."},
     {"sessions_signed_out_remotely", "This session was signed out from another device."},
+    {"sessions_group_hosted_proxies", "Hosted proxies ({})"},
+    {"sessions_group_api_clients", "API clients ({})"},
+    {"sessions_group_paired_devices", "Paired devices ({})"},
+    {"sessions_group_other_clients", "Other clients ({})"},
+    {"manage_devices_proxy", "Hosted proxy"},
+    {"sessions_client_api_key", "API client"},
+    {"sessions_client_device", "Paired device"},
+    {"sessions_client_other", "Other client"},
+    {"sessions_confirm_body_hosted_proxy",
+     "This hosted proxy will stop working. Create a new one to replace it."},
+    {"sessions_confirm_others_body_keeps_proxies",
+     "Every other session in this list will be signed out, except hosted proxies. This session "
+     "stays signed in. Anyone who knows your sign-in details can still sign in again."},
+    {"sessions_limit_reached_sign_in",
+     "Too many active sessions. On a device that's signed in to this account, go to Account > "
+     "Sessions and sign out sessions you no longer use, then try again."},
 };
 
 std::string English(std::string_view key) {
@@ -140,6 +171,18 @@ std::string Replace(std::string text, std::string_view placeholder, const std::s
   const auto at = text.find(placeholder);
   if (at != std::string::npos) text.replace(at, placeholder.size(), value);
   return text;
+}
+
+// a key a lookup may not have, as text a case can compare
+std::string KeyText(const char* key) { return key ? std::string(key) : std::string("<none>"); }
+
+// a digit grouping as a user's is: "1,204", "10,000"
+std::string Grouped(int64_t count) {
+  std::string digits = std::to_string(count);
+  for (int at = static_cast<int>(digits.size()) - 3; 0 < at; at -= 3) {
+    digits.insert(static_cast<size_t>(at), ",");
+  }
+  return digits;
 }
 
 // a fixed clock: 2026-10-09T12:00:00Z
@@ -174,6 +217,7 @@ ss::Text EnglishText() {
   text.relative = FakeRelative;
   text.date = FakeDate;
   text.dateTime = FakeDateTime;
+  text.count = Grouped;
   return text;
 }
 
@@ -182,6 +226,9 @@ ss::Text EnglishText() {
 constexpr const char* kCurrentId = "01a1f3c2-7d1e-4b8a-9f00-1c2d3e4f5a6b";
 constexpr const char* kOtherId = "02b2e4d3-8e2f-4c9b-8e11-2d3e4f5a6b7c";
 constexpr const char* kThirdId = "03c3f5e4-9f30-4dac-9d22-3e4f5a6b7c8d";
+// client sessions: a hosted proxy's and an API client's
+constexpr const char* kProxyId = "04d4a6f5-a041-4ebd-8c33-4f5a6b7c8d9e";
+constexpr const char* kApiClientId = "05e5b7a6-b152-4fce-9b44-5a6b7c8d9eaf";
 
 ss::LastUsed Used(std::string deviceType, std::string appVersion, int64_t agoMillis,
                   std::string city = "Chicago", std::string region = "Illinois",
@@ -208,13 +255,32 @@ ss::Session MakeSession(std::string id, bool current, std::string kind, int64_t 
   return session;
 }
 
+// A loaded list of device sign-ins and no client group, with the controller's
+// counts for it: every sign-in, and every one but the current session for the
+// bulk sign-out.
 ss::Snapshot Loaded(std::vector<ss::Session> sessions) {
   ss::Snapshot snapshot;
   snapshot.loaded = true;
   snapshot.currentSessionId = kCurrentId;
   snapshot.legacyCoverage = "complete";
+  snapshot.sessionCount = static_cast<int64_t>(sessions.size());
+  for (const auto& session : sessions) {
+    if (!ss::IsCurrent(session, kCurrentId)) ++snapshot.otherSessionCount;
+  }
   snapshot.sessions = std::move(sessions);
   return snapshot;
+}
+
+// A client group as the controller publishes it: rows only while expanded.
+ss::Group MakeGroup(std::string kind, int64_t count, bool expanded,
+                    std::vector<ss::Session> sessions = {}, bool hasMore = false) {
+  ss::Group group;
+  group.kind = std::move(kind);
+  group.count = count;
+  group.expanded = expanded;
+  if (expanded) group.sessions = std::move(sessions);
+  group.hasMore = expanded && hasMore;
+  return group;
 }
 
 ss::Error MakeError(bool retryable, bool signInRequired, bool unsupported,
@@ -277,6 +343,9 @@ struct FakeLastUsed {
   std::string getCountry() const { return value.country; }
   std::string getCountryCode() const { return value.countryCode; }
   std::string getDeviceType() const { return value.deviceType; }
+  // the sdk's device kind; empty reads as an sdk without it (the type)
+  std::string deviceKind;
+  std::string getDeviceKind() const { return deviceKind; }
   std::string getAppVersion() const { return value.appVersion; }
 };
 
@@ -302,8 +371,28 @@ struct FakeList {
   T get(int64_t i) const { return values[static_cast<size_t>(i)]; }
 };
 
+struct FakeGroup {
+  bool present = true;
+  std::string kind;
+  int64_t count = 0;
+  bool expanded = false;
+  FakeList<FakeSession> sessions;
+  bool hasMore = false;
+  explicit operator bool() const { return present; }
+  std::string getKind() const { return kind; }
+  int64_t getCount() const { return count; }
+  bool getExpanded() const { return expanded; }
+  FakeList<FakeSession> getSessions() const { return sessions; }
+  bool getHasMore() const { return hasMore; }
+};
+
 struct FakeSnapshot {
   FakeList<FakeSession> sessions;
+  int64_t sessionCount = 0;
+  bool sessionsHasMore = false;
+  FakeList<FakeGroup> groups;
+  int64_t otherSessionCount = 0;
+  bool truncated = false;
   std::string currentSessionId;
   std::string legacyCoverage;
   bool loaded = false;
@@ -314,6 +403,11 @@ struct FakeSnapshot {
   FakeList<FakeAction> actions;
   FakeError error;
   FakeList<FakeSession> getSessions() const { return sessions; }
+  int64_t getSessionCount() const { return sessionCount; }
+  bool getSessionsHasMore() const { return sessionsHasMore; }
+  FakeList<FakeGroup> getGroups() const { return groups; }
+  int64_t getOtherSessionCount() const { return otherSessionCount; }
+  bool getTruncated() const { return truncated; }
   std::string getCurrentSessionId() const { return currentSessionId; }
   std::string getLegacyCoverage() const { return legacyCoverage; }
   bool getLoaded() const { return loaded; }
@@ -333,17 +427,30 @@ struct FakeSnapshot {
 // must release, nil is 0, and strings are malloc'd for urnet_free_string.
 namespace abi {
 
-enum class Kind { Snapshot, SessionList, Session, LastUsed, ActionList, Action, Error, Api, Device };
+enum class Kind {
+  Snapshot,
+  SessionList,
+  Session,
+  LastUsed,
+  ActionList,
+  Action,
+  Error,
+  GroupList,
+  Group,
+  Api,
+  Device,
+};
 
 struct Object {
   Kind kind;
   const void* value;
 };
 
-// An Api or a Device as its logout cause reads: what GetAuthLogoutCause
-// returns, or nil.
+// An Api or a Device as its causes read: what GetAuthLogoutCause returns, and
+// on an Api what GetAccountSignInRequiredCause returns, or nil.
 struct FakeLogout {
   std::optional<std::string> cause;
+  std::optional<std::string> accountSignInCause;
 };
 
 std::map<uint64_t, Object> gLive;
@@ -398,6 +505,11 @@ char* urnet_device_get_auth_logout_cause(uint64_t self) {
   const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Device);
   return l && l->cause ? abi::Copy(*l->cause) : nullptr;
 }
+// an AccountSignInRequired's cause, on the Api
+char* urnet_api_get_account_sign_in_required_cause(uint64_t self) {
+  const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Api);
+  return l && l->accountSignInCause ? abi::Copy(*l->accountSignInCause) : nullptr;
+}
 
 bool urnet_release(uint64_t handle) {
   if (abi::gLive.erase(handle) == 0) {
@@ -448,6 +560,56 @@ uint64_t urnet_client_session_snapshot_get_actions(uint64_t self) {
 uint64_t urnet_client_session_snapshot_get_error(uint64_t self) {
   const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
   return s && s->error.present ? abi::Issue(abi::Kind::Error, &s->error) : 0;
+}
+int64_t urnet_client_session_snapshot_get_session_count(uint64_t self) {
+  const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
+  return s ? s->sessionCount : 0;
+}
+bool urnet_client_session_snapshot_get_sessions_has_more(uint64_t self) {
+  const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
+  return s && s->sessionsHasMore;
+}
+uint64_t urnet_client_session_snapshot_get_groups(uint64_t self) {
+  const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
+  return s && s->groups.present ? abi::Issue(abi::Kind::GroupList, &s->groups) : 0;
+}
+int64_t urnet_client_session_snapshot_get_other_session_count(uint64_t self) {
+  const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
+  return s ? s->otherSessionCount : 0;
+}
+bool urnet_client_session_snapshot_get_truncated(uint64_t self) {
+  const auto* s = abi::Get<FakeSnapshot>(self, abi::Kind::Snapshot);
+  return s && s->truncated;
+}
+
+// the group list and a group
+int64_t urnet_client_session_group_list_len(uint64_t self) {
+  const auto* l = abi::Get<FakeList<FakeGroup>>(self, abi::Kind::GroupList);
+  return l ? l->len() : 0;
+}
+uint64_t urnet_client_session_group_list_get(uint64_t self, int64_t i) {
+  const auto* l = abi::Get<FakeList<FakeGroup>>(self, abi::Kind::GroupList);
+  return l ? abi::Issue(abi::Kind::Group, &l->values[static_cast<size_t>(i)]) : 0;
+}
+char* urnet_client_session_group_get_kind(uint64_t self) {
+  const auto* g = abi::Get<FakeGroup>(self, abi::Kind::Group);
+  return g ? abi::Copy(g->kind) : nullptr;
+}
+int64_t urnet_client_session_group_get_count(uint64_t self) {
+  const auto* g = abi::Get<FakeGroup>(self, abi::Kind::Group);
+  return g ? g->count : 0;
+}
+bool urnet_client_session_group_get_expanded(uint64_t self) {
+  const auto* g = abi::Get<FakeGroup>(self, abi::Kind::Group);
+  return g && g->expanded;
+}
+uint64_t urnet_client_session_group_get_sessions(uint64_t self) {
+  const auto* g = abi::Get<FakeGroup>(self, abi::Kind::Group);
+  return g && g->sessions.present ? abi::Issue(abi::Kind::SessionList, &g->sessions) : 0;
+}
+bool urnet_client_session_group_get_has_more(uint64_t self) {
+  const auto* g = abi::Get<FakeGroup>(self, abi::Kind::Group);
+  return g && g->hasMore;
 }
 
 // the session list and a session
@@ -564,18 +726,36 @@ namespace {
 // A FakeSnapshot holding `snapshot`, field for field.
 FakeSnapshot FakeOf(const ss::Snapshot& snapshot) {
   FakeSnapshot fake;
-  for (const auto& session : snapshot.sessions) {
-    FakeSession s;
-    s.sessionId = session.sessionId;
-    s.current = session.current;
-    s.kind = session.kind;
-    s.createTime = session.createTimeMillis;
-    if (session.lastUsed) {
-      s.lastUsed.present = true;
-      s.lastUsed.value = *session.lastUsed;
+  const auto fakeSessions = [](const std::vector<ss::Session>& sessions) {
+    FakeList<FakeSession> list;
+    for (const auto& session : sessions) {
+      FakeSession s;
+      s.sessionId = session.sessionId;
+      s.current = session.current;
+      s.kind = session.kind;
+      s.createTime = session.createTimeMillis;
+      if (session.lastUsed) {
+        s.lastUsed.present = true;
+        s.lastUsed.value = *session.lastUsed;
+      }
+      list.values.push_back(s);
     }
-    fake.sessions.values.push_back(s);
+    return list;
+  };
+  fake.sessions = fakeSessions(snapshot.sessions);
+  fake.sessionCount = snapshot.sessionCount;
+  fake.sessionsHasMore = snapshot.sessionsHasMore;
+  for (const auto& group : snapshot.groups) {
+    FakeGroup g;
+    g.kind = group.kind;
+    g.count = group.count;
+    g.expanded = group.expanded;
+    g.sessions = fakeSessions(group.sessions);
+    g.hasMore = group.hasMore;
+    fake.groups.values.push_back(g);
   }
+  fake.otherSessionCount = snapshot.otherSessionCount;
+  fake.truncated = snapshot.truncated;
   const auto fakeError = [](const std::optional<ss::Error>& error) {
     FakeError e;
     if (error) {
@@ -619,6 +799,18 @@ ss::Snapshot RichSnapshot() {
   snapshot.actions = {MakeAction(kOtherId, true, false),
                       MakeAction(kThirdId, false, false, MakeError(true, false, false))};
   snapshot.error = MakeError(false, true, false, /*sessionRevoked=*/true);
+  // more sign-ins than shown, an open group with more rows than shown, a
+  // collapsed one, and counts the controller says are lower bounds
+  snapshot.sessionCount = 51;
+  snapshot.sessionsHasMore = true;
+  snapshot.groups = {
+      MakeGroup(ss::kGroupHostedProxies, 1204, /*expanded=*/true,
+                {MakeSession(kProxyId, false, "hosted_proxy", kNowMillis - kDay,
+                             Used("server", "", kMinute, "", "", "Germany", "de"))},
+                /*hasMore=*/true),
+      MakeGroup(ss::kGroupApiClients, 3, /*expanded=*/false)};
+  snapshot.otherSessionCount = 53;
+  snapshot.truncated = true;
   return snapshot;
 }
 
@@ -680,6 +872,8 @@ void TestLabels() {
       {"windows", "Windows", ss::DeviceGlyph::Windows, urnw::glyph::kDeviceWindowsPath},
       {"linux", "Linux", ss::DeviceGlyph::Linux, urnw::glyph::kDeviceLinuxPath},
       {"web", "Web", ss::DeviceGlyph::Web, urnw::glyph::kDeviceWebPath},
+      // the browser extension's own sign-in, the sdk's device kind
+      {"extension", "Browser extension", ss::DeviceGlyph::Web, urnw::glyph::kDeviceWebPath},
       {"cli", "Command line", ss::DeviceGlyph::Cli, urnw::glyph::kDeviceCliPath},
       {"server", "Server", ss::DeviceGlyph::Server, urnw::glyph::kDeviceServerPath},
       {"unknown", "Unknown device", ss::DeviceGlyph::Unknown, urnw::glyph::kDeviceUnknownPath},
@@ -732,6 +926,23 @@ void TestLabels() {
             "a missing city is left out");
   CheckText("Germany", ss::PlaceText(Used("web", "", 0, "", "", "Germany", "de")), "country only");
   CheckText("", ss::PlaceText(Used("web", "", 0, "", "", "", "")), "no location at all");
+}
+
+// The rows read the sdk's device kind, which names the browser extension, and
+// the device type from an sdk without it.
+void TestDeviceKind() {
+  FakeLastUsed extension;
+  extension.present = true;
+  extension.value.deviceType = "web";
+  extension.deviceKind = "extension";
+  auto read = ss::LastUsedFrom(extension);
+  Check(read && read->deviceType == "extension", "the sdk's device kind names the browser extension");
+  CheckText("Browser extension", English(ss::DeviceLabelKey(read->deviceType)), "the extension's label");
+  FakeLastUsed older;
+  older.present = true;
+  older.value.deviceType = "web";
+  read = ss::LastUsedFrom(older);
+  Check(read && read->deviceType == "web", "an sdk without the kind keeps the device type");
 }
 
 void TestCircleColor() {
@@ -997,11 +1208,247 @@ void TestActions() {
             "another session is named with its place");
   CheckText("Unknown device will be signed out.",
             ss::ConfirmationFor(confirmView.rows[2], text).body, "no place, the device alone");
-  const ss::Confirmation others = ss::BulkConfirmationFor(text);
+  const ss::Confirmation others = ss::BulkConfirmationFor(confirmView, text);
   CheckText("Sign out all other sessions?", others.title, "the bulk title");
   Check(others.body.starts_with("Every other session in this list will be signed out.") &&
             others.body.find("all devices") == std::string::npos,
         "the bulk body, which never claims every device is signed out");
+  CheckText(English("sessions_confirm_others_body"), others.body,
+            "with no hosted proxies listed, the plain bulk body");
+}
+
+// The sessions at scale (the sdk's groups): the device sign-ins' Show more,
+// every kind's heading and row label, the count's grouping and "+", rows only
+// while a group is open, its Show more, the hosted proxy's confirmation, the
+// bulk sign-out by the controller's count and its body, and the empty state.
+void TestGroups() {
+  const ss::Text text = EnglishText();
+  const auto current =
+      MakeSession(kCurrentId, true, "google", kNowMillis - kDay, Used("windows", "1", kMinute));
+  const auto other = MakeSession(kOtherId, false, "password", 1, Used("android", "2", kHour));
+  const auto proxy =
+      MakeSession(kProxyId, false, "hosted_proxy", kNowMillis - 2 * kDay,
+                  Used("server", "2026.11.17-1", 3 * kHour, "", "", "Germany", "de"));
+  const auto apiClient = MakeSession(kApiClientId, false, "api_key_client", 0, std::nullopt);
+
+  // the device sign-ins' Show more is the controller's
+  ss::Snapshot more = Loaded({current, other});
+  more.sessionCount = 120;
+  more.sessionsHasMore = true;
+  Check(ss::ViewFor(more, text).showMore, "more sign-ins than shown: Show more");
+  more.sessionsHasMore = false;
+  Check(!ss::ViewFor(more, text).showMore, "every sign-in shown: no Show more");
+
+  // every kind's heading and row label; a kind this build does not know is
+  // another client's
+  const struct {
+    const char* kind;
+    const char* heading;
+    const char* label;
+  } kinds[] = {
+      {ss::kGroupHostedProxies, "Hosted proxies (1,204)", "Hosted proxy"},
+      {ss::kGroupApiClients, "API clients (1,204)", "API client"},
+      {ss::kGroupPairedDevices, "Paired devices (1,204)", "Paired device"},
+      {ss::kGroupOtherClients, "Other clients (1,204)", "Other client"},
+      {"a_kind_from_a_newer_sdk", "Other clients (1,204)", "Other client"},
+  };
+  for (const auto& k : kinds) {
+    const std::string what = std::string("group \"") + k.kind + "\"";
+    ss::Snapshot snapshot = Loaded({current});
+    snapshot.groups = {MakeGroup(k.kind, 1204, /*expanded=*/true, {apiClient})};
+    const ss::View view = ss::ViewFor(snapshot, text);
+    if (view.groups.size() != 1 || view.groups[0].rows.size() != 1) {
+      Check(false, what + ": one group, one row");
+      continue;
+    }
+    const ss::GroupView& group = view.groups[0];
+    CheckText(k.kind, group.kind, what + ": its kind, for SetGroupExpanded");
+    CheckText(k.heading, group.label, what + ": the heading, its count grouped");
+    const ss::Row& row = group.rows[0];
+    CheckText(k.label, row.device, what + ": the row's label in place of the device's");
+    CheckText(k.label, row.line1, what + ": line 1, no version known");
+    CheckText(std::string("Sign out ") + k.label, row.signOutName,
+              what + ": the sign-out's name, by the row's label");
+    CheckText(k.kind, row.group, what + ": the row knows its group");
+    Check(!row.current, what + ": a client's session is never this session");
+  }
+
+  // the count: the user's grouping, and "+" while the list was truncated
+  ss::Snapshot counted = Loaded({current});
+  counted.groups = {MakeGroup(ss::kGroupHostedProxies, 10000, /*expanded=*/false),
+                    MakeGroup(ss::kGroupApiClients, 7, /*expanded=*/false)};
+  CheckText("Hosted proxies (10,000)", ss::ViewFor(counted, text).groups[0].label,
+            "a count in the user's grouping");
+  counted.truncated = true;
+  const ss::View truncated = ss::ViewFor(counted, text);
+  CheckText("Hosted proxies (10,000+)", truncated.groups[0].label,
+            "a truncated list's count is a lower bound: 10,000+");
+  CheckText("API clients (7+)", truncated.groups[1].label, "every group's count, while truncated");
+  CheckText("7+", ss::CountText(7, true, text), "the count text");
+  CheckText("1,204", ss::CountText(1204, false, text), "the count text, whole");
+
+  // collapsed: the heading alone; open: its rows (the same row as a sign-in,
+  // named for its client) and its Show more
+  ss::Snapshot grouped = Loaded({current});
+  grouped.groups = {MakeGroup(ss::kGroupHostedProxies, 2, /*expanded=*/false),
+                    MakeGroup(ss::kGroupApiClients, 60, /*expanded=*/true, {apiClient},
+                              /*hasMore=*/true)};
+  grouped.otherSessionCount = 60;
+  ss::View view = ss::ViewFor(grouped, text);
+  if (view.groups.size() != 2) {
+    Check(false, "two groups, in the controller's order");
+    return;
+  }
+  Check(view.body == ss::Body::Rows, "a list with groups shows its rows");
+  CheckText(ss::kGroupHostedProxies, view.groups[0].kind, "the controller's order, first");
+  CheckText(ss::kGroupApiClients, view.groups[1].kind, "the controller's order, second");
+  Check(!view.groups[0].expanded && view.groups[0].rows.empty() && !view.groups[0].showMore,
+        "a collapsed group: its heading alone");
+  Check(view.groups[1].expanded && view.groups[1].rows.size() == 1 && view.groups[1].showMore,
+        "an open group: its rows and Show more");
+  CheckEq(1, static_cast<int64_t>(view.rows.size()), "the device sign-ins stay as they are");
+  // a collapsed group's rows are not shown, should a snapshot carry any
+  ss::Snapshot stray = grouped;
+  stray.groups[0].sessions = {proxy};
+  Check(ss::ViewFor(stray, text).groups[0].rows.empty(), "a collapsed group shows no rows");
+  grouped.groups[1].hasMore = false;
+  Check(!ss::ViewFor(grouped, text).groups[1].showMore, "every row of an open group: no Show more");
+
+  // a hosted proxy's row: its label, its version, the device's logo and its
+  // country, and its confirmation says the proxy stops working
+  ss::Snapshot proxies = Loaded({current});
+  proxies.groups = {MakeGroup(ss::kGroupHostedProxies, 1, /*expanded=*/true, {proxy})};
+  const ss::View proxyView = ss::ViewFor(proxies, text);
+  const ss::Row& proxyRow = proxyView.groups[0].rows[0];
+  CheckText("Hosted proxy \xC2\xB7 2026.11.17-1", proxyRow.line1,
+            "a group's row keeps the app version after its label");
+  Check(proxyRow.glyph == ss::DeviceGlyph::Server, "the logo is the device type's");
+  CheckText("de", proxyRow.countryCode, "the circle is the session's country");
+  CheckText("Germany \xC2\xB7 Last used 3h ago", proxyRow.line2, "line 2 as a sign-in's");
+  const ss::Confirmation proxyConfirmation = ss::ConfirmationFor(proxyRow, text);
+  CheckText("Sign out this session?", proxyConfirmation.title, "the hosted proxy's title");
+  CheckText("This hosted proxy will stop working. Create a new one to replace it.",
+            proxyConfirmation.body, "the hosted proxy's confirmation body");
+  // another group's row: the device-style body, with its label as {device}
+  const ss::View apiView = ss::ViewFor(grouped, text);
+  CheckText("API client will be signed out.",
+            ss::ConfirmationFor(apiView.groups[1].rows[0], text).body,
+            "an API client's body, named by its label");
+  // a group row's action is the session's, as a sign-in's
+  ss::Snapshot acting = proxies;
+  acting.actions = {MakeAction(kProxyId, false, true)};
+  Check(ss::ViewFor(acting, text).groups[0].rows[0].action == ss::ActionState::Pending,
+        "a group row's pending sign-out");
+  acting.actions = {MakeAction(kProxyId, false, false, MakeError(true, false, false))};
+  Check(ss::ViewFor(acting, text).groups[0].rows[0].action == ss::ActionState::Failed,
+        "a group row's failed sign-out");
+  // the confirmation finds a group's row as it finds a sign-in's
+  const ss::Row* found = ss::FindRow(proxyView, kProxyId);
+  Check(found && found->group == ss::kGroupHostedProxies, "a group's row is found");
+  const ss::Row* foundCurrent = ss::FindRow(proxyView, kCurrentId);
+  Check(foundCurrent && foundCurrent->current, "a sign-in's row is found");
+  Check(ss::FindRow(proxyView, kOtherId) == nullptr, "a row not shown is not found");
+
+  // "Sign out all other sessions": a current session and the controller's
+  // count of the sessions it signs out, which leaves the hosted proxies out
+  ss::Snapshot onlyProxies = Loaded({current});
+  onlyProxies.groups = {MakeGroup(ss::kGroupHostedProxies, 3, /*expanded=*/false)};
+  Check(!ss::ViewFor(onlyProxies, text).bulkShown,
+        "this session and hosted proxies alone: no bulk, it would sign nothing out");
+  ss::Snapshot apiClients = Loaded({current});
+  apiClients.groups = {MakeGroup(ss::kGroupApiClients, 2, /*expanded=*/false)};
+  apiClients.otherSessionCount = 2;
+  Check(ss::ViewFor(apiClients, text).bulkShown,
+        "this session and API clients: bulk, though no other row is shown");
+  apiClients.currentSessionId.clear();
+  apiClients.sessions[0].current = false;
+  Check(!ss::ViewFor(apiClients, text).bulkShown, "no current session: no bulk, whatever the count");
+
+  // its body: hosted proxies stay when the list has any
+  ss::Snapshot mixed = Loaded({current, other});
+  mixed.groups = {MakeGroup(ss::kGroupHostedProxies, 3, /*expanded=*/false)};
+  const ss::View mixedView = ss::ViewFor(mixed, text);
+  Check(mixedView.bulkShown && mixedView.bulkKeepsProxies, "the bulk keeps the hosted proxies");
+  CheckText(
+      "Every other session in this list will be signed out, except hosted proxies. This "
+      "session stays signed in. Anyone who knows your sign-in details can still sign in again.",
+      ss::BulkConfirmationFor(mixedView, text).body, "the bulk body says hosted proxies stay");
+  Check(!ss::ViewFor(Loaded({current, other}), text).bulkKeepsProxies,
+        "no hosted proxies listed: the plain body");
+
+  // empty: no device sign-in and no group
+  ss::Snapshot none = Loaded({});
+  Check(ss::ViewFor(none, text).body == ss::Body::Empty, "nothing at all: No active sessions");
+  none.groups = {MakeGroup(ss::kGroupPairedDevices, 1, /*expanded=*/false)};
+  const ss::View groupsOnly = ss::ViewFor(none, text);
+  Check(groupsOnly.body == ss::Body::Rows && groupsOnly.rows.empty() &&
+            groupsOnly.groups.size() == 1,
+        "no device sign-in but a group: the group, not No active sessions");
+  ss::Snapshot uncounted = Loaded({current});
+  uncounted.sessionCount = 0;
+  Check(ss::ViewFor(uncounted, text).body == ss::Body::Rows,
+        "a row on screen is never hidden behind No active sessions");
+}
+
+// A sign-in the account's session cap refused (App/SessionLimitNotice.h):
+// the token SdkHost hands the sign-in screens in place of the server's
+// message, for every result error of the sdk's shape, and the words they
+// show for it and for the client limit's tokens.
+void TestSessionLimitSignIn() {
+  // the sdk's result errors: an optional code and a message
+  struct ResultError {
+    std::optional<std::string> code;
+    std::string message;
+  };
+  const auto errorOf = [](std::optional<std::string> code, std::string message) {
+    ResultError error;
+    error.code = std::move(code);
+    error.message = std::move(message);
+    return sl::SignInErrorOf(std::optional<ResultError>(std::move(error)));
+  };
+  const std::string fallback =
+      "Too many active sessions. Sign out sessions you no longer use in Account > Sessions, then "
+      "try again.";
+  CheckText("", sl::SignInErrorOf(std::optional<ResultError>()), "no error, nothing to show");
+  CheckText("", errorOf(std::nullopt, ""), "an error with no message reads as none, as before");
+  CheckText("Incorrect password.", errorOf(std::nullopt, "Incorrect password."),
+            "another error keeps the server's message");
+  CheckText(sl::kSignInRefused, errorOf(std::string("session_limit_reached"), fallback),
+            "the session cap's refusal: the token, never the sdk's English");
+  CheckText(sl::kSignInRefused, errorOf(std::string("session_limit_reached"), ""),
+            "the session cap's refusal, whatever its message");
+  CheckText("Retention.", errorOf(std::string("session_retention_limit_reached"), "Retention."),
+            "the retention limit is not the session cap: signing out frees nothing there");
+  CheckText("Other.", errorOf(std::string("Session_Limit_Reached"), "Other."),
+            "only the sdk's exact code");
+  CheckText("Wrong account.", errorOf(std::string("wallet_mismatch"), "Wrong account."),
+            "another code keeps the server's message");
+
+  // the words
+  CheckText("sessions_limit_reached_sign_in", KeyText(sl::SignInRefusalMessageKey(sl::kSignInRefused)),
+            "the token's words");
+  CheckText(English("sessions_limit_reached_sign_in"),
+            English(sl::SignInRefusalMessageKey(sl::kSignInRefused)),
+            "they send the user to a device that is signed in");
+  CheckText("<none>", KeyText(sl::SignInRefusalMessageKey(fallback)),
+            "the sdk's English is not the token");
+  CheckText("<none>", KeyText(sl::SignInRefusalMessageKey("")), "no error is not the token");
+  // either refusal token a sign-in ends with
+  CheckText("sessions_limit_reached_sign_in", KeyText(sl::SignInRefusalKey(sl::kSignInRefused)),
+            "the session cap's token");
+  CheckText("client_limit_upgrade_message",
+            KeyText(sl::SignInRefusalKey(urnw::clientlimit::kSignInRefusedUpgrade)),
+            "the client limit's token, a plan an upgrade lifts");
+  CheckText("client_limit_remove_client_message",
+            KeyText(sl::SignInRefusalKey(urnw::clientlimit::kSignInRefusedRemoveClient)),
+            "the client limit's token, a plan only a free slot lifts");
+  CheckText("<none>", KeyText(sl::SignInRefusalKey("not_configured")),
+            "any other error is no refusal");
+  CheckText("<none>", KeyText(sl::SignInRefusalKey("Incorrect password.")),
+            "a server's message is no refusal");
+  Check(std::string_view(sl::kSignInRefused) != urnw::clientlimit::kSignInRefusedUpgrade &&
+            std::string_view(sl::kSignInRefused) != urnw::clientlimit::kSignInRefusedRemoveClient,
+        "the session cap's token is its own");
 }
 
 void TestFence() {
@@ -1156,6 +1603,56 @@ void TestSignedOutNotice() {
     CheckEq(0, app.signOuts, "a signed-out app is not signed out again");
     Check(app.notice.Take() == al::Notice::None, "and says nothing");
   }
+
+  // The account's own sign-in refused while this device's client stays
+  // signed in (the sdk's AccountSignInRequired, when the client is not of
+  // that sign-in's session): only this app's own session, signed out from
+  // Sessions, signs the app out, and says nothing; otherwise the device stays
+  // signed in and the main window says the account needs a sign-in again.
+  Check(al::AccountSignInStepFor(true, true) == al::AccountSignInStep::SignOut,
+        "this app signed its own session out from Sessions: its sign-out follows, as the "
+        "confirmation said, with no notice");
+  Check(al::AccountSignInStepFor(true, false) == al::AccountSignInStep::Notice,
+        "the account was signed out from elsewhere: this device stays signed in, and the "
+        "window says so");
+  Check(al::AccountSignInStepFor(false, true) == al::AccountSignInStep::None &&
+            al::AccountSignInStepFor(false, false) == al::AccountSignInStep::None,
+        "a report behind a sign-out changes nothing");
+
+  // the notice's words: the remote sign-out's line only for the trusted cause,
+  // spelled exactly, and the sign-in line for every cause
+  Check(al::AccountSignInNoticeFor("session_revoked") == al::AccountSignInNotice::SignedOutRemotely,
+        "session_revoked: signed out from another device, then sign in again");
+  for (const char* cause : {"", "Session_Revoked", "SESSION_REVOKED", "session_revoked ",
+                            " session_revoked", "session_revoked\n", "session-revoked", "revoked",
+                            "client_removed", "sign_in_required"}) {
+    Check(al::AccountSignInNoticeFor(cause) == al::AccountSignInNotice::SignInRequired,
+          std::string("the cause \"") + cause + "\" says only to sign in again");
+  }
+  const auto words = [](al::AccountSignInNotice notice) {
+    // as MainWindow::ApplyAccountSignInNotice: the lead, a space, the line
+    const char* lead = al::AccountSignInLeadKey(notice);
+    const char* line = al::AccountSignInLineKey(notice);
+    if (!*line) return std::string();
+    return *lead ? English(lead) + " " + English(line) : English(line);
+  };
+  CheckText("This session was signed out from another device. Sign in again to manage sessions.",
+            words(al::AccountSignInNotice::SignedOutRemotely),
+            "the window's words for a session signed out from another device");
+  CheckText("Sign in again to manage sessions.", words(al::AccountSignInNotice::SignInRequired),
+            "the window's words for any other cause");
+  CheckText("", al::AccountSignInLineKey(al::AccountSignInNotice::None), "no notice has no words");
+  CheckText("", al::AccountSignInLeadKey(al::AccountSignInNotice::None), "and no lead");
+  CheckText("", al::AccountSignInLeadKey(al::AccountSignInNotice::SignInRequired),
+            "any other cause has no lead");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/true),
+            al::AccountSignInLeadKey(al::AccountSignInNotice::SignedOutRemotely),
+            "the window says what the Sessions page says of a remote sign-out");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/false),
+            al::AccountSignInLineKey(al::AccountSignInNotice::SignedOutRemotely),
+            "and of the sign-in it needs");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/false),
+            al::AccountSignInLineKey(al::AccountSignInNotice::SignInRequired), "for every cause");
 }
 
 void TestReader() {
@@ -1170,13 +1667,37 @@ void TestReader() {
   Check(read.error && read.error->signInRequired && read.error->sessionRevoked,
         "the error's trusted session-revoked cause is read");
 
+  Check(read.groups.size() == 2 && read.groups[0].expanded && read.groups[0].hasMore &&
+            read.groups[0].sessions.size() == 1 && read.groups[0].count == 1204,
+        "an open group: its count, its rows and its Show more");
+  Check(!read.groups[1].expanded && read.groups[1].sessions.empty(),
+        "a collapsed group carries no rows");
+  Check(read.sessionCount == 51 && read.sessionsHasMore && read.otherSessionCount == 53 &&
+            read.truncated,
+        "the counts, the sign-ins' Show more and the truncation");
+
   // nil lists and objects
   FakeSnapshot nils;
   nils.sessions.present = false;
   nils.actions.present = false;
+  nils.groups.present = false;
   const ss::Snapshot empty = ss::SnapshotFrom(nils);
-  Check(empty.sessions.empty() && empty.actions.empty(), "nil lists read as empty");
+  Check(empty.sessions.empty() && empty.actions.empty() && empty.groups.empty(),
+        "nil lists read as empty");
   Check(!empty.bulkAction && !empty.error, "nil objects read as nullopt");
+  // a nil group's list of rows, and a nil group in the list
+  FakeSnapshot nilRows;
+  FakeGroup collapsed;
+  collapsed.kind = ss::kGroupPairedDevices;
+  collapsed.count = 2;
+  collapsed.sessions.present = false;
+  FakeGroup missing;
+  missing.present = false;
+  nilRows.groups.values = {collapsed, missing};
+  const ss::Snapshot nilRowsRead = ss::SnapshotFrom(nilRows);
+  Check(nilRowsRead.groups.size() == 1 && nilRowsRead.groups[0].sessions.empty() &&
+            nilRowsRead.groups[0].count == 2,
+        "a group's nil rows read as none, and a nil group as no group");
 
   // the Unix seconds become milliseconds only where a line uses them
   CheckEq(rich.sessions[0].lastUsed->unixTime, read.sessions[0].lastUsed->unixTime,
@@ -1202,11 +1723,13 @@ void TestSdkReader() {
   FakeSnapshot nils;
   nils.sessions.present = false;
   nils.actions.present = false;
+  nils.groups.present = false;
   const int64_t issuedBefore = abi::gIssued;
   {
     const urnet::ClientSessionSnapshot snapshot(abi::Issue(abi::Kind::Snapshot, &nils));
     const ss::Snapshot read = ss::SnapshotFrom(snapshot);
-    Check(read.sessions.empty() && read.actions.empty() && !read.bulkAction && !read.error,
+    Check(read.sessions.empty() && read.actions.empty() && read.groups.empty() &&
+              !read.bulkAction && !read.error,
           "nil handles (0) read as empty lists and nullopt through the wrapper");
   }
   CheckEq(1, abi::gIssued - issuedBefore, "a nil getter hands out no handle");
@@ -1228,9 +1751,9 @@ void TestSdkLogoutCause() {
   CheckText(std::string(al::kCauseSessionRevoked), urnet::AuthLogoutCauseSessionRevoked,
             "the wrapper's session-revoked cause");
 
-  abi::FakeLogout revoked{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED)};
-  abi::FakeLogout generic{std::string()};
-  abi::FakeLogout nil{std::nullopt};
+  abi::FakeLogout revoked{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED), std::nullopt};
+  abi::FakeLogout generic{std::string(), std::nullopt};
+  abi::FakeLogout nil{std::nullopt, std::nullopt};
   const uint64_t api = abi::Issue(abi::Kind::Api, &revoked);
   const uint64_t device = abi::Issue(abi::Kind::Device, &revoked);
   const int64_t stringsBefore = abi::gStringsIssued;
@@ -1272,6 +1795,86 @@ void TestSdkLogoutCause() {
   for (const uint64_t handle : {api, device, genericApi, nilDevice}) urnet_release(handle);
   CheckEq(0, static_cast<int64_t>(abi::gLive.size()), "every handle is released");
 }
+
+// The account sign-in listener's read of its own report's cause
+// (AuthLogoutCause.h AccountSignInCause), by the Api's handle through the c
+// abi, which is the call the wrapper's Api::getAccountSignInRequiredCause
+// makes; the window's notice it leads to; and never the Api's logout cause,
+// which each Api here holds with the other value.
+void TestSdkAccountSignInCause() {
+  abi::FakeLogout revoked{std::string(), std::string(urnet::AuthLogoutCauseSessionRevoked)};
+  abi::FakeLogout generic{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED), std::string()};
+  abi::FakeLogout nil{std::nullopt, std::nullopt};
+  const uint64_t api = abi::Issue(abi::Kind::Api, &revoked);
+  const uint64_t genericApi = abi::Issue(abi::Kind::Api, &generic);
+  const uint64_t nilApi = abi::Issue(abi::Kind::Api, &nil);
+  const uint64_t device = abi::Issue(abi::Kind::Device, &revoked);
+  const int64_t stringsBefore = abi::gStringsIssued;
+  const int64_t freedBefore = abi::gStringsFreed;
+
+  CheckText("session_revoked", al::AccountSignInCause(api),
+            "the account sign-in listener reads its own report's cause");
+  Check(al::AccountSignInNoticeFor(al::AccountSignInCause(api)) ==
+            al::AccountSignInNotice::SignedOutRemotely,
+        "a session signed out from another device: the window says so, then to sign in again");
+  CheckText("", al::AccountSignInCause(genericApi), "not the Api's logout cause");
+  Check(al::AccountSignInNoticeFor(al::AccountSignInCause(genericApi)) ==
+            al::AccountSignInNotice::SignInRequired,
+        "any other refusal: the window says only to sign in again");
+  CheckEq(4, abi::gStringsIssued - stringsBefore, "each read takes the sdk's string");
+  CheckEq(abi::gStringsIssued - stringsBefore, abi::gStringsFreed - freedBefore,
+          "and frees every one of them");
+  CheckText("", al::AccountSignInCause(nilApi), "a nil string reads as no cause");
+  CheckText("", al::AccountSignInCause(0), "a nil Api reads no cause");
+  CheckText("", al::AccountSignInCause(device), "a device's handle is not an Api's");
+
+  // the generated wrapper's own getter makes the same call
+  {
+    const urnet::Api wrapped(abi::Issue(abi::Kind::Api, &revoked));
+    CheckText("session_revoked", wrapped.getAccountSignInRequiredCause(),
+              "Api::getAccountSignInRequiredCause");
+    CheckText("", wrapped.getAuthLogoutCause(), "beside the Api's own logout cause");
+  }
+  CheckEq(abi::gStringsIssued, abi::gStringsFreed, "every cause string is freed");
+  for (const uint64_t handle : {api, genericApi, nilApi, device}) urnet_release(handle);
+  CheckEq(0, static_cast<int64_t>(abi::gLive.size()), "every handle is released");
+}
+
+// The group kinds and the session cap's code the app spells itself are the
+// generated header's, and the cap's refusal reads as the token through each
+// of the header's result errors a sign-in route answers with.
+void TestSdkGroupsAndSessionLimit() {
+  CheckText(urnet::ClientSessionGroupSignIns, ss::kGroupSignIns, "the device sign-ins' kind");
+  CheckText(urnet::ClientSessionGroupHostedProxies, ss::kGroupHostedProxies,
+            "the hosted proxies' kind");
+  CheckText(urnet::ClientSessionGroupApiClients, ss::kGroupApiClients, "the API clients' kind");
+  CheckText(urnet::ClientSessionGroupPairedDevices, ss::kGroupPairedDevices,
+            "the paired devices' kind");
+  CheckText(urnet::ClientSessionGroupOtherClients, ss::kGroupOtherClients,
+            "the other clients' kind");
+  CheckText(urnet::SessionErrorCodeLimitReached, sl::kErrorCodeLimitReached,
+            "the wrapper's session cap code");
+  CheckText(URNET_SESSION_ERROR_CODE_LIMIT_REACHED, sl::kErrorCodeLimitReached,
+            "the c abi's session cap code");
+
+  const auto refused = [](auto error) {
+    error.code = std::string(urnet::SessionErrorCodeLimitReached);
+    error.message = "Too many active sessions.";
+    return sl::SignInErrorOf(std::optional<decltype(error)>(std::move(error)));
+  };
+  CheckText(sl::kSignInRefused, refused(urnet::ApiError{}),
+            "ApiError: a password, a verify code, an auth code");
+  CheckText(sl::kSignInRefused, refused(urnet::AuthLoginResultError{}),
+            "AuthLoginResultError: Google, Apple, a wallet, a recovery phrase");
+  CheckText(sl::kSignInRefused, refused(urnet::NetworkCreateResultError{}),
+            "NetworkCreateResultError: a new network, an instant account");
+  CheckText(sl::kSignInRefused, refused(urnet::AuthNetworkClientError{}),
+            "AuthNetworkClientError: the device's registration");
+  urnet::ApiError wrongCode;
+  wrongCode.message = "Invalid code.";
+  CheckText("Invalid code.", sl::SignInErrorOf(std::optional<urnet::ApiError>(wrongCode)),
+            "another error keeps the server's message");
+}
 #endif
 
 }  // namespace
@@ -1279,16 +1882,21 @@ void TestSdkLogoutCause() {
 int main() {
   TestRelativeTime();
   TestLabels();
+  TestDeviceKind();
   TestCircleColor();
   TestRows();
   TestStates();
   TestActions();
+  TestGroups();
+  TestSessionLimitSignIn();
   TestFence();
   TestSignedOutNotice();
   TestReader();
 #if defined(URNW_SESSIONS_TESTS_SDK)
   TestSdkReader();
   TestSdkLogoutCause();
+  TestSdkAccountSignInCause();
+  TestSdkGroupsAndSessionLimit();
 #endif
   if (gFailures != 0) {
     std::cout << gFailures << " of " << gCases << " sessions checks failed\n";

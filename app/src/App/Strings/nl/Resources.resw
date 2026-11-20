@@ -1662,7 +1662,7 @@ juiste manier</value>
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Samengevouwen</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>Problemen met commitment?</value>
@@ -4506,7 +4506,7 @@ juiste manier</value>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Uitgevouwen</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Vervalt</value>
@@ -5650,7 +5650,7 @@ naar je hebben gestuurd om je identiteit te verifiëren.</value>
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>Gehoste proxy</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>Het apparaat kon niet worden verwijderd. Probeer het opnieuw.</value>
@@ -7501,9 +7501,25 @@ inhoud van de wereld</value>
     <value>Kan deze sessie niet uitloggen. Probeer het opnieuw.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>API-client</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>Gekoppeld apparaat</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>Andere client</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>{0} ({1}) wordt uitgelogd.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>Deze gehoste proxy werkt dan niet meer. Maak een nieuwe aan om hem te vervangen.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>{} wordt uitgelogd.</value>
@@ -7512,6 +7528,10 @@ inhoud van de wereld</value>
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>Alle andere sessies in deze lijst worden uitgelogd. Deze sessie blijft ingelogd. Iedereen die je inloggegevens kent, kan nog steeds opnieuw inloggen.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>Alle andere sessies in deze lijst worden uitgelogd, behalve gehoste proxy's. Deze sessie blijft ingelogd. Iedereen die je inloggegevens kent, kan nog steeds opnieuw inloggen.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>Alle andere sessies uitloggen?</value>
@@ -7536,6 +7556,10 @@ inhoud van de wereld</value>
   <data name="sessions_device_cli" xml:space="preserve">
     <value>Opdrachtregel</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
+  </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>Browserextensie</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
   </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
@@ -7568,6 +7592,22 @@ inhoud van de wereld</value>
   <data name="sessions_empty" xml:space="preserve">
     <value>Geen actieve sessies</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>API-clients ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>Gehoste proxy's ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>Andere clients ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>Gekoppelde apparaten ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7633,13 +7673,29 @@ inhoud van de wereld</value>
     <value>Inlogsessies van oudere appversies verschijnen hier zodra ze worden vernieuwd. Wijzig je inloggegevens om alle inlogsessies te beëindigen.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>Te veel actieve sessies. Log de sessies die je niet meer gebruikt uit via Account &gt; Sessies en probeer het opnieuw.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>Te veel actieve sessies. Ga op een apparaat dat bij dit account is ingelogd naar Account &gt; Sessies, log de sessies uit die je niet meer gebruikt en probeer het opnieuw.</value>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>Kan sessies niet laden.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>Sessies openen</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>Kan niet vernieuwen. De laatste lijst wordt getoond.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>Meer weergeven</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>Log opnieuw in om sessies te beheren.</value>

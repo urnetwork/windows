@@ -187,7 +187,8 @@ LoginPage* AppController::LoginPageOrNull() {
 }`},
 	// every outcome of the redeem is delivered, and the credential is held, never registered; the code goes out, and what comes back
 	// is kept, only while the flow the approval began in is still the one that started last (a network change takes the next number),
-	// and the number is judged under the lock the handle is read under
+	// and the number is judged under the lock the handle is read under. A refusal by the account's cap of active sessions is a
+	// refusal like any other, carried as the token the sheet has words for (SessionLimitNotice.h).
 	{"SdkHost.cpp", urIoHost, "SdkHost::RedeemApprovedCode", "void SdkHost::RedeemApprovedCode(const std::string& code, std::function<void(ApprovedNetwork)> done) {", `
 void SdkHost::RedeemApprovedCode(const std::string& code, std::function<void(ApprovedNetwork)> done) {
   const std::uint64_t authEpoch = signOutRun_.Epoch();
@@ -204,9 +205,9 @@ void SdkHost::RedeemApprovedCode(const std::string& code, std::function<void(App
       if (done) done(out);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
+    if (std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
       out.failure = ApprovedNetwork::Failure::Refused;
-      out.error = result->error->message;
+      out.error = std::move(error);
       LogWarn("sdkhost: the server refused the approved code");
       if (done) done(out);
       return;
@@ -615,7 +616,7 @@ void BrowserApprovalSheet::BeginRedeem(std::string code) {
   });
   approval::Wipe(code);
 }`},
-	// what the person is shown for each answer of the redeem
+	// what the person is shown for each answer of the redeem; the account's cap of active sessions says what to do, not a bad code
 	{"BrowserApprovalSheet.cpp", urIoSheet, "BrowserApprovalSheet::OnRedeemed", "void BrowserApprovalSheet::OnRedeemed(SdkHost::ApprovedNetwork answer) {", `
 void BrowserApprovalSheet::OnRedeemed(SdkHost::ApprovedNetwork answer) {
   if (closed_) {
@@ -624,6 +625,10 @@ void BrowserApprovalSheet::OnRedeemed(SdkHost::ApprovedNetwork answer) {
   }
   if (!answer.ok) {
     LogWarn("browser sign-in sheet: the approval could not be redeemed");
+    if (const char* key = sessionlimit::SignInRefusalMessageKey(answer.error)) {
+      ShowFailed(Loc(key));
+      return;
+    }
     ShowFailed(answer.failure == SdkHost::ApprovedNetwork::Failure::Transport
                    ? Loc("something_went_wrong")
                    : Loc("auth_code_error"));
@@ -651,7 +656,8 @@ void BrowserApprovalSheet::Confirm() {
     });
   });
 }`},
-	// what happens when the registration is answered
+	// what happens when the registration is answered; a refusal the sign-in screens have words for (the session cap's, the
+	// client limit's) shows them, never its token
 	{"BrowserApprovalSheet.cpp", urIoSheet, "BrowserApprovalSheet::OnConfirmed", "void BrowserApprovalSheet::OnConfirmed(AuthResult const& result) {", `
 void BrowserApprovalSheet::OnConfirmed(AuthResult const& result) {
   if (closed_) return;
@@ -660,6 +666,10 @@ void BrowserApprovalSheet::OnConfirmed(AuthResult const& result) {
     return;
   }
   LogWarn("browser sign-in sheet: the device could not be registered");
+  if (const char* key = sessionlimit::SignInRefusalKey(result.error)) {
+    ShowFailed(Loc(key));
+    return;
+  }
   ShowFailed(result.error.empty() ? Loc("something_went_wrong") : H(result.error));
 }`},
 	// the paste flow: the one live path of a build with the approval off
