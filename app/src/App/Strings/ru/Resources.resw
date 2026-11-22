@@ -8828,8 +8828,8 @@
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>Привязывайте не больше 7 устройств, только прямые, если только остальные уже не измеряются. В каждом парке приоритет на измерение валидатором получают не больше 7 устройств. Привязанное устройство, которое не измеряется, не получает балла ведущего майнера и уже вышло из пула, поэтому ничего не зарабатывает, а прокси-слот вообще не получает балла ведущего майнера.</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
+    <value>Привязывайте не больше 7 устройств, если только остальные уже не измеряются. В каждом парке приоритет на измерение валидатором получают не больше 7 устройств. Привязанное устройство, которое не измеряется, не получает балла ведущего майнера и уже вышло из пула, поэтому ничего не зарабатывает.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>Место приносит выплаты, только пока валидатор SN25 управляет своими весами, и пропорционально вашему баллу, а не месту в рейтинге. Все выбранные парки делят один канал: 3 % эмиссии майнеров до эпохи 8 и 5 % начиная с эпохи 8.</value>
