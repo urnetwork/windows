@@ -24,11 +24,12 @@ type windowsHostBudgetCall struct {
 	arguments []string
 }
 
-// Every file and executable below belongs to this fixture; no shared gate,
-// compiler, SDK build, license catalog, network or external module is used.
+// Every path belongs to this fixture. Only the first phase delegates to
+// real Go on its local synthetic package with no external modules.
 type windowsHostBudgetFixture struct {
 	directory   string
 	tracePath   string
+	goPath      string
 	environment []string
 }
 
@@ -47,7 +48,10 @@ func newWindowsHostBudgetFixture(t *testing.T, budget string) *windowsHostBudget
 	if err != nil {
 		t.Fatal(err)
 	}
-	self := &windowsHostBudgetFixture{directory: filepath.Join(t.TempDir(), "host fixture with spaces")}
+	self := &windowsHostBudgetFixture{
+		directory: filepath.Join(t.TempDir(), "host fixture with spaces"),
+		goPath:    realGo,
+	}
 	self.tracePath = filepath.Join(self.directory, "commands")
 	for _, directory := range []string{"windows/tests", "windows/tests/insufficientbalance", "build/all/windows", "sdk", "tests", "bin", "markers"} {
 		if err := os.MkdirAll(filepath.Join(self.directory, directory), 0700); err != nil {
@@ -66,6 +70,9 @@ last=
 for argument do last=$argument; done
 if [ "$1" = test ] && [ "$PWD" = "$WINDOWS_HOST_BUDGET_ROOT/windows" ] && [ "$last" = ./tests ]; then
   [ "$WINDOWS_HOST_BUDGET_FAIL_FIRST" != 1 ] || exit 23
+  if [ -s "$WINDOWS_HOST_BUDGET_ROOT/markers/race-prepared.test" ]; then
+    : > "$WINDOWS_HOST_BUDGET_ROOT/markers/race-built-before-delegation"
+  fi
   exec "$WINDOWS_HOST_BUDGET_REAL_GO" "$@"
 fi
 exit 0
@@ -142,7 +149,9 @@ func (self *windowsHostBudgetFixture) run(t *testing.T, arguments ...string) ([]
 	command := exec.CommandContext(ctx, "bash", append([]string{filepath.Join(self.directory, "windows", "test.sh")}, arguments...)...)
 	command.Env = self.environment
 	command.WaitDelay = time.Second
+	started := time.Now()
 	output, commandErr := command.CombinedOutput()
+	elapsed := time.Since(started)
 	commandErr = errors.Join(commandErr, ctx.Err())
 	trace, err := os.ReadFile(self.tracePath)
 	if err != nil {
@@ -162,6 +171,9 @@ func (self *windowsHostBudgetFixture) run(t *testing.T, arguments ...string) ([]
 			calls = append(calls, call)
 			fields = nil
 		}
+	}
+	if commandErr != nil {
+		t.Logf("host launcher stopped after %s with observed commands %+v", elapsed.Round(time.Millisecond), calls)
 	}
 	return output, calls, commandErr
 }
@@ -257,10 +269,38 @@ func TestWindowsHostScriptPreservesCallerModesArgumentsAndDirectories(t *testing
 		{"-race", "-count=1", "-run", selector},
 	} {
 		fixture := newWindowsHostBudgetFixture(t, "30m")
+		raceMode := arguments[0] == "-race"
+		if raceMode {
+			// Compile the identical fixture before starting the shell guard. A
+			// fresh cache needs the separate race-instrumented dependencies.
+			deadline := time.Now().Add(5 * time.Minute)
+			if packageDeadline, ok := t.Deadline(); ok && packageDeadline.Before(deadline) {
+				deadline = packageDeadline
+			}
+			ctx, cancel := context.WithDeadline(t.Context(), deadline)
+			command := exec.CommandContext(ctx, fixture.goPath, "test", "-race", "-c",
+				"-o", filepath.Join(fixture.directory, "markers", "race-prepared.test"), "./tests")
+			command.Dir = filepath.Join(fixture.directory, "windows")
+			command.Env = fixture.environment
+			command.WaitDelay = time.Second
+			output, err := command.CombinedOutput()
+			err = errors.Join(err, ctx.Err())
+			cancel()
+			if err != nil {
+				t.Fatalf("compile race fixture: %v\n%s", err, output)
+			}
+		}
 		output, calls, err := fixture.run(t, arguments...)
 		if err != nil {
 			t.Fatalf("caller mode and quoted arguments %q: %v\n%s", arguments, err, output)
 		}
 		fixture.requireCensus(t, calls, arguments...)
+		_, err = os.Stat(filepath.Join(fixture.directory, "markers", "race-built-before-delegation"))
+		if raceMode && err != nil {
+			t.Fatalf("race compiler setup did not finish before guarded delegation: %v", err)
+		}
+		if !raceMode && !os.IsNotExist(err) {
+			t.Fatalf("plain Go fixture unexpectedly recorded race setup: %v", err)
+		}
 	}
 }
