@@ -15,9 +15,10 @@
 //                      server's uri once the sdk's check passed, or TAO's
 //                      address alone), Open in wallet, the amount, the address
 //                      with the coin's network warning and the memo with Copy,
-//                      the quote's countdown with Refresh quote, the sdk's
-//                      status steps, the wallets that work and Pay another
-//                      way;
+//                      the quote's countdown with Refresh quote (and Bitcoin's
+//                      confirmation note under it, or its awaiting line in
+//                      place of the expired copy), the sdk's status steps, the
+//                      wallets that work and Pay another way;
 //   CryptoAccountRows  the Account plan pane's rows: "Does not renew" under a
 //                      plan paid once in crypto, the crypto_term notice with
 //                      Renew, and "Payment in progress" for a saved invoice;
@@ -180,6 +181,9 @@ class CryptoInvoicePanel {
     std::string memo;
     winrt::Microsoft::UI::Xaml::Controls::Grid quoteRow{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock quoteText{nullptr};
+    // under the countdown: the coin's confirmation note (Bitcoin's: its
+    // payments can take up to 3 hours to confirm)
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock confirmationNote{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button refreshButton{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::ProgressRing refreshRing{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::StackPanel steps{nullptr};

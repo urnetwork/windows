@@ -12,6 +12,11 @@
 // Device::getAuthLogoutCause make. A listener still in flight while its
 // session is torn down may hold a handle released since, which reads as "".
 //
+// The Api's account sign-in listener reads its report's cause the same way
+// (AccountSignInCause, the call Api::getAccountSignInRequiredCause makes): why
+// the account's sign-in was refused while this device stays signed in, which
+// the sdk sets before those listeners run and a new sign-in clears.
+//
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
@@ -36,6 +41,10 @@ inline std::string ApiCause(uint64_t api) {
 
 inline std::string DeviceCause(uint64_t device) {
   return TakeCause(urnet_device_get_auth_logout_cause(device));
+}
+
+inline std::string AccountSignInCause(uint64_t api) {
+  return TakeCause(urnet_api_get_account_sign_in_required_cause(api));
 }
 
 }  // namespace urnw::authlogout

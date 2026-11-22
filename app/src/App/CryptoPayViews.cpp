@@ -100,8 +100,8 @@ std::wstring PaymentLabel(std::string const& key, std::string const& english) {
 }
 
 // A coin's line as the sdk hands it out (cryptopay::CoinLine: its network,
-// its warning, TAO's note), looked up as a label is; nothing for a line the
-// coin does not have (no key).
+// its warning, TAO's note, Bitcoin's two of its confirmation grace), looked up
+// as a label is; nothing for a line the coin does not have (no key).
 std::wstring LineText(cryptopay::CoinLine const& line) {
   if (line.key.empty()) return std::wstring();
   return PaymentLabel(line.key, line.english);
@@ -571,7 +571,10 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.instructions.Visibility(Visibility::Collapsed);
   root.Children().Append(state.instructions);
 
-  // 4. the quote: its countdown, or that it expired, with Refresh quote
+  // 4. the quote: its countdown, or that it expired, with Refresh quote. Under
+  // the countdown the coin's confirmation note, and in place of the expired
+  // copy the coin's awaiting line while a payment sent within the quote may
+  // still confirm (Bitcoin's grace, mmm/BTCPAY.md §16.8)
   state.quoteRow = Grid();
   state.quoteRow.ColumnSpacing(8);
   ColumnDefinition quoteColumn;
@@ -583,6 +586,13 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.quoteRow.ColumnDefinitions().Append(quoteColumn);
   state.quoteRow.ColumnDefinitions().Append(ringColumn);
   state.quoteRow.ColumnDefinitions().Append(refreshColumn);
+  // the quote's line beside its buttons, then the note across the row
+  RowDefinition lineRow;
+  lineRow.Height(GridLength{0, GridUnitType::Auto});
+  RowDefinition noteRow;
+  noteRow.Height(GridLength{0, GridUnitType::Auto});
+  state.quoteRow.RowDefinitions().Append(lineRow);
+  state.quoteRow.RowDefinitions().Append(noteRow);
   state.quoteText = MakeText(hstring{}, 14, colors::MutedBrush(), true);
   state.quoteText.VerticalAlignment(VerticalAlignment::Center);
   // the countdown changes every second: read when asked, never announced
@@ -607,6 +617,16 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   });
   Grid::SetColumn(state.refreshButton, 2);
   state.quoteRow.Children().Append(state.refreshButton);
+  // small secondary text under the countdown (Bitcoin's: its payments can take
+  // up to 3 hours to confirm, and one sent in time is credited at this price).
+  // Its own margin, not a row spacing: a coin without the note keeps the row
+  // as it was
+  state.confirmationNote = MakeText(hstring{}, 12, colors::MutedBrush(), true);
+  state.confirmationNote.Margin(Thickness{0, 4, 0, 0});
+  Grid::SetRow(state.confirmationNote, 1);
+  Grid::SetColumnSpan(state.confirmationNote, 3);
+  state.confirmationNote.Visibility(Visibility::Collapsed);
+  state.quoteRow.Children().Append(state.confirmationNote);
   state.quoteRow.Visibility(Visibility::Collapsed);
   root.Children().Append(state.quoteRow);
 
@@ -733,13 +753,21 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   state.memoText.Text(H(display.memo));
   Show(state.memoBlock, display.showMemo);
 
-  // 4. the quote
+  // 4. the quote: the countdown with the coin's confirmation note under it, the
+  // expired copy, or while a payment sent within the quote may still confirm
+  // the coin's awaiting line in its place, with no Refresh quote (Bitcoin's
+  // grace, mmm/BTCPAY.md §16.8); each of the coin's lines looked up as its
+  // labels are
   if (display.quote == cryptopay::QuoteLine::Counting) {
     state.quoteText.Text(hstring{Format("crypto_invoice_expires_in", Widen(display.countdown))});
   } else if (display.quote == cryptopay::QuoteLine::Expired) {
     state.quoteText.Text(Loc("crypto_invoice_quote_expired"));
+  } else if (display.quote == cryptopay::QuoteLine::AwaitingConfirmation) {
+    state.quoteText.Text(hstring{LineText(display.awaitingConfirmationNote)});
   }
   Show(state.quoteText, display.quote != cryptopay::QuoteLine::Hidden);
+  state.confirmationNote.Text(hstring{LineText(display.confirmationNote)});
+  Show(state.confirmationNote, !display.confirmationNote.key.empty());
   Show(state.refreshButton, display.showRefresh);
   state.refreshButton.IsEnabled(display.refreshEnabled);
   const bool refreshing = display.showRefresh && view.refreshing;

@@ -4,13 +4,17 @@
 // progress, the rows, empty, failed, unsupported and sign-in required the
 // page shows, every row's three lines and spoken lines, its device label and
 // logo, its sign-in method and short id, its country circle's colour, its
-// sign-out state, the bulk "Sign out all other sessions" button, the footer
-// notes and the confirmations.
+// sign-out state, the device sign-ins' Show more, the client groups below them
+// (each a heading with its count that opens and closes, its rows while open,
+// and their Show more), the bulk "Sign out all other sessions" button, the
+// footer notes and the confirmations.
 //
-// The controller does the fetching, polling, operation ids, retries and
-// stale-response protection; nothing here repeats any of it. It publishes a
-// ClientSessionSnapshot on its own thread, SnapshotFrom copies it into a
-// Snapshot there, and the page renders ViewFor(snapshot) on the UI thread.
+// The controller does the fetching, paging, polling, operation ids, retries,
+// stale-response protection, which session goes in which group, every count
+// and which sessions the bulk sign-out signs out; nothing here repeats any of
+// it. It publishes a ClientSessionSnapshot on its own thread, SnapshotFrom
+// copies it into a Snapshot there, and the page renders ViewFor(snapshot) on
+// the UI thread.
 //
 // Pure, for the reason ExtenderPresentation.h gives: a WinUI 3 app cannot be
 // built off Windows, so tools/sessions-tests.cpp verifies every decision on
@@ -43,7 +47,9 @@ struct LastUsed {
   std::string region;
   std::string country;
   std::string countryCode;  // lower-case ISO alpha-2, "" when unknown
-  std::string deviceType;   // android, ios, macos, windows, linux, web, cli, server, unknown
+  // the sdk's device kind (LastUsed.DeviceKind): android, ios, macos, windows,
+  // linux, web, extension (the browser extension), cli, server, unknown
+  std::string deviceType;
   std::string appVersion;   // "" when unknown
 
   bool operator==(const LastUsed&) const = default;
@@ -85,10 +91,45 @@ struct Action {
   bool operator==(const Action&) const = default;
 };
 
+// ClientSessionGroup: one kind of client's sessions, below the device
+// sign-ins, collapsed to its count until the page opens it.
+struct Group {
+  // kGroupHostedProxies, kGroupApiClients, kGroupPairedDevices or
+  // kGroupOtherClients
+  std::string kind;
+  // the group's sessions; a lower bound while the snapshot is truncated
+  int64_t count = 0;
+  // opened (SetGroupExpanded)
+  bool expanded = false;
+  // while expanded, the rows to show in the controller's order; none while
+  // collapsed
+  std::vector<Session> sessions;
+  // expanded, with rows past `sessions`: Show more (ShowMoreSessions)
+  bool hasMore = false;
+
+  bool operator==(const Group&) const = default;
+};
+
 // ClientSessionSnapshot.
 struct Snapshot {
-  // the controller's order: the current session first, then the most recent use
+  // the device sign-ins to show, in the controller's order: the current
+  // session first, then the most recent use; a session a client owns is in a
+  // group instead
   std::vector<Session> sessions;
+  // every device sign-in, those past `sessions` too; a lower bound while
+  // truncated
+  int64_t sessionCount = 0;
+  // more device sign-ins than `sessions`: Show more
+  // (ShowMoreSessions(kGroupSignIns))
+  bool sessionsHasMore = false;
+  // the client groups in the controller's order; a kind with no sessions has
+  // none
+  std::vector<Group> groups;
+  // the sessions "Sign out all other sessions" signs out: every listed one but
+  // the current session and the hosted proxies, which it keeps
+  int64_t otherSessionCount = 0;
+  // the list was longer than the controller reads: the counts are lower bounds
+  bool truncated = false;
   std::string currentSessionId;
   std::string legacyCoverage;  // "partial" while older sign-ins may be missing
   bool loaded = false;
@@ -141,7 +182,10 @@ std::optional<LastUsed> LastUsedFrom(const SdkLastUsed& lastUsed) {
   out.region = lastUsed.getRegion();
   out.country = lastUsed.getCountry();
   out.countryCode = lastUsed.getCountryCode();
-  out.deviceType = lastUsed.getDeviceType();
+  // the sdk's kind names the browser extension; a type from an sdk without it
+  // is the same for every other device
+  out.deviceType = lastUsed.getDeviceKind();
+  if (out.deviceType.empty()) out.deviceType = lastUsed.getDeviceType();
   out.appVersion = lastUsed.getAppVersion();
   return out;
 }
@@ -157,13 +201,40 @@ Session SessionFrom(const SdkSession& session) {
   return out;
 }
 
+template <typename SdkSessions>
+std::vector<Session> SessionsFrom(const SdkSessions& sessions) {
+  std::vector<Session> out;
+  if (!sessions) return out;
+  const int64_t count = sessions.len();
+  for (int64_t i = 0; i < count; ++i) out.push_back(SessionFrom(sessions.get(i)));
+  return out;
+}
+
+template <typename SdkGroup>
+Group GroupFrom(const SdkGroup& group) {
+  Group out;
+  out.kind = group.getKind();
+  out.count = group.getCount();
+  out.expanded = group.getExpanded();
+  out.sessions = SessionsFrom(group.getSessions());
+  out.hasMore = group.getHasMore();
+  return out;
+}
+
 template <typename SdkSnapshot>
 Snapshot SnapshotFrom(const SdkSnapshot& snapshot) {
   Snapshot out;
-  if (const auto sessions = snapshot.getSessions()) {
-    const int64_t count = sessions.len();
-    for (int64_t i = 0; i < count; ++i) out.sessions.push_back(SessionFrom(sessions.get(i)));
+  out.sessions = SessionsFrom(snapshot.getSessions());
+  out.sessionCount = snapshot.getSessionCount();
+  out.sessionsHasMore = snapshot.getSessionsHasMore();
+  if (const auto groups = snapshot.getGroups()) {
+    const int64_t count = groups.len();
+    for (int64_t i = 0; i < count; ++i) {
+      if (const auto group = groups.get(i)) out.groups.push_back(GroupFrom(group));
+    }
   }
+  out.otherSessionCount = snapshot.getOtherSessionCount();
+  out.truncated = snapshot.getTruncated();
   out.currentSessionId = snapshot.getCurrentSessionId();
   out.legacyCoverage = snapshot.getLegacyCoverage();
   out.loaded = snapshot.getLoaded();
@@ -192,6 +263,8 @@ constexpr const char* DeviceLabelKey(std::string_view deviceType) {
   if (deviceType == "windows") return "sessions_device_windows";
   if (deviceType == "linux") return "sessions_device_linux";
   if (deviceType == "web") return "sessions_device_web";
+  // the browser extension's own sign-in (urnet::SessionDeviceKindExtension)
+  if (deviceType == "extension") return "sessions_device_extension";
   if (deviceType == "cli") return "sessions_device_cli";
   if (deviceType == "server") return "sessions_device_server";
   return "sessions_device_unknown";
@@ -205,7 +278,8 @@ constexpr DeviceGlyph DeviceGlyphFor(std::string_view deviceType) {
   if (deviceType == "ios" || deviceType == "macos") return DeviceGlyph::Apple;
   if (deviceType == "windows") return DeviceGlyph::Windows;
   if (deviceType == "linux") return DeviceGlyph::Linux;
-  if (deviceType == "web") return DeviceGlyph::Web;
+  // the browser extension is a browser: the web logo
+  if (deviceType == "web" || deviceType == "extension") return DeviceGlyph::Web;
   if (deviceType == "cli") return DeviceGlyph::Cli;
   if (deviceType == "server") return DeviceGlyph::Server;
   return DeviceGlyph::Unknown;
@@ -273,6 +347,39 @@ inline std::string PlaceText(const LastUsed& lastUsed) {
   return JoinParts({lastUsed.city, lastUsed.region, lastUsed.country}, ", ");
 }
 
+// ---- the groups -------------------------------------------------------------
+//
+// The sdk's kinds of section (sdk ClientSessionGroup*), spelled here so this
+// header needs no sdk header; tests/sessions_test.go and the spec built
+// against urnetwork_sdk.hpp hold them to the sdk's. The device sign-ins are
+// the page's first section; the others are the client groups below them, in
+// the controller's order.
+inline constexpr const char* kGroupSignIns = "sign_ins";
+inline constexpr const char* kGroupHostedProxies = "hosted_proxies";
+inline constexpr const char* kGroupApiClients = "api_clients";
+inline constexpr const char* kGroupPairedDevices = "paired_devices";
+inline constexpr const char* kGroupOtherClients = "other_clients";
+
+// The store key of a group's heading, "Hosted proxies ({count})". A kind this
+// build does not know is another client's, as the sdk files an unknown kind
+// of client.
+constexpr const char* GroupLabelKey(std::string_view kind) {
+  if (kind == kGroupHostedProxies) return "sessions_group_hosted_proxies";
+  if (kind == kGroupApiClients) return "sessions_group_api_clients";
+  if (kind == kGroupPairedDevices) return "sessions_group_paired_devices";
+  return "sessions_group_other_clients";
+}
+
+// The store key of a group's row label: line 1's name, the sign-out's
+// accessible name and the confirmation's {device}, in place of the device
+// label, since the session is the client's own and not a device's sign-in.
+constexpr const char* GroupRowLabelKey(std::string_view kind) {
+  if (kind == kGroupHostedProxies) return "manage_devices_proxy";
+  if (kind == kGroupApiClients) return "sessions_client_api_key";
+  if (kind == kGroupPairedDevices) return "sessions_client_device";
+  return "sessions_client_other";
+}
+
 // ---- the country circle -----------------------------------------------------
 
 struct Rgb {
@@ -300,10 +407,11 @@ Rgb CircleColorFor(std::string_view countryCode, ColorHex colorHex) {
 
 // ---- the words --------------------------------------------------------------
 
-// How the page's words are made: the store's strings, the relative time and
-// the dates, all UTF-8. SessionsPage passes urnw::Localized and Format,
-// urnw::RelativeTime against its clock and the Windows dates (StatsFormat.h);
-// the tests pass English and a fixed clock.
+// How the page's words are made: the store's strings, the relative time, the
+// dates and the counts, all UTF-8. SessionsPage passes urnw::Localized and
+// Format, urnw::RelativeTime against its clock, and the Windows dates and
+// digit grouping (StatsFormat.h); the tests pass English, a fixed clock and a
+// fixed grouping.
 struct Text {
   std::function<std::string(std::string_view key)> localized;
   // a key with one placeholder
@@ -319,7 +427,18 @@ struct Text {
   // the full localized date and time, which a relative time or a date is read
   // out as (§3.1)
   std::function<std::string(int64_t unixMillis)> dateTime;
+  // a count in the user's digit grouping, "1,204"
+  std::function<std::string(int64_t count)> count;
 };
+
+// A group heading's {count}: the count in the user's digit grouping, with "+"
+// while the list was longer than the controller reads and the count is a lower
+// bound ("10,000+").
+inline std::string CountText(int64_t count, bool truncated, const Text& text) {
+  std::string out = text.count(count);
+  if (truncated) out += "+";
+  return out;
+}
 
 // ---- the view ---------------------------------------------------------------
 
@@ -344,13 +463,18 @@ constexpr const char* ActionFailedKey(bool bulk) {
   return bulk ? "sessions_sign_out_others_failed" : "sessions_action_failed";
 }
 
-// One session's row (§3).
+// One session's row (§3), a device sign-in's or, the same row, a client
+// group's.
 struct Row {
   std::string sessionId;  // the whole id: the copy and the revoke take it
   bool current = false;   // the "This session" tag, and the self sign-out body
+  // the kind of the group the row is listed in; "" for a device sign-in
+  std::string group;
   DeviceGlyph glyph = DeviceGlyph::Unknown;
   std::string countryCode;  // the circle's colour; "" is the unknown-country colour
-  std::string device;       // "Android": the row's name in the confirmation and its action
+  // "Android", or a group's row label ("Hosted proxy"): the row's name in the
+  // confirmation and its action
+  std::string device;
   std::string place;        // "" when the server knew no location
   std::string line1;        // "Android · 2026.10.8-1067"
   std::string line1Spoken;  // "Android, 2026.10.8-1067"
@@ -373,8 +497,20 @@ enum class Body {
   Unsupported,     // the server has no sessions yet: "Sessions aren't available yet."
   SignInRequired,  // "Sign in again to manage sessions." (SignInRequiredKey); the
                    // app's sign-in flow follows
-  Empty,           // loaded, and there are none: "No active sessions"
+  Empty,           // loaded, with no device sign-in and no client group: "No active sessions"
   Rows,
+};
+
+// A client group below the device sign-ins: a heading that opens and closes
+// it, its rows while it is open, and Show more under them.
+struct GroupView {
+  std::string kind;   // what SetGroupExpanded and ShowMoreSessions take
+  std::string label;  // "Hosted proxies (1,204+)": the heading, and its button's name
+  bool expanded = false;
+  std::vector<Row> rows;  // while expanded
+  bool showMore = false;  // expanded, with more rows: Show more under them
+
+  bool operator==(const GroupView&) const = default;
 };
 
 struct View {
@@ -386,9 +522,18 @@ struct View {
   bool refreshing = false;
   // a refresh failed over a loaded list: the rows stay, with the notice
   bool refreshFailed = false;
+  // the device sign-ins
   std::vector<Row> rows;
-  // "Sign out all other sessions": a current session and at least one other
+  // Show more under the device sign-ins (ShowMoreSessions(kGroupSignIns))
+  bool showMore = false;
+  // the client groups, below the device sign-ins
+  std::vector<GroupView> groups;
+  // "Sign out all other sessions": a current session, and other sessions it
+  // signs out (the controller's count, which leaves the hosted proxies out)
   bool bulkShown = false;
+  // the bulk sign-out keeps the hosted proxies listed here, and its
+  // confirmation says so
+  bool bulkKeepsProxies = false;
   ActionState bulk = ActionState::Idle;
   // under the rows: what Last used means
   bool lastUsedHelp = false;
@@ -410,17 +555,22 @@ inline std::optional<Action> ActionFor(const Snapshot& snapshot, std::string_vie
 }
 
 // One row's words (§3): line 1 the device and app version, line 2 where and
-// when it was last used, line 3 when and how it signed in and its short id.
-inline Row RowFor(const Session& session, const Snapshot& snapshot, const Text& text) {
+// when it was last used, line 3 when and how it signed in and its short id. A
+// row of the client group `group` is the same row, named for its kind of
+// client in place of the device (GroupRowLabelKey).
+inline Row RowFor(const Session& session, const Snapshot& snapshot, const Text& text,
+                  std::string_view group = {}) {
   Row row;
   row.sessionId = session.sessionId;
   row.current = IsCurrent(session, snapshot.currentSessionId);
+  row.group = std::string(group);
   row.shortId = ShortId(session.sessionId);
   row.action = ActionStateFor(ActionFor(snapshot, session.sessionId));
 
   const std::string deviceType = session.lastUsed ? session.lastUsed->deviceType : std::string();
   row.glyph = DeviceGlyphFor(deviceType);
-  row.device = text.localized(DeviceLabelKey(deviceType));
+  row.device =
+      text.localized(group.empty() ? DeviceLabelKey(deviceType) : GroupRowLabelKey(group));
   const std::string appVersion = session.lastUsed ? session.lastUsed->appVersion : std::string();
   row.line1 = JoinParts({row.device, appVersion}, kSeparator);
   row.line1Spoken = JoinParts({row.device, appVersion}, kSpokenSeparator);
@@ -478,22 +628,54 @@ inline View ViewFor(const Snapshot& snapshot, const Text& text) {
   }
   view.refreshFailed = snapshot.error.has_value();
   view.legacyNote = snapshot.legacyCoverage == "partial";
-  if (snapshot.sessions.empty()) {
+  // no device sign-in (a row on screen counts, whatever the count says) and
+  // no client group
+  if (snapshot.sessionCount == 0 && snapshot.sessions.empty() && snapshot.groups.empty()) {
     view.body = Body::Empty;
     return view;
   }
   view.body = Body::Rows;
   view.lastUsedHelp = true;
   bool current = false;
-  bool other = false;
   for (const auto& session : snapshot.sessions) {
     Row row = RowFor(session, snapshot, text);
-    (row.current ? current : other) = true;
+    if (row.current) current = true;
     view.rows.push_back(std::move(row));
   }
-  view.bulkShown = current && other;
+  view.showMore = snapshot.sessionsHasMore;
+  for (const auto& group : snapshot.groups) {
+    GroupView groupView;
+    groupView.kind = group.kind;
+    groupView.label =
+        text.format(GroupLabelKey(group.kind), CountText(group.count, snapshot.truncated, text));
+    groupView.expanded = group.expanded;
+    // a collapsed group carries no rows
+    if (group.expanded) {
+      for (const auto& session : group.sessions) {
+        groupView.rows.push_back(RowFor(session, snapshot, text, group.kind));
+      }
+      groupView.showMore = group.hasMore;
+    }
+    if (group.kind == kGroupHostedProxies) view.bulkKeepsProxies = true;
+    view.groups.push_back(std::move(groupView));
+  }
+  view.bulkShown = current && snapshot.otherSessionCount > 0;
   view.bulk = ActionStateFor(snapshot.bulkAction);
   return view;
+}
+
+// The row of `sessionId` on the page, a device sign-in or a row of an open
+// group; nullptr when it is not shown.
+inline const Row* FindRow(const View& view, std::string_view sessionId) {
+  for (const auto& row : view.rows) {
+    if (row.sessionId == sessionId) return &row;
+  }
+  for (const auto& group : view.groups) {
+    for (const auto& row : group.rows) {
+      if (row.sessionId == sessionId) return &row;
+    }
+  }
+  return nullptr;
 }
 
 // ---- the confirmations (§4) -------------------------------------------------
@@ -506,12 +688,15 @@ struct Confirmation {
 };
 
 // Every sign-out asks first, naming the session; the current one warns that
-// this app signs out with it.
+// this app signs out with it, and a hosted proxy's that the proxy stops
+// working.
 inline Confirmation ConfirmationFor(const Row& row, const Text& text) {
   Confirmation confirmation;
   confirmation.title = text.localized("sessions_confirm_title");
   if (row.current) {
     confirmation.body = text.localized("sessions_confirm_self_body");
+  } else if (row.group == kGroupHostedProxies) {
+    confirmation.body = text.localized("sessions_confirm_body_hosted_proxy");
   } else if (!row.place.empty()) {
     confirmation.body = text.format2("sessions_confirm_body", row.device, row.place);
   } else {
@@ -520,9 +705,12 @@ inline Confirmation ConfirmationFor(const Row& row, const Text& text) {
   return confirmation;
 }
 
-inline Confirmation BulkConfirmationFor(const Text& text) {
+// "Sign out all other sessions?": the body says the hosted proxies listed here
+// stay, when there are any (the controller's bulk sign-out keeps them).
+inline Confirmation BulkConfirmationFor(const View& view, const Text& text) {
   return {text.localized("sessions_confirm_others_title"),
-          text.localized("sessions_confirm_others_body")};
+          text.localized(view.bulkKeepsProxies ? "sessions_confirm_others_body_keeps_proxies"
+                                               : "sessions_confirm_others_body")};
 }
 
 // ---- the page's fence against an old controller -----------------------------

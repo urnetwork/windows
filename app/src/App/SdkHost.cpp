@@ -40,6 +40,7 @@
 #include "PeerLocation.h"
 #include "RpcSessionBlob.h"
 #include "SdkErrorId.h"
+#include "SessionLimitNotice.h"  // a sign-in the account's session cap refused
 #include "SolanaWalletPresentation.h"
 #include "Strings.h"
 #include "SystemProxy.h"
@@ -401,6 +402,7 @@ SdkHost::~SdkHost() {
   std::scoped_lock lock(mutex_);
   subs_.clear();
   apiLogoutSub_.reset();
+  apiAccountSignInSub_.reset();
 }
 
 std::string SdkHost::RandomLoopbackHostPort() {
@@ -591,6 +593,23 @@ void SdkHost::BindApiLocked() {
   apiLogoutSub_.emplace(api_->addAuthLogoutListener([this, api = api_->handle()] {
     if (!loggedIn_.load(std::memory_order_acquire) || !onAuthInvalid_) return;
     onAuthInvalid_(authlogout::ApiCause(api));
+  }));
+  // When the device's client is not of the rejected sign-in's session (one
+  // registered before sessions were tagged, say), the sdk drops only the
+  // account's credential, keeps the client and signs nothing out: it tells
+  // this Api's account sign-in listeners instead of its logout listeners, and
+  // the main window says the account needs a sign-in again (AppController::
+  // OnAccountSignInRequired, AuthLogoutNotice.h). The report's cause is read
+  // here, by the Api's handle, before the hop (AuthLogoutCause.h
+  // AccountSignInCause). On an sdk thread: the handler marshals. The sdk
+  // keeps the notice across restarts and reports it again as this listener is
+  // added, from the space's start, before this host has read whether it is
+  // signed in: the controller decides on the UI thread whether a report still
+  // applies (AccountSignInStepFor with IsLoggedIn), so none is dropped here.
+  apiAccountSignInSub_.reset();
+  apiAccountSignInSub_.emplace(api_->addAccountSignInRequiredListener([this, api = api_->handle()] {
+    if (!onAccountSignInRequired_) return;
+    onAccountSignInRequired_(authlogout::AccountSignInCause(api));
   }));
 }
 
@@ -846,8 +865,9 @@ void SdkHost::LoginWithPassword(const std::string& userAuth,
           if (done) done(r);
           return;
         }
-        if (result->error && !result->error->message.empty()) {
-          AuthResult r{false, false, result->error->message};
+        // the session cap's refusal as its token, else the server's message
+        if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+          AuthResult r{false, false, error};
           SetRegistrationAuthState(authEpoch, AuthState::Error, r.error);
           if (done) done(r);
           return;
@@ -884,8 +904,9 @@ void SdkHost::LoginWithCode(const std::string& authCode,
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
       SetRegistrationAuthState(authEpoch, AuthState::Error, r.error);
       if (done) done(r);
       return;
@@ -929,9 +950,10 @@ void SdkHost::StartLogin(const std::string& userAuth,
     if (result->user_auth && !result->user_auth->empty()) {
       routing.userAuth = *result->user_auth;  // the normalized echo
     }
-    if (result->error && !result->error->message.empty()) {
+    // the session cap's refusal as its token, else the server's message
+    if (std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
       routing.route = LoginRoute::Error;
-      routing.error = result->error->message;
+      routing.error = std::move(error);
       if (done) done(routing);
       return;
     }
@@ -1128,8 +1150,9 @@ void SdkHost::SubmitCreateNetwork(const CreateNetworkParams& params,
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
       SetRegistrationAuthState(authEpoch, AuthState::LoggedOut);  // a form error, not a session error
       if (done) done(r);
       return;
@@ -1183,9 +1206,11 @@ void SdkHost::VerifyCode(const std::string& userAuth, const std::string& code,
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
-      SetRegistrationAuthState(authEpoch, AuthState::LoggedOut);  // a wrong code, not a session error
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
+      // a wrong code or the session cap, not a session error
+      SetRegistrationAuthState(authEpoch, AuthState::LoggedOut);
       if (done) done(r);
       return;
     }
@@ -1285,9 +1310,10 @@ void SdkHost::LoginWithSeedphrase(const std::string& seedphrase,
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
       // a wrong phrase is a form error, not a session error
-      AuthResult r{false, false, result->error->message};
+      AuthResult r{false, false, error};
       SetRegistrationAuthState(authEpoch, AuthState::LoggedOut);
       if (done) done(r);
       return;
@@ -1323,8 +1349,9 @@ void SdkHost::CreateInstantAccount(std::function<void(InstantAccount)> done) {
       if (done) done(out);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      out.error = result->error->message;
+    // the session cap's refusal as its token, else the server's message
+    if (std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      out.error = std::move(error);
       if (done) done(out);
       return;
     }
@@ -1413,9 +1440,11 @@ void SdkHost::RedeemApprovedCode(const std::string& code, std::function<void(App
       if (done) done(out);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
+    // the session cap's refusal as its token (the sheet says what to do), else
+    // the server's message
+    if (std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
       out.failure = ApprovedNetwork::Failure::Refused;
-      out.error = result->error->message;
+      out.error = std::move(error);
       LogWarn("sdkhost: the server refused the approved code");
       if (done) done(out);
       return;
@@ -1858,8 +1887,13 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
         return;
       }
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
+    // Every other refusal keeps the server's message, but the account's cap of
+    // active sessions: its token, which the sign-in page shows in words
+    // (SessionLimitNotice.h). That one is not the client limit's (its prompt
+    // is empty): no device list frees a session, so nothing is kept to run
+    // again.
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
       complete(r);
       return;
     }
@@ -2653,8 +2687,9 @@ void SdkHost::AuthLoginWithSso(const std::string& provider, const std::string& i
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
       SetRegistrationAuthState(authEpoch, AuthState::LoggedOut);
       if (done) done(r);
       return;
@@ -2719,8 +2754,9 @@ void SdkHost::AuthLoginWithWallet(const std::string& address, const std::string&
       if (done) done(r);
       return;
     }
-    if (result->error && !result->error->message.empty()) {
-      AuthResult r{false, false, result->error->message};
+    // the session cap's refusal as its token, else the server's message
+    if (const std::string error = sessionlimit::SignInErrorOf(result->error); !error.empty()) {
+      AuthResult r{false, false, error};
       SetRegistrationAuthState(authEpoch, AuthState::Error, r.error);
       if (done) done(r);
       return;
@@ -9095,6 +9131,11 @@ void SdkHost::RemoveAbandonedClientLocked(const std::optional<std::string>& clie
 }
 
 // See the contract in the header.
+void SdkHost::DismissAccountSignInNotice() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (api_) api_->dismissAccountSignInNotice();
+}
+
 void SdkHost::Logout() {
   // One sign-out at a time: a click while one runs joins it (SignOutRun.h).
   // Its sign-out controls are disabled meanwhile, so this is a second sign-out

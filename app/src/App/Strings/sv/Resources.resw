@@ -1662,7 +1662,7 @@ rätt sätt</value>
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Komprimerad</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>Svårt att bestämma dig?</value>
@@ -2099,6 +2099,14 @@ rätt sätt</value>
   <data name="crypto_fine_print_yearly" xml:space="preserve">
     <value>En engångsbetalning för ett år med Pro. Den förnyas inte, och det finns ingen gratis provperiod.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>Den här kursen har gått ut. En betalning som du skickade innan den gick ut krediteras till det här priset när den har bekräftats, vilket kan ta upp till 3 timmar. Om du inte skickade någon betalning, betala på annat sätt.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Bitcoin-betalningar kan ta upp till 3 timmar att bekräftas. En betalning som skickas innan kursen går ut krediteras till det här priset.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
   </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>Skicka endast Bitcoin på Bitcoin-nätverket till den här adressen. Bitcoin som skickas på ett annat nätverk krediteras inte.</value>
@@ -4498,7 +4506,7 @@ rätt sätt</value>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Utökad</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Utgår</value>
@@ -5642,7 +5650,7 @@ skickade till dig för att verifiera din identitet.</value>
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>Värdbaserad proxy</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>Det gick inte att ta bort enheten. Försök igen.</value>
@@ -6226,8 +6234,8 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork drivs av världens största, säkraste
-och mest decentraliserade in- och utgångsprotokoll.</value>
+    <value>URnetwork drivs av ett decentraliserat in- och utgångsprotokoll
+som körs på communityns enheter i ett stort urval av länder.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7169,6 +7177,10 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Regioner</value>
     <comment>Provider list group title for regions</comment>
   </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Versionsinformation</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
+  </data>
   <data name="reliability" xml:space="preserve">
     <value>Tillförlitlighet</value>
     <comment>Call to action</comment>
@@ -7489,9 +7501,25 @@ innehåll i världen</value>
     <value>Det gick inte att logga ut den här sessionen. Försök igen.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>API-klient</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>Parkopplad enhet</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>Annan klient</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>{0} i {1} loggas ut.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>Den här värdbaserade proxyn slutar fungera. Skapa en ny för att ersätta den.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>{} loggas ut.</value>
@@ -7500,6 +7528,10 @@ innehåll i världen</value>
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>Alla andra sessioner i den här listan loggas ut. Den här sessionen förblir inloggad. Den som känner till dina inloggningsuppgifter kan fortfarande logga in igen.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>Alla andra sessioner i den här listan utom värdbaserade proxyservrar loggas ut. Den här sessionen förblir inloggad. Den som känner till dina inloggningsuppgifter kan fortfarande logga in igen.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>Logga ut alla andra sessioner?</value>
@@ -7524,6 +7556,10 @@ innehåll i världen</value>
   <data name="sessions_device_cli" xml:space="preserve">
     <value>Kommandorad</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
+  </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>Webbläsartillägg</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
   </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
@@ -7556,6 +7592,22 @@ innehåll i världen</value>
   <data name="sessions_empty" xml:space="preserve">
     <value>Inga aktiva sessioner</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>API-klienter ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>Värdbaserade proxyservrar ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>Andra klienter ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>Parkopplade enheter ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7621,13 +7673,29 @@ innehåll i världen</value>
     <value>Inloggningar från äldre appversioner visas här när de förnyas. Ändra dina inloggningsuppgifter för att avsluta alla inloggningar.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>För många aktiva sessioner. Logga ut sessioner som du inte längre använder under Konto &gt; Sessioner och försök sedan igen.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>För många aktiva sessioner. Gå till Konto &gt; Sessioner på en enhet som är inloggad på det här kontot, logga ut sessioner som du inte längre använder och försök sedan igen.</value>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>Det gick inte att läsa in sessionerna.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>Öppna Sessioner</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>Det gick inte att uppdatera. Visar den senaste listan.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>Visa fler</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>Logga in igen för att hantera sessioner.</value>

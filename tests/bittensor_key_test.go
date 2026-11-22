@@ -666,7 +666,7 @@ func TestBittensorKeyCardLeadsAndBackUpFirst(t *testing.T) {
 		"if (ok) {", "ForgetBittensorKey(networkId);", "sdk->Logout();")
 	sessions := stripComments(readAppSource(t, "SessionsPage.cpp"))
 	requireBittensorKeyOrder(t, "SessionsPage::ConfirmSignOut", bittensorKeyBody(t, "SessionsPage.cpp", sessions, "winrt::fire_and_forget SessionsPage::ConfirmSignOut("),
-		"current = row.current;", "if (current) {", "if (BittensorKeyNeedsBackup(networkId)) {", `Loc("bittensor_key_sign_out_message")`)
+		"current = row->current;", "if (current) {", "if (BittensorKeyNeedsBackup(networkId)) {", `Loc("bittensor_key_sign_out_message")`)
 
 	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
 	requireBittensorKey(t, "MainWindow::OpenEarningsKeyScreen", bittensorKeyBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::OpenEarningsKeyScreen("),

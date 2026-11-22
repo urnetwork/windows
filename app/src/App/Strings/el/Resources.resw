@@ -1662,7 +1662,7 @@
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Συμπτυγμένο</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>Προβλήματα δέσμευσης;</value>
@@ -2099,6 +2099,14 @@
   <data name="crypto_fine_print_yearly" xml:space="preserve">
     <value>Εφάπαξ πληρωμή για ένα έτος Pro. Δεν ανανεώνεται και δεν περιλαμβάνει δωρεάν δοκιμή.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>Αυτή η ισοτιμία έληξε. Μια πληρωμή που στείλατε πριν λήξει πιστώνεται σε αυτή την τιμή μόλις επιβεβαιωθεί, κάτι που μπορεί να διαρκέσει έως και 3 ώρες. Αν δεν στείλατε πληρωμή, πληρώστε με άλλον τρόπο.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Οι πληρωμές Bitcoin μπορεί να χρειαστούν έως και 3 ώρες για να επιβεβαιωθούν. Μια πληρωμή που στάλθηκε πριν λήξει η ισοτιμία πιστώνεται σε αυτή την τιμή.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
   </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>Στείλτε σε αυτή τη διεύθυνση μόνο Bitcoin στο δίκτυο Bitcoin. Τα Bitcoin που στέλνονται σε άλλο δίκτυο δεν θα πιστωθούν.</value>
@@ -4498,7 +4506,7 @@
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Αναπτυγμένο</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Λήγει</value>
@@ -5642,7 +5650,7 @@
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>Φιλοξενούμενος διακομιστής μεσολάβησης</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>Δεν ήταν δυνατή η αφαίρεση της συσκευής. Δοκιμάστε ξανά.</value>
@@ -6225,8 +6233,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>Το URnetwork τροφοδοτείται από το μεγαλύτερο, ασφαλέστερο
-και πιο αποκεντρωμένο πρωτόκολλο εισόδου και εξόδου στον κόσμο.</value>
+    <value>Το URnetwork τροφοδοτείται από ένα αποκεντρωμένο πρωτόκολλο εισόδου και εξόδου
+που τρέχει σε συσκευές της κοινότητας σε μεγάλη επιλογή χωρών.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7168,6 +7176,10 @@
     <value>Περιοχές</value>
     <comment>Provider list group title for regions</comment>
   </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Σημειώσεις έκδοσης</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
+  </data>
   <data name="reliability" xml:space="preserve">
     <value>Αξιοπιστία</value>
     <comment>Call to action</comment>
@@ -7489,9 +7501,25 @@
     <value>Δεν ήταν δυνατή η αποσύνδεση αυτής της συνεδρίας. Δοκιμάστε ξανά.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>Πελάτης API</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>Συζευγμένη συσκευή</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>Άλλος πελάτης</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>Η συνεδρία {0} ({1}) θα αποσυνδεθεί.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>Αυτός ο φιλοξενούμενος διακομιστής μεσολάβησης θα σταματήσει να λειτουργεί. Δημιουργήστε έναν νέο για να τον αντικαταστήσετε.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>Η συνεδρία {} θα αποσυνδεθεί.</value>
@@ -7500,6 +7528,10 @@
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>Όλες οι άλλες συνεδρίες αυτής της λίστας θα αποσυνδεθούν. Αυτή η συνεδρία παραμένει συνδεδεμένη. Όποιος γνωρίζει τα στοιχεία σύνδεσής σας μπορεί ακόμη να συνδεθεί ξανά.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>Όλες οι άλλες συνεδρίες αυτής της λίστας θα αποσυνδεθούν, εκτός από τους φιλοξενούμενους διακομιστές μεσολάβησης. Αυτή η συνεδρία παραμένει συνδεδεμένη. Όποιος γνωρίζει τα στοιχεία σύνδεσής σας μπορεί ακόμη να συνδεθεί ξανά.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>Αποσύνδεση όλων των άλλων συνεδριών;</value>
@@ -7524,6 +7556,10 @@
   <data name="sessions_device_cli" xml:space="preserve">
     <value>Γραμμή εντολών</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
+  </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>Επέκταση προγράμματος περιήγησης</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
   </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
@@ -7556,6 +7592,22 @@
   <data name="sessions_empty" xml:space="preserve">
     <value>Δεν υπάρχουν ενεργές συνεδρίες</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>Πελάτες API ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>Φιλοξενούμενοι διακομιστές μεσολάβησης ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>Άλλοι πελάτες ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>Συζευγμένες συσκευές ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7621,13 +7673,29 @@
     <value>Οι συνδέσεις από παλαιότερες εκδόσεις της εφαρμογής εμφανίζονται εδώ μόλις ανανεωθούν. Για να τερματίσετε κάθε σύνδεση, αλλάξτε τα στοιχεία σύνδεσής σας.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>Υπάρχουν πάρα πολλές ενεργές συνεδρίες. Αποσυνδέστε τις συνεδρίες που δεν χρησιμοποιείτε πια από το Λογαριασμός &gt; Συνεδρίες και δοκιμάστε ξανά.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>Υπάρχουν πάρα πολλές ενεργές συνεδρίες. Σε μια συσκευή συνδεδεμένη σε αυτόν τον λογαριασμό, μεταβείτε στο Λογαριασμός &gt; Συνεδρίες, αποσυνδέστε τις συνεδρίες που δεν χρησιμοποιείτε πια και δοκιμάστε ξανά.</value>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>Δεν ήταν δυνατή η φόρτωση των συνεδριών.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>Άνοιγμα συνεδριών</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>Δεν ήταν δυνατή η ανανέωση. Εμφανίζεται η τελευταία λίστα.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>Εμφάνιση περισσότερων</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>Συνδεθείτε ξανά για να διαχειριστείτε τις συνεδρίες.</value>

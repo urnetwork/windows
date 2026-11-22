@@ -774,11 +774,31 @@
                 <Border Height="8" />
             </muxc:NavigationView.PaneFooter>
 
+            <!-- The account sign-in notice above every destination, then the
+                 destinations. The account's own sign-in was refused while this
+                 device stays signed in and connected (the sdk's
+                 AccountSignInRequired, AuthLogoutNotice.h): the account's pages
+                 need a sign-in again, whichever destination is on screen, and
+                 nothing here signs out or disconnects. Message, IsOpen and
+                 Visibility are written by MainWindow::ApplyAccountSignInNotice
+                 (one writer); its close button is its dismissal, and a sign-in
+                 or a sign-out closes it. Collapsed while it says nothing, so it
+                 keeps no gap. Full width with no margin, as ModeNoticeBar.
+                 HomeContentRoot keeps its indent inside the shell. -->
+            <Grid x:Name="HomeContentShell">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <muxc:InfoBar x:Name="AccountSignInNotice" IsOpen="False" IsClosable="True"
+                              Visibility="Collapsed" Severity="Warning" Margin="0"
+                              FontFamily="{StaticResource UrBodyFontFamily}"
+                              AutomationProperties.AutomationId="acceptance.account-sign-in.notice" />
             <!-- NO PAGE MARGIN. This Grid used to be Margin="24", which is where
                  every destination's gutter came from. Home is now a full-bleed
                  pane layout and must touch the window edges; the six card-model
                  destinations carry the 24 themselves until they are rebuilt. -->
-            <Grid x:Name="HomeContentRoot">
+            <Grid x:Name="HomeContentRoot" Grid.Row="1">
                 <!-- ==== HOME: THE PANE SHELL (R3) ==========================
                      Owner verdict on two rounds of card polish: "the UI has
                      barely even changed... Things need to fit in a fill, I guess
@@ -4109,6 +4129,7 @@
                     </Grid>
                 </Grid>
             </Grid>
+            </Grid> <!-- HomeContentShell -->
         </muxc:NavigationView>
 
         <!-- The standing reason this app is not carrying traffic (rpc-only, or

@@ -302,6 +302,14 @@ void AppController::Start() {
   sdk_.SetAuthInvalidHandler([this](std::string cause) {
     OnUi([this, cause] { OnAuthInvalid(cause); });
   });
+  // The server refused the account's own sign-in while this device's client
+  // stays signed in (the sdk kept the client and signed nothing out): the main
+  // window says the account needs a sign-in again, in the words the cause its
+  // listener read calls for, and nothing signs out or disconnects; the app
+  // signs out only when that was its own session, signed out from Sessions.
+  sdk_.SetAccountSignInRequiredHandler([this](std::string cause) {
+    OnUi([this, cause] { OnAccountSignInRequired(cause); });
+  });
   sdk_.SetJwtRefreshedHandler([this] {
     OnUi([this] { balance_.OnJwtRefreshed(); });
   });
@@ -569,11 +577,58 @@ void AppController::OnAuthInvalid(const std::string& cause) {
   sdk_.Logout();
 }
 
+void AppController::OnAccountSignInRequired(const std::string& cause) {
+  switch (authlogout::AccountSignInStepFor(sdk_.IsLoggedIn(), ownSessionSignOut_)) {
+    case authlogout::AccountSignInStep::None:
+      return;
+    case authlogout::AccountSignInStep::SignOut:
+      // as the confirmation said: "This app will be signed out", and no notice
+      LogInfo("app: this app signed its own session out from Sessions; signing out");
+      ownSessionSignOut_ = false;
+      sdk_.Logout();
+      return;
+    case authlogout::AccountSignInStep::Notice:
+      // nothing signs out or disconnects: the window says the account needs a
+      // sign-in again, until its close, or the next sign-in or sign-out
+      LogInfo("app: the server refused the account's sign-in (cause \"{}\"); this device stays "
+              "signed in",
+              cause);
+      SetAccountSignInNotice(authlogout::AccountSignInNoticeFor(cause));
+      return;
+  }
+}
+
+void AppController::SetAccountSignInNotice(authlogout::AccountSignInNotice notice) {
+  if (notice == accountSignInNotice_) return;
+  accountSignInNotice_ = notice;
+  if (!windowVisible_ || !window_) return;  // resynced on show
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    self->SetAccountSignInNotice(accountSignInNotice_);
+}
+
+void AppController::DismissAccountSignInNotice() {
+  LogInfo("app: account sign-in notice -> closed");
+  SetAccountSignInNotice(authlogout::AccountSignInNotice::None);
+  // the sdk keeps the notice across restarts until the close ends it there
+  sdk_.DismissAccountSignInNotice();
+}
+
 void AppController::OnAuthState(AuthState state, const std::string& error) {
   const bool wasLoggedIn = (authState_ == AuthState::LoggedIn);
   authState_ = state;
   authError_ = error;
   authErrorUndelivered_ = !error.empty();
+  // a sign-in or a sign-out ends the Sessions page's sign-out of this session
+  if (state == AuthState::LoggedIn || state == AuthState::LoggedOut) {
+    ownSessionSignOut_ = false;
+  }
+  // and the account sign-in notice: a sign-in starting (every one pushes
+  // Authenticating first) or a sign-out. Not LoggedIn: a start from the stored
+  // sign-in reports LoggedIn too, and the sdk reports the notice it keeps
+  // across restarts again then, which LoggedIn would wipe
+  if (state == AuthState::Authenticating || state == AuthState::LoggedOut) {
+    SetAccountSignInNotice(authlogout::AccountSignInNotice::None);
+  }
   // A browser approval is a sign-in this app started and waits on. Any OTHER sign-in
   // starting (every one pushes Authenticating first) or succeeding, and a sign-out, ends
   // it, so a late answer from the browser is a stray (UrIoApproval.h). The approval's own
@@ -1581,6 +1636,8 @@ void AppController::ReconcileWindowPresentation() {
     self->SetClientLimitNotice(clientLimitNotice_);
     // and the Pro features notice, which the sdk may have posted meanwhile
     self->SetProFeaturesNotice(proFeaturesPrompt_);
+    // and the account sign-in notice, for a refusal that came while hidden
+    self->SetAccountSignInNotice(accountSignInNotice_);
     sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     // a tap the tray holds, made while the window was hidden

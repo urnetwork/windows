@@ -24,6 +24,7 @@
 #include "PageContext.h"
 #include "Paths.h"
 #include "ReferralShare.h"
+#include "SessionLimitNotice.h"  // a refused sign-in's retry, in the device list
 #include "StatsFormat.h"
 #include "Top200Binding.h"
 #include "UrColors.h"
@@ -446,6 +447,19 @@ MainWindow::MainWindow() {
     ProFeaturesNotice().Content(actions);
   }
 
+  // The account sign-in notice (AuthLogoutNotice.h): the account's own sign-in
+  // was refused while this device stays signed in and connected. Its close
+  // button is its dismissal: closed, it takes no room above the destinations,
+  // and AppController forgets it until the next refusal. A close the writer
+  // makes (a sign-in, a sign-out) dismisses nothing more.
+  AccountSignInNotice().Closed(
+      [](Microsoft::UI::Xaml::Controls::InfoBar const& sender,
+         Microsoft::UI::Xaml::Controls::InfoBarClosedEventArgs const& args) {
+        sender.Visibility(Visibility::Collapsed);
+        if (args.Reason() != Microsoft::UI::Xaml::Controls::InfoBarCloseReason::CloseButton) return;
+        urnw::App().DismissAccountSignInNotice();
+      });
+
   // The service-setup banner's one click (beta spec §3): a single elevated
   // `urnetworkd install`, whatever the banner currently says — package B made
   // the verb idempotent and starting, so "Set up", "Start" and "Update" are
@@ -778,9 +792,10 @@ void MainWindow::ApplyBreakpoint() {
   // by 172dip. A pane gate read on the window opened pane C with the same
   // pixel the nav took - at 1008 the activity star pane dropped from ~245dip
   // to ~76dip precisely as the window grew (the documented inversion).
-  // HomeContentRoot is the nav's content host, so its width is the window
-  // minus whatever the nav currently docks, in every nav mode, and a gate
-  // read on it can never open a pane with the nav's pixel.
+  // HomeContentRoot fills the nav's content host (HomeContentShell, whose one
+  // column it shares with the account sign-in notice above it), so its width
+  // is the window minus whatever the nav currently docks, in every nav mode,
+  // and a gate read on it can never open a pane with the nav's pixel.
   const double content = HomeContentRoot().ActualWidth();
   // Zero is the login root (HomeNav collapsed): there is no pane layout to
   // decide. Home's first show re-fires through HomeContentRoot's own
@@ -2812,6 +2827,31 @@ void MainWindow::ApplyProFeaturesNotice() {
   bar.IsOpen(true);
 }
 
+// ---- the account sign-in notice (AuthLogoutNotice.h) ----------------------------
+
+void MainWindow::SetAccountSignInNotice(urnw::authlogout::AccountSignInNotice notice) {
+  if (notice == accountSignInNotice_) return;
+  accountSignInNotice_ = notice;
+  ApplyAccountSignInNotice();
+}
+
+void MainWindow::ApplyAccountSignInNotice() {
+  auto bar = AccountSignInNotice();
+  const char* lead = urnw::authlogout::AccountSignInLeadKey(accountSignInNotice_);
+  const char* line = urnw::authlogout::AccountSignInLineKey(accountSignInNotice_);
+  if (!*line) {
+    bar.IsOpen(false);
+    // a closed InfoBar still measures its margin: no gap above the destinations
+    bar.Visibility(Visibility::Collapsed);
+    return;
+  }
+  // "This session was signed out from another device." ahead of "Sign in
+  // again to manage sessions." only when the server confirmed it
+  bar.Message(*lead ? Loc(lead) + L" " + Loc(line) : Loc(line));
+  bar.Visibility(Visibility::Visible);
+  bar.IsOpen(true);
+}
+
 winrt::fire_and_forget MainWindow::ShowManageDevicesSheet(bool forSignIn, hstring message) {
   if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
   auto self = get_strong();
@@ -2837,8 +2877,11 @@ winrt::fire_and_forget MainWindow::ShowManageDevicesSheet(bool forSignIn, hstrin
 void MainWindow::OfferSignInManageDevices(std::string const& error) {
   const char* key = urnw::clientlimit::SignInRefusalMessageKey(error);
   if (manageDevicesSheet_ && manageDevicesSheet_->ForSignIn()) {
-    // a retry of the refused sign-in answered: what it said, above the list
-    manageDevicesSheet_->SetMessage(key ? Loc(key) : hstring{urnw::Widen(error)});
+    // a retry of the refused sign-in answered: what it said, above the list,
+    // in words for either refusal token (the account's session cap can refuse
+    // the retry too, SessionLimitNotice.h), never the token
+    const char* words = urnw::sessionlimit::SignInRefusalKey(error);
+    manageDevicesSheet_->SetMessage(words ? Loc(words) : hstring{urnw::Widen(error)});
     return;
   }
   // The network's client limit refused the sign-in: the device list, where a

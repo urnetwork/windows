@@ -5,15 +5,18 @@
 // sdk, the plan a coin buys), the marks' svg reading, the invoice's display
 // for every state of the sdk's controller and for every coin, with the sdk's
 // answers for the coin as the view carries them (its lines, its payment link,
-// its memo, its steps), the quote countdown, the gate in front of every
-// payment uri, the QR's layout for real payment uris, the "Payment in
-// progress" row, and a crypto year's plan rows (the notice's date, "Does not
-// renew"). The rules the sdk owns (urnet::cryptoPaymentTabs,
-// cryptoPaymentTabCoin, paymentMethodAllowsPlan, checkCryptoPaymentUri,
-// cryptoPaymentQrText, cryptoAssetLinesFor, cryptoPaymentShowsMemo,
-// cryptoPaymentSteps, cryptoPaymentEventProduct, cryptoTermNoticeDue, the
-// labels and the event stores) are the sdk's own tests', which replay the
-// shared vectors; the gate's use of the uri check is pinned here with a fake.
+// its memo, its steps), the quote countdown and Bitcoin's confirmation grace
+// (its note with the countdown, and its awaiting line in place of the expired
+// copy: mmm/BTCPAY.md §16.8), the gate in front of every payment uri, the QR's
+// layout for real payment uris, the "Payment in progress" row, and a crypto
+// year's plan rows (the notice's date, "Does not renew"). The rules the sdk
+// owns (urnet::cryptoPaymentTabs, cryptoPaymentTabCoin,
+// paymentMethodAllowsPlan, checkCryptoPaymentUri, cryptoPaymentQrText,
+// cryptoAssetLinesFor, cryptoPaymentShowsMemo, cryptoPaymentSteps,
+// cryptoPaymentEventProduct, cryptoTermNoticeDue, the labels and the event
+// stores, and when an invoice awaits a confirmation) are the sdk's own tests',
+// which replay the shared vectors; the gate's use of the uri check is pinned
+// here with a fake.
 //
 //   c++ -std=c++20 -Wall -Wextra -Werror -I ../src/App -I ../third_party/qrcodegen crypto-pay-tests.cpp ../third_party/qrcodegen/qrcodegen.cpp -o /tmp/crypto-pay-tests && /tmp/crypto-pay-tests
 //
@@ -99,6 +102,7 @@ std::string Quote(QuoteLine line) {
     case QuoteLine::Hidden: return "hidden";
     case QuoteLine::Counting: return "counting";
     case QuoteLine::Expired: return "expired";
+    case QuoteLine::AwaitingConfirmation: return "awaiting";
   }
   return "?";
 }
@@ -871,6 +875,124 @@ void Display() {
     Check(!display.showMemo, "a memo the sdk does not show stays hidden, whatever the state says");
   }
 
+  // Bitcoin's confirmation grace (mmm/BTCPAY.md §16.8). The server sees a
+  // Bitcoin payment only once it is mined, so it credits one sent within the
+  // quote at its price while it is mined within 3 hours of the expiry, keeps
+  // the invoice pending through that grace, and refuses a requote in it. While
+  // payable the countdown carries the coin's confirmation note; past the
+  // countdown, while the sdk says a payment sent in time may still confirm
+  // (awaiting_confirmation), the coin's awaiting line takes the place of the
+  // expired copy, with no Refresh quote and nothing to send, and the steps and
+  // Pay another way stay. Once the grace is over it is expired as any coin's.
+  {
+    // a coin without a grace has neither line
+    display = DisplayFor(MoneroInvoice(), true);
+    Check(display.confirmationNote.key.empty() && display.awaitingConfirmationNote.key.empty(),
+          "Monero: no confirmation note with its countdown");
+
+    const CoinLine confirmationNote{"crypto_invoice_bitcoin_confirmation_time",
+                                    "Bitcoin payments can take up to 3 hours to confirm. A payment sent "
+                                    "before the quote expires is credited at this price."};
+    const CoinLine awaitingNote{"crypto_invoice_bitcoin_awaiting_confirmation",
+                                "This quote expired. A payment you sent before it expired is credited at "
+                                "this price once it confirms, which can take up to 3 hours. If you didn't "
+                                "send one, pay another way."};
+    CryptoInvoiceView btc = MoneroInvoice();
+    btc.asset = kAssetBtc;
+    btc.ticker = "BTC";
+    btc.amount = "0.00054622";
+    btc.address = "bc1qsample";
+    btc.uri = "bitcoin:bc1qsample?amount=0.00054622";
+    btc.qrText = btc.uri;
+    btc.lines.networkLine = {"crypto_network_bitcoin", "Bitcoin network"};
+    btc.lines.networkWarning = {"crypto_invoice_bitcoin_network_only",
+                                "Send only Bitcoin on the Bitcoin network."};
+    btc.lines.confirmationNote = confirmationNote;
+    btc.lines.awaitingConfirmationNote = awaitingNote;
+
+    // payable: the countdown, and the note with it
+    display = DisplayFor(btc, true);
+    CheckEq("counting", Quote(display.quote), "Bitcoin payable: the countdown");
+    CheckEq("29:59", display.countdown, "Bitcoin payable: m:ss");
+    Check(display.confirmationNote == confirmationNote,
+          "Bitcoin payable: its confirmation note with the countdown, key and English");
+    Check(display.awaitingConfirmationNote.key.empty(), "Bitcoin payable: no awaiting line");
+    Check(display.showAmount && display.showQr && display.showOpenWallet && display.showAddress &&
+              display.showNetworkWarning && display.showWallets,
+          "Bitcoin payable: everything to pay with, as any coin with a link");
+    Check(display.showRefresh && display.refreshEnabled && display.showPayAnotherWay,
+          "Bitcoin payable: Refresh quote, or another way");
+
+    // past the countdown, in the grace: awaiting, not expired
+    btc.secondsLeft = 0;
+    btc.awaitingConfirmation = true;  // the sdk's: open, pending, at zero, the grace not over
+    Check(AwaitingConfirmation(btc) && !QuoteExpired(btc), "Bitcoin at zero in its grace: awaiting, not expired");
+    display = DisplayFor(btc, true);
+    CheckEq("awaiting", Quote(display.quote), "Bitcoin awaiting: the awaiting line, not the expired one");
+    Check(display.awaitingConfirmationNote == awaitingNote,
+          "Bitcoin awaiting: in the coin's own words, key and English");
+    Check(display.countdown.empty() && display.confirmationNote.key.empty(),
+          "Bitcoin awaiting: no countdown, and no confirmation note under it");
+    Check(!display.showRefresh && !display.refreshEnabled,
+          "Bitcoin awaiting: no Refresh quote, which the server refuses in the grace");
+    Check(!display.showAmount && !display.showQr && !display.showOpenWallet && !display.showAddress &&
+              !display.showMemo && !display.showNetworkWarning && !display.showByHandLine &&
+              !display.showWallets,
+          "Bitcoin awaiting: nothing to send, as expired");
+    Check(display.showSteps, "Bitcoin awaiting: the steps, as for any pending invoice");
+    CheckEq("pending=current,seen=upcoming,confirming=upcoming 0/1,paid=upcoming", Steps(display.steps),
+            "Bitcoin awaiting: waiting for the payment, as the sdk draws it");
+    CheckEq("crypto_status_waiting", display.statusKey, "Bitcoin awaiting: waiting for your payment");
+    Check(display.showPayAnotherWay, "Bitcoin awaiting: another way stays open");
+    Check(!display.busy && !display.review && !display.paid && !display.showUnavailable &&
+              !display.showRefusal,
+          "Bitcoin awaiting: not loading, and no failure");
+
+    // a coin with a grace but no awaiting line (none today): nothing in place
+    // of the expired copy, and still no Refresh quote
+    {
+      CryptoInvoiceView bare = btc;
+      bare.lines.awaitingConfirmationNote = CoinLine{};
+      display = DisplayFor(bare, true);
+      CheckEq("hidden", Quote(display.quote), "a grace without its line: no quote line");
+      Check(!display.showRefresh && display.showPayAnotherWay, "a grace without its line: still no Refresh quote");
+    }
+
+    // the grace over (the sdk says so): expired as any coin's, before the
+    // server's expired and after it
+    btc.awaitingConfirmation = false;
+    Check(!AwaitingConfirmation(btc) && QuoteExpired(btc), "Bitcoin past its grace: expired");
+    display = DisplayFor(btc, true);
+    CheckEq("expired", Quote(display.quote), "Bitcoin past its grace: the expired line");
+    Check(display.awaitingConfirmationNote.key.empty() && display.confirmationNote.key.empty(),
+          "Bitcoin past its grace: neither of its lines");
+    Check(display.showRefresh && display.refreshEnabled && display.showPayAnotherWay,
+          "Bitcoin past its grace: Refresh quote, or another way");
+    Check(!display.showSteps, "Bitcoin past its grace: no steps while the quote is gone");
+    btc.status = kStatusExpired;
+    btc.awaitingConfirmation = true;  // the sdk sets it for a pending invoice alone
+    Check(!AwaitingConfirmation(btc), "the server's expired never awaits");
+    display = DisplayFor(btc, true);
+    CheckEq("expired", Quote(display.quote), "Bitcoin: the server's expired, whatever the flag says");
+    Check(display.showRefresh && display.awaitingConfirmationNote.key.empty(), "and Refresh quote");
+
+    // the flag stands for an open invoice pending at zero, and for nothing else
+    btc.status = kStatusPending;
+    btc.secondsLeft = 120;
+    Check(!AwaitingConfirmation(btc), "a quote still counting never awaits");
+    display = DisplayFor(btc, true);
+    CheckEq("counting", Quote(display.quote), "counting, whatever the flag says");
+    Check(display.confirmationNote == confirmationNote, "with the confirmation note");
+    btc.secondsLeft = 0;
+    btc.status = kStatusSeen;
+    Check(!AwaitingConfirmation(btc), "money seen is the top-up's, not the wait's");
+    btc.status = "";
+    Check(!AwaitingConfirmation(btc), "nor is a resumed invoice before its first status");
+    btc.status = kStatusPending;
+    btc.phase = kPhasePaid;
+    Check(!AwaitingConfirmation(btc), "nor a paid one");
+  }
+
   // starting: busy
   view = CryptoInvoiceView{};
   view.phase = kPhaseStarting;
@@ -956,6 +1078,18 @@ void PaymentInProgress() {
   CheckEq("crypto_status_review", InProgressNoteKey(view), "in review");
   view.status = kStatusPaid;
   CheckEq("", InProgressNoteKey(view), "no row once paid");
+
+  // Bitcoin's grace (mmm/BTCPAY.md §16.8): past the countdown a payment sent
+  // within the quote may still confirm, so the quote has not run out for the
+  // row either; once the grace is over it has
+  view = MoneroInvoice();
+  view.asset = kAssetBtc;
+  view.secondsLeft = 0;
+  view.awaitingConfirmation = true;
+  Check(ShowsPaymentInProgress(view), "Bitcoin in its grace: a payment in progress");
+  CheckEq("crypto_status_waiting", InProgressNoteKey(view), "Bitcoin in its grace: waiting, never the expired line");
+  view.awaitingConfirmation = false;
+  CheckEq("crypto_invoice_quote_expired", InProgressNoteKey(view), "Bitcoin past its grace: the quote ran out");
 }
 
 void Times() {
@@ -1135,6 +1269,9 @@ void Sdk() {
   CheckEq("Temporarily unavailable", view.errorMessage, "sdk: the error message");
   Check(view.lines == CoinLines{} && !view.noPaymentLink && !view.showsMemo,
         "sdk: the state alone carries none of the sdk's answers (ViewFromSdk adds them)");
+  Check(!view.awaitingConfirmation, "sdk: not awaiting a confirmation");
+  state.awaiting_confirmation = true;
+  Check(StateFromSdk(state).awaitingConfirmation, "sdk: awaiting a confirmation (Bitcoin's grace)");
 
   // the state as the controller hands it over (json-tagged): SOL paid at once,
   // the confirming step not listed (no count required), every step done
@@ -1149,6 +1286,13 @@ void Sdk() {
     "phase": "open", "asset": "xmr", "status": "", "steps": []
   })").get<urnet::CryptoInvoiceState>();
   Check(StateFromSdk(unpolled).steps.empty(), "sdk: no steps before the first status");
+  Check(!StateFromSdk(unpolled).awaitingConfirmation, "sdk: a state without awaiting_confirmation is not awaiting");
+  // Bitcoin past its countdown in its confirmation grace (mmm/BTCPAY.md §16.8)
+  const urnet::CryptoInvoiceState awaiting = nlohmann::json::parse(R"({
+    "phase": "open", "asset": "btc", "status": "pending", "seconds_left": 0,
+    "confirmation_grace_seconds": 10800, "awaiting_confirmation": true, "steps": []
+  })").get<urnet::CryptoInvoiceState>();
+  Check(StateFromSdk(awaiting).awaitingConfirmation, "sdk: awaiting_confirmation from the json");
 
   // a coin's lines (urnet::cryptoAssetLinesFor's answer)
   const urnet::CryptoAssetLines taoLines = nlohmann::json::parse(R"({
@@ -1174,6 +1318,30 @@ void Sdk() {
   Check(zec.networkLine.key == "crypto_network_zcash" && zec.networkWarning.key.empty() &&
             zec.noPaymentLinkNote.key.empty(),
         "sdk: a line the coin does not have has no key");
+  Check(tao.confirmationNote.key.empty() && tao.awaitingConfirmationNote.key.empty() &&
+            zec.confirmationNote.key.empty() && zec.awaitingConfirmationNote.key.empty(),
+        "sdk: a coin without a confirmation grace has neither of its lines");
+  // Bitcoin's, with the two of its confirmation grace (mmm/BTCPAY.md §16.8)
+  const urnet::CryptoAssetLines btcLines = nlohmann::json::parse(R"({
+    "network_line": "Bitcoin network", "network_line_key": "crypto_network_bitcoin",
+    "network_warning": "Send only Bitcoin on the Bitcoin network to this address.",
+    "network_warning_key": "crypto_invoice_bitcoin_network_only",
+    "no_payment_link_note": "", "no_payment_link_note_key": "",
+    "confirmation_note": "Bitcoin payments can take up to 3 hours to confirm.",
+    "confirmation_note_key": "crypto_invoice_bitcoin_confirmation_time",
+    "awaiting_confirmation_note": "This quote expired.",
+    "awaiting_confirmation_note_key": "crypto_invoice_bitcoin_awaiting_confirmation"
+  })").get<urnet::CryptoAssetLines>();
+  const CoinLines bitcoin = LinesFromSdk(btcLines);
+  CheckEq("crypto_invoice_bitcoin_confirmation_time", bitcoin.confirmationNote.key,
+          "sdk: Bitcoin's confirmation note");
+  CheckEq("Bitcoin payments can take up to 3 hours to confirm.", bitcoin.confirmationNote.english,
+          "sdk: the note's English");
+  CheckEq("crypto_invoice_bitcoin_awaiting_confirmation", bitcoin.awaitingConfirmationNote.key,
+          "sdk: Bitcoin's awaiting line");
+  CheckEq("This quote expired.", bitcoin.awaitingConfirmationNote.english, "sdk: the awaiting line's English");
+  Check(bitcoin.networkWarning.key == "crypto_invoice_bitcoin_network_only" && bitcoin.noPaymentLinkNote.key.empty(),
+        "sdk: and its other lines as before");
 
   // the balance's coins, the ones it cannot quote now, and its term, from the
   // server's json

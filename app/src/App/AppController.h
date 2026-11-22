@@ -117,6 +117,15 @@ class AppController {
   // (AuthLogoutNotice.h): the window takes it whenever it shows that page,
   // so a window opened after the sign-out still says it. UI thread.
   authlogout::Notice TakeSignedOutNotice() { return signedOutNotice_.Take(); }
+  // The Sessions page is signing this app's own session out (a confirmed
+  // sign-out of the current session): the app's sign-out follows however the
+  // sdk reports the rejection (OnAccountSignInRequired), with no notice. UI
+  // thread; a sign-in or a sign-out forgets it.
+  void NoteOwnSessionSignOut() { ownSessionSignOut_ = true; }
+  // The main window's account sign-in notice was closed (its close button):
+  // it does not come back on the next show, only for the next refusal. UI
+  // thread.
+  void DismissAccountSignInNotice();
 
   // ---- a sign-in approved on a web page (UrIoApproval.h) ---------------------
   // "Continue in browser" in the browser sign-in sheet. The attempt lives here, not
@@ -194,6 +203,16 @@ class AppController {
   // once for the Api's and the device's reports of one rejection, and none
   // for a report behind a sign-out already done (AuthLogoutNotice.h).
   void OnAuthInvalid(const std::string& cause);
+  // The server refused the account's own sign-in while this device's client
+  // stays signed in (SdkHost's account sign-in handler, marshalled here with
+  // the cause its listener read): the main window's notice, in that cause's
+  // words, and nothing signs out or disconnects; but the app signs out, with
+  // no notice, for its own session signed out from Sessions
+  // (AuthLogoutNotice.h AccountSignInStepFor, AccountSignInNoticeFor).
+  void OnAccountSignInRequired(const std::string& cause);
+  // The account sign-in notice's one writer: kept here and pushed to the
+  // window while it presents, resynced on show (ReconcileWindowPresentation).
+  void SetAccountSignInNotice(authlogout::AccountSignInNotice notice);
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
   // The device's transport delay as SdkHost pushed it (nullopt: unavailable):
@@ -353,6 +372,11 @@ class AppController {
   bool authErrorUndelivered_ = false;
   // the one sign-out a rejection takes, and the sign-in page's notice for it
   authlogout::SignedOutNotice signedOutNotice_;
+  // NoteOwnSessionSignOut, until a sign-in or a sign-out
+  bool ownSessionSignOut_ = false;
+  // what the main window's account sign-in notice says, None for nothing:
+  // until its close, or the next sign-in or sign-out
+  authlogout::AccountSignInNotice accountSignInNotice_ = authlogout::AccountSignInNotice::None;
   bool connected_ = false;
   // #27: the last aggregate connection health a stats push carried, so the
   // tray can say Evaluating/Degraded instead of a false Connected. nullopt is

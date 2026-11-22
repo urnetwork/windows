@@ -311,6 +311,7 @@ client_limit_upgrade_message
 client_statistics
 close
 code
+collapsed
 community_edition
 conn_blocked_kill_switch
 conn_degraded
@@ -389,6 +390,8 @@ create_instant_account
 created_auth_codes_expire_after_5_minutes
 crypto_does_not_renew
 crypto_fine_print_yearly
+crypto_invoice_bitcoin_awaiting_confirmation
+crypto_invoice_bitcoin_confirmation_time
 crypto_invoice_bitcoin_network_only
 crypto_invoice_copied
 crypto_invoice_copy
@@ -720,6 +723,7 @@ error_sending_feedback
 error_sending_password_reset_link
 error_sending_verification_code
 error_updating_device_name
+expanded
 export_logs
 extender
 extender_activation_failed
@@ -1143,6 +1147,7 @@ referral_toast_joined
 referrals
 refresh
 regions
+release_notes
 reliability
 reliability_settings
 reliability_weight
@@ -1190,15 +1195,21 @@ send_product_updates
 send_reset_link_2
 send_tao_to_mirror
 sessions_action_failed
+sessions_client_api_key
+sessions_client_device
+sessions_client_other
 sessions_confirm_body
+sessions_confirm_body_hosted_proxy
 sessions_confirm_body_no_place
 sessions_confirm_others_body
+sessions_confirm_others_body_keeps_proxies
 sessions_confirm_others_title
 sessions_confirm_self_body
 sessions_confirm_title
 sessions_copy_id
 sessions_device_android
 sessions_device_cli
+sessions_device_extension
 sessions_device_ios
 sessions_device_linux
 sessions_device_macos
@@ -1207,6 +1218,10 @@ sessions_device_unknown
 sessions_device_web
 sessions_device_windows
 sessions_empty
+sessions_group_api_clients
+sessions_group_hosted_proxies
+sessions_group_other_clients
+sessions_group_paired_devices
 sessions_id
 sessions_kind_api_key_client
 sessions_kind_apple
@@ -1223,8 +1238,11 @@ sessions_last_use_unavailable
 sessions_last_used
 sessions_last_used_help
 sessions_legacy_note
+sessions_limit_reached
+sessions_limit_reached_sign_in
 sessions_load_failed
 sessions_refresh_failed
+sessions_show_more
 sessions_sign_in_required
 sessions_sign_out_accessibility
 sessions_sign_out_all_others

@@ -1734,7 +1734,7 @@ de la manera correcta</value>
   </data>
   <data name="collapsed" xml:space="preserve">
     <value>Contraído</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is hidden. The counterpart of expanded. Windows: the Sessions page's group headings, read as the heading's item status.</comment>
   </data>
   <data name="commitment_issues" xml:space="preserve">
     <value>¿Problemas de compromiso?</value>
@@ -2171,6 +2171,14 @@ de la manera correcta</value>
   <data name="crypto_fine_print_yearly" xml:space="preserve">
     <value>Un pago único por un año de Pro. No se renueva y no incluye prueba gratuita.</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>Esta cotización ha caducado. Un pago que enviaste antes de que caducara se acredita a este precio en cuanto se confirma, lo que puede tardar hasta 3 horas. Si no enviaste ninguno, paga de otra forma.</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Los pagos en Bitcoin pueden tardar hasta 3 horas en confirmarse. Un pago enviado antes de que caduque la cotización se acredita a este precio.</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
   </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>Envía a esta dirección solo Bitcoin por la red Bitcoin. Los Bitcoin enviados por cualquier otra red no se acreditarán.</value>
@@ -4570,7 +4578,7 @@ de la manera correcta</value>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Desplegado</value>
-    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed.</comment>
+    <comment>Screen reader state of a row that shows or hides a section below it (Advanced, Why?): the section is shown. The counterpart of collapsed. Windows: the Sessions page's group headings (Hosted proxies (N)...), read as the heading's item status.</comment>
   </data>
   <data name="expires" xml:space="preserve">
     <value>Expira</value>
@@ -5714,7 +5722,7 @@ enviamos para verificar tu identidad.</value>
   </data>
   <data name="manage_devices_proxy" xml:space="preserve">
     <value>Proxy alojado</value>
-    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+    <comment>The label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. Device list: it takes a slot of the plan while connected, so the user can remove it too. Sessions screen (Account &gt; Sessions): row line 1 and the confirmation's {device} for a session in the hosted proxies section (sessions_group_hosted_proxies), in place of a device name.</comment>
   </data>
   <data name="manage_devices_remove_failed" xml:space="preserve">
     <value>No se pudo quitar el dispositivo. Vuelve a intentarlo.</value>
@@ -6297,8 +6305,8 @@ enviamos para verificar tu identidad.</value>
     <comment>Call to action</comment>
   </data>
   <data name="participate_intro_details" xml:space="preserve">
-    <value>URnetwork funciona con el protocolo de entrada y salida
-más grande, seguro y descentralizado del mundo.</value>
+    <value>URnetwork funciona con un protocolo descentralizado de entrada y salida,
+que se ejecuta en dispositivos de la comunidad en una amplia selección de países.</value>
     <comment>Call to action</comment>
   </data>
   <data name="password_label" xml:space="preserve">
@@ -7240,6 +7248,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Regiones</value>
     <comment>Provider list group title for regions</comment>
   </data>
+  <data name="release_notes" xml:space="preserve">
+    <value>Notas de la versión</value>
+    <comment>Title of the release notes sheet, opened by tapping the version in Account; also the version row's accessibility hint. The note itself comes from release-notes/latest.yaml.</comment>
+  </data>
   <data name="reliability" xml:space="preserve">
     <value>Fiabilidad</value>
     <comment>Call to action</comment>
@@ -7561,9 +7573,25 @@ del mundo</value>
     <value>No se pudo cerrar esta sesión. Inténtalo de nuevo.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown on a row when signing its session out failed.</comment>
   </data>
+  <data name="sessions_client_api_key" xml:space="preserve">
+    <value>Cliente de API</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of API clients (sessions_group_api_clients), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_device" xml:space="preserve">
+    <value>Dispositivo vinculado</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of paired devices (sessions_group_paired_devices), in place of a device name.</comment>
+  </data>
+  <data name="sessions_client_other" xml:space="preserve">
+    <value>Otro cliente</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1 and the confirmation's {device}: the label of a session in the section of other clients (sessions_group_other_clients), in place of a device name.</comment>
+  </data>
   <data name="sessions_confirm_body" xml:space="preserve">
     <value>Se cerrará la sesión de {0} en {1}.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing another session out. {device} is the row's device label ("Android") and {place} its approximate location ("Chicago, Illinois, United States"), both inserted as they are, so no case ending or article can attach to them.</comment>
+  </data>
+  <data name="sessions_confirm_body_hosted_proxy" xml:space="preserve">
+    <value>Este proxy alojado dejará de funcionar. Crea uno nuevo para reemplazarlo.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before signing out a hosted proxy's session. Signing it out ends that proxy for good; the user creates a new proxy to replace it.</comment>
   </data>
   <data name="sessions_confirm_body_no_place" xml:space="preserve">
     <value>Se cerrará la sesión de {}.</value>
@@ -7572,6 +7600,10 @@ del mundo</value>
   <data name="sessions_confirm_others_body" xml:space="preserve">
     <value>Se cerrarán todas las demás sesiones de esta lista. Esta sesión seguirá iniciada. Cualquiera que conozca tus datos de inicio de sesión podrá volver a iniciar sesión.</value>
     <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions. Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
+  </data>
+  <data name="sessions_confirm_others_body_keeps_proxies" xml:space="preserve">
+    <value>Se cerrarán todas las demás sesiones de esta lista, excepto los proxies alojados. Esta sesión seguirá iniciada. Cualquiera que conozca tus datos de inicio de sesión podrá volver a iniciar sesión.</value>
+    <comment>Sessions screen (Account &gt; Sessions): body of the confirmation before Sign out all other sessions, when the list has hosted proxies, which that sign-out keeps (sessions_confirm_others_body otherwise). Must not say that every device is signed out: anyone who has the sign-in details can sign in again.</comment>
   </data>
   <data name="sessions_confirm_others_title" xml:space="preserve">
     <value>¿Cerrar todas las demás sesiones?</value>
@@ -7596,6 +7628,10 @@ del mundo</value>
   <data name="sessions_device_cli" xml:space="preserve">
     <value>Línea de comandos</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 1: the device type of a session signed in from the command-line tools.</comment>
+  </data>
+  <data name="sessions_device_extension" xml:space="preserve">
+    <value>Extensión del navegador</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 1: the device label of a session the browser extension signed in (the sdk's LastUsed.DeviceKind extension: device type web from the extension's Chrome or Firefox build), in place of Web.</comment>
   </data>
   <data name="sessions_device_ios" xml:space="preserve">
     <value>iOS</value>
@@ -7628,6 +7664,22 @@ del mundo</value>
   <data name="sessions_empty" xml:space="preserve">
     <value>No hay sesiones activas</value>
     <comment>Sessions screen (Account &gt; Sessions): shown in place of the list when it loaded with no sessions.</comment>
+  </data>
+  <data name="sessions_group_api_clients" xml:space="preserve">
+    <value>Clientes de API ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of clients that the account's API keys created (each client has its own).</comment>
+  </data>
+  <data name="sessions_group_hosted_proxies" xml:space="preserve">
+    <value>Proxies alojados ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's hosted proxies (each proxy has its own).</comment>
+  </data>
+  <data name="sessions_group_other_clients" xml:space="preserve">
+    <value>Otros clientes ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of the account's other clients, such as older clients' sign-ins.</comment>
+  </data>
+  <data name="sessions_group_paired_devices" xml:space="preserve">
+    <value>Dispositivos vinculados ({})</value>
+    <comment>Sessions screen (Account &gt; Sessions): the heading of a collapsed section below the device sign-ins, which opens when tapped. {count} is the number of sessions in it, formatted by the app ("1,204", or "10,000+" when the list was too long to read in full). A heading, so the noun does not agree with the count. The section holds the sessions of devices paired (adopted) into the account (each device has its own).</comment>
   </data>
   <data name="sessions_id" xml:space="preserve">
     <value>ID {}</value>
@@ -7693,13 +7745,29 @@ del mundo</value>
     <value>Los inicios de sesión de versiones anteriores de la app aparecen aquí cuando se renuevan. Para cerrar todos los inicios de sesión, cambia tus datos de inicio de sesión.</value>
     <comment>Sessions screen (Account &gt; Sessions): footer note shown when sign-ins from older app versions are not all listed yet; each appears once its sign-in renews. Must not claim that signing sessions out here ends every sign-in.</comment>
   </data>
+  <data name="sessions_limit_reached" xml:space="preserve">
+    <value>Hay demasiadas sesiones activas. Cierra las sesiones que ya no uses en Cuenta &gt; Sesiones y vuelve a intentarlo.</value>
+    <comment>Shown when the account holds its cap of active sessions and refused a request that would start one, while the user is signed in to the account: adding a sign-in method (its verification step) in every app, and creating a hosted proxy on ur.io. On ur.io a button that opens Account &gt; Sessions (sessions_open) is next to it. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
+  <data name="sessions_limit_reached_sign_in" xml:space="preserve">
+    <value>Hay demasiadas sesiones activas. En un dispositivo con la sesión iniciada en esta cuenta, ve a Cuenta &gt; Sesiones, cierra las sesiones que ya no uses y vuelve a intentarlo.</value>
+    <comment>Sign-in screens, the browser extension's code sign-in among them: a sign-in, or a sign-in with a code, was refused because the account holds its cap of active sessions (the sdk's SessionErrorCodeLimitReached). This device is not signed in, so the line sends the user to a device that is. Nothing was signed out. 'Account' and 'Sessions' are the names of those screens; keep them as the app names them.</comment>
+  </data>
   <data name="sessions_load_failed" xml:space="preserve">
     <value>No se pudieron cargar las sesiones.</value>
     <comment>Sessions screen (Account &gt; Sessions): shown when the list failed to load the first time, above the try_again button.</comment>
   </data>
+  <data name="sessions_open" xml:space="preserve">
+    <value>Abrir Sesiones</value>
+    <comment>Button next to sessions_limit_reached: opens Account &gt; Sessions, where the user signs out sessions they no longer use. 'Sessions' is that screen's name (sessions_title).</comment>
+  </data>
   <data name="sessions_refresh_failed" xml:space="preserve">
     <value>No se pudo actualizar. Se muestra la última lista.</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
+  </data>
+  <data name="sessions_show_more" xml:space="preserve">
+    <value>Mostrar más</value>
+    <comment>Sessions screen (Account &gt; Sessions): button at the end of a section that shows the section's next rows (the device sign-ins, or an open section such as hosted proxies).</comment>
   </data>
   <data name="sessions_sign_in_required" xml:space="preserve">
     <value>Vuelve a iniciar sesión para gestionar las sesiones.</value>
@@ -8504,8 +8572,8 @@ del mundo</value>
     <comment>App top200 limits: a commitment past 100,800 blocks (14 days) can't bind new devices, so a fleet adding devices later publishes again</comment>
   </data>
   <data name="site_app_top200_limit_devices" xml:space="preserve">
-    <value>Vincula 7 dispositivos como máximo, salvo que los demás ya se estén midiendo. Por flota, como máximo 7 dispositivos tienen prioridad para que el validador los mida. Un dispositivo vinculado que no se mide no obtiene puntuación principal y ya ha salido del pool, así que no gana nada.</value>
-    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats); a bound device outside it has left the pool and earns nothing</comment>
+    <value>Vincula 7 dispositivos como máximo, solo directos, salvo que los demás ya se estén midiendo. Por flota, como máximo 7 dispositivos tienen prioridad para que el validador los mida. Un dispositivo vinculado que no se mide no obtiene puntuación principal y ya ha salido del pool, así que no gana nada, y un slot de proxy no obtiene ninguna puntuación principal.</value>
+    <comment>App top200 limits: at most 7 devices per fleet draw ahead into the validator's measured cohort (cohort 1,500 over 200 seats), direct devices only since a proxy slot shows no head score; a bound device outside it has left the pool and earns nothing</comment>
   </data>
   <data name="site_app_top200_limit_pay" xml:space="preserve">
     <value>Un puesto solo paga mientras el validador de SN25 dirige sus pesos, y lo hace en proporción a tu puntuación, no a tu posición. Todas las flotas seleccionadas comparten un canal: el 3 % de la emisión de mineros antes de la época 8, y el 5 % a partir de la época 8.</value>

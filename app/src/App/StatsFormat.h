@@ -46,5 +46,9 @@ std::string FormatLocalDate(int64_t unixMillis);
 // The same time as the user's long date and time ("Friday, October 9, 2026
 // 6:41 PM"): what a relative time or a short date is read out as.
 std::string FormatLocalDateTime(int64_t unixMillis);
+// A whole count in the user's digit grouping ("1,204"; "1.204" or "1 204" in
+// other formats), with no fraction (GetNumberFormatEx, as the dates); the plain
+// digits when Windows cannot format it.
+std::string FormatLocalCount(int64_t count);
 
 }  // namespace urnw
