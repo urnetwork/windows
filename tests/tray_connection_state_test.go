@@ -343,3 +343,46 @@ func TestTrayConnectionStateWiring(t *testing.T) {
 		regexp.QuoteMeta("::AppendMenuW(menu, MF_STRING, kMenuConnect,"),
 		regexp.QuoteMeta(`Localized(action == tray::Action::Disconnect ? "disconnect" : "connect")`))
 }
+
+// The tray had the no post-quantum exits notice only from the connect view
+// controller, which a hidden window closes, so hidden it said Connecting, or
+// the location's Connected, over a location with none. The device's notice
+// reaches it now: SdkHost keeps it from the device's listener, registered for
+// the session before the first sync and asking for a stats push on each
+// change, and ReadStats carries it when no controller is open (the page stays
+// on the controller's), where it turns the location's Connected into
+// connecting; the teardown ends it, and AppController holds it across the live
+// session's transitions.
+func TestTrayPostQuantumNoticeWhileHidden(t *testing.T) {
+	host := sdkHostSource(t)
+	bootstrap := definitionBody(t, "SdkHost.cpp", host, "bool SdkHost::BootstrapSession(")
+	quitRequireSequence(t, "SdkHost::BootstrapSession", bootstrap,
+		regexp.QuoteMeta("subs_.push_back(device_->addPostQuantumUnavailableChangeListener("),
+		regexp.QuoteMeta("if (generation != devicePostQuantumGeneration_) return;"),
+		regexp.QuoteMeta("devicePostQuantumUnavailable_ = std::move(notice);"),
+		regexp.QuoteMeta("RepublishStats();"),
+		regexp.QuoteMeta("device_->setRpcServer(clientPem, serverCertPem, hostPort);"))
+	requireNone(t, "SdkHost.cpp", host,
+		"presentationSubs_.push_back(device_->addPostQuantumUnavailableChangeListener")
+
+	read := functionBody(host, "LiveStats SdkHost::ReadStats(")
+	quitRequireSequence(t, "SdkHost::ReadStats", read,
+		regexp.QuoteMeta("if (auto notice = connectVc_->getPostQuantumUnavailable()) {"),
+		`\} else if \(device_ && serviceUp\) \{`,
+		regexp.QuoteMeta("if (devicePostQuantumUnavailable_) {"),
+		regexp.QuoteMeta(`s.connectionStatus = "RPC_ONLY";`),
+		regexp.QuoteMeta("s.health = healthTracker_.Update(hs, nowMillis);"),
+		regexp.QuoteMeta("if (!hs.gridKnown && s.postQuantumUnavailable && s.health == health::State::Connected) {"),
+		regexp.QuoteMeta("s.health = health::State::Connecting;"))
+	teardown := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::TeardownSessionLocked(bool stopTunnel) {")
+	provideRequireOrder(t, "SdkHost::TeardownSessionLocked", teardown,
+		"devicePostQuantumGeneration_ = 0;", "if (device_) { device_->close(); device_.reset(); }")
+
+	tunnel := definitionBody(t, "AppController.cpp", appControllerSource(t),
+		"void AppController::OnTunnelState(const proto::TunnelStatus& status) {")
+	quitRequireSequence(t, "AppController::OnTunnelState", tunnel,
+		regexp.QuoteMeta("if (!(connected_ && isUp)) trayHealth_.reset();"),
+		regexp.QuoteMeta("if (!proto::IsSessionLive(status.state)) {"),
+		regexp.QuoteMeta("trayPostQuantumUnavailable_ = false;"),
+		regexp.QuoteMeta("UpdateTray();"))
+}

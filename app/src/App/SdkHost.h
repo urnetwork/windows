@@ -229,8 +229,10 @@ struct LiveStats {
   // while post-quantum encryption is on, the selection is a location or a
   // group, the connection is not CONNECTED, and the SDK's check found exits
   // there without post-quantum but none with it. ConnectPage says so in place
-  // of the connecting headline, with its two choices. Cleared with
-  // everything else in rpc-only and service-down.
+  // of the connecting headline, with its two choices. With no controller open
+  // (the window hidden) it is the device's same notice
+  // (Device.getPostQuantumUnavailable), so the tray says it then too. Cleared
+  // with everything else in rpc-only and service-down.
   bool postQuantumUnavailable = false;
   // the notice's location, by its name as the location list shows it
   std::string postQuantumUnavailableLocation;
@@ -3202,6 +3204,16 @@ class SdkHost {
   std::mutex selectedLocationMutex_;
   std::optional<urnet::ConnectLocation> selectedLocation_;
   void KeepSelectedLocation(std::optional<urnet::ConnectLocation> location);
+  // The session device's notice that the selected location has no
+  // post-quantum exits right now, as its listener last said, and the
+  // sessionGeneration_ it belongs to (0: none): set by BootstrapSession,
+  // cleared by TeardownSessionLocked. ReadStats carries it while no connect
+  // view controller is open, so the tray says it with the window hidden. A
+  // leaf, held across nothing: the listener writes on an sdk thread while a
+  // bootstrap can hold mutex_.
+  std::mutex devicePostQuantumMutex_;
+  std::uint64_t devicePostQuantumGeneration_ = 0;
+  std::optional<urnet::PostQuantumUnavailable> devicePostQuantumUnavailable_;
   // EnsureLocationsLocked under mutex_, as locationsOpener_'s job: a throw is
   // logged, not propagated.
   void EnsureLocationsOnWorker();
