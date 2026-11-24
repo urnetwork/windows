@@ -2,7 +2,8 @@
 // TrayConnectionState.h): Connected, in words and in the icon, only with the
 // tunnel up and the health connected; a connect in progress reads as the
 // connect page's connecting line and a failed start as its "Couldn't connect";
-// the tunnel-down lines keep the machine's own state first; and the menu offers
+// the SDK's no post-quantum exits notice replaces the attempt's words; the
+// tunnel-down lines keep the machine's own state first; and the menu offers
 // Connect or Disconnect only with a status to act on. Run against the header the
 // app compiles, on any host with a C++20 compiler.
 //
@@ -49,6 +50,7 @@ const char* Name(Status status) {
     case Status::Degraded: return "degraded";
     case Status::Connecting: return "connecting";
     case Status::Failed: return "failed";
+    case Status::PostQuantumUnavailable: return "no post-quantum exits";
     case Status::Disconnecting: return "disconnecting";
     case Status::BlockedKillSwitch: return "blocked by the kill switch";
     case Status::BlockedNoTunnel: return "blocked with no tunnel";
@@ -211,6 +213,58 @@ void TestAFailedStartSaysCouldNotConnect() {
         "a failed start never shows the connected icon");
 }
 
+// The SDK's notice that the selected location has no post-quantum exits right
+// now replaces the attempt's words, as it replaces the connect page's line:
+// over the tunnel up while its health is not connected, and over a start in
+// progress. Never over a connection, the tunnel-down lines or a held tap. The
+// tray said "Connecting" for as long as the page said the notice.
+void TestNoPostQuantumExitsReplacesTheAttempt() {
+  for (const auto& health : kEveryHealth) {
+    tray::Facts facts = Known(Tunnel::Up, health);
+    facts.postQuantumUnavailable = true;
+    const tray::View view = tray::Decide(facts);
+    const tray::View without = tray::Decide(Known(Tunnel::Up, health));
+    const bool attempt = without.status == Status::FindingProviders ||
+                         without.status == Status::Degraded ||
+                         without.status == Status::Connecting || without.status == Status::Failed;
+    const Status want = attempt ? Status::PostQuantumUnavailable : without.status;
+    Check(view.status == want && view.connectedIcon == without.connectedIcon,
+          std::string("no post-quantum exits over the tunnel up: ") + Name(health) + " reads " +
+              Name(view.status) + ", not " + Name(want));
+  }
+  for (const auto& health : kEveryHealth) {
+    tray::Facts facts = Known(Tunnel::Starting, health);
+    facts.postQuantumUnavailable = true;
+    const tray::View view = tray::Decide(facts);
+    Check(view.status == Status::PostQuantumUnavailable && !view.connectedIcon,
+          std::string("no post-quantum exits over a start in progress: ") + Name(health) +
+              " reads " + Name(view.status));
+  }
+  // a held tap says what it asked for until it settles
+  for (Tunnel tunnel : {Tunnel::Down, Tunnel::Starting, Tunnel::Up, Tunnel::Failed}) {
+    tray::Facts facts = Known(tunnel, Health::Connecting);
+    facts.connectHeld = true;
+    facts.postQuantumUnavailable = true;
+    const Status status = tray::Decide(facts).status;
+    Check(status == Status::Connecting, std::string("a held connect over the tunnel ") +
+                                            Name(tunnel) + " reads " + Name(status) +
+                                            ", not connecting");
+  }
+  // the tunnel down: the machine's own state, or the app name alone
+  for (Tunnel tunnel : {Tunnel::Down, Tunnel::Stopping, Tunnel::Failed}) {
+    for (bool routes : {false, true}) {
+      tray::Facts facts = Known(tunnel, Health::Connecting);
+      facts.routesInstalled = routes;
+      tray::Facts notice = facts;
+      notice.postQuantumUnavailable = true;
+      const Status status = tray::Decide(notice).status;
+      Check(status == tray::Decide(facts).status,
+            std::string("no post-quantum exits leaves the tunnel ") + Name(tunnel) +
+                (routes ? " with routes" : "") + " as it reads, not " + Name(status));
+    }
+  }
+}
+
 // With the tunnel down, the machine's own state first (#41), in its order:
 // routes, the armed kill switch, another policy, the failsafe stop.
 void TestTheTunnelDownLinesKeepTheirOrder() {
@@ -333,6 +387,7 @@ int main() {
       {"a connect in progress reads connecting", TestAConnectInProgressReadsConnecting},
       {"a held connect reads connecting", TestAHeldConnectReadsConnecting},
       {"a failed start says couldn't connect", TestAFailedStartSaysCouldNotConnect},
+      {"no post-quantum exits replaces the attempt", TestNoPostQuantumExitsReplacesTheAttempt},
       {"the tunnel-down lines keep their order", TestTheTunnelDownLinesKeepTheirOrder},
       {"no status claims nothing", TestNoStatusClaimsNothing},
       {"no action without a status", TestNoActionWithoutAStatus},
