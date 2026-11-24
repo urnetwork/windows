@@ -9857,6 +9857,10 @@ world's content</value>
     <value>{0} days free, then {1}/year. Cancel anytime.</value>
     <comment>Under the yearly CTA: the trial terms. {price} is the yearly amount.</comment>
   </data>
+  <data name="site_post_quantum_encryption_in_apps" xml:space="preserve">
+    <value>Post Quantum Encryption is available in the desktop and mobile apps.</value>
+    <comment>ur.io Connect screen: the note on the post quantum encryption option, which is off and cannot be turned on in the browser. The browser's connections run on hosted devices, which run without post-quantum encryption; the desktop and mobile apps have it on by default. Name the option by its label (post_quantum_encryption), exactly as the apps show it.</comment>
+  </data>
   <data name="site_principal" xml:space="preserve">
     <value>Principal</value>
     <comment>Account panel: client info — principal label</comment>
