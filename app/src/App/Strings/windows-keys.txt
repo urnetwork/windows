@@ -1025,6 +1025,9 @@ points_short
 post_quantum_encryption
 post_quantum_identity
 post_quantum_identity_explanation
+post_quantum_no_exits
+post_quantum_no_exits_pick_location
+post_quantum_no_exits_turn_off
 private_extender
 private_extender_hint
 private_extender_ip

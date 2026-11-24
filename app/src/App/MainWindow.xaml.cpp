@@ -3648,6 +3648,14 @@ void MainWindow::OnLocationRowClick(IInspectable const& s,
                                      RoutedEventArgs const& e) {
   connect_->OnLocationRowClick(s, e);
 }
+void MainWindow::OnPostQuantumNoticePickLocation(IInspectable const& s,
+                                                  RoutedEventArgs const& e) {
+  connect_->OnPostQuantumNoticePickLocation(s, e);
+}
+void MainWindow::OnPostQuantumNoticeTurnOff(IInspectable const& s,
+                                             RoutedEventArgs const& e) {
+  connect_->OnPostQuantumNoticeTurnOff(s, e);
+}
 void MainWindow::OnInspectorClear(IInspectable const& s, RoutedEventArgs const& e) {
   connect_->OnInspectorClear(s, e);
 }

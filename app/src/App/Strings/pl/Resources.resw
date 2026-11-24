@@ -6653,6 +6653,18 @@ działającym na urządzeniach społeczności w wielu krajach.</value>
     <value>Twój klucz tożsamości dostawcy jest przechowywany lokalnie na tym urządzeniu. Jeśli klucz któregoś z węzłów różni się od jego klucza zapisanego lokalnie, oznacza to, że operatorowi sieci nie można ufać.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
+  <data name="post_quantum_no_exits" xml:space="preserve">
+    <value>{}: obecnie brak wyjść postkwantowych</value>
+    <comment>Connect screen notice, shown in place of the connecting state while post-quantum encryption is on and the selected location has no post-quantum exits right now (the sdk's ConnectViewController.GetPostQuantumUnavailable), so the reader can choose instead of waiting on a connection that cannot complete. {location} is the location's name as the location list shows it, inserted as is, so no case ending or preposition can attach to it. Two actions follow: post_quantum_no_exits_pick_location and post_quantum_no_exits_turn_off.</comment>
+  </data>
+  <data name="post_quantum_no_exits_pick_location" xml:space="preserve">
+    <value>Wybierz inną lokalizację</value>
+    <comment>Connect screen notice (post_quantum_no_exits): the first action, which opens the location picker so the reader can choose a location with post-quantum exits. Nothing changes until the reader picks one.</comment>
+  </data>
+  <data name="post_quantum_no_exits_turn_off" xml:space="preserve">
+    <value>Wyłącz szyfrowanie postkwantowe</value>
+    <comment>Connect screen notice (post_quantum_no_exits): the second action, which turns post-quantum encryption off and saves it, as the option's own switch (post_quantum_encryption) does, so the connection can use the location's other exits. Name the option as its label does.</comment>
+  </data>
   <data name="private_dns_open_settings" xml:space="preserve">
     <value>Otwórz ustawienia sieci</value>
     <comment>Button under the strict Private DNS notice that opens the Android wireless/network settings screen (there is no public Private DNS intent).</comment>
