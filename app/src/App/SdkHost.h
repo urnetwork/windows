@@ -222,6 +222,18 @@ struct LiveStats {
   // this). Feeds health::Signals::windowFailed, which is what renders it.
   // Clamped false with everything else in rpc-only and service-down.
   bool windowFailed = false;
+
+  // ---- no post-quantum exits (owner, 2026-11-24) ----
+  // The SDK's notice that the selected location has no post-quantum exits
+  // right now (ConnectViewController.getPostQuantumUnavailable): set only
+  // while post-quantum encryption is on, the selection is a location or a
+  // group, the connection is not CONNECTED, and the SDK's check found exits
+  // there without post-quantum but none with it. ConnectPage says so in place
+  // of the connecting headline, with its two choices. Cleared with
+  // everything else in rpc-only and service-down.
+  bool postQuantumUnavailable = false;
+  // the notice's location, by its name as the location list shows it
+  std::string postQuantumUnavailableLocation;
 };
 
 // ---- selection identity ----------------------------------------------------

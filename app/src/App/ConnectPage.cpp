@@ -231,6 +231,10 @@ void ConnectPage::ApplyStrings() {
                                                  Loc("client_statistics"));
   w_.SelectedProviderLabel().Text(Loc("selected_provider"));
   w_.LocationText().Text(Loc("best_available_provider"));
+  // the no-post-quantum-exits notice's two choices (ApplyConnectStatus shows
+  // them)
+  w_.PostQuantumNoticePickLocationButton().Content(LocBox("post_quantum_no_exits_pick_location"));
+  w_.PostQuantumNoticeTurnOffButton().Content(LocBox("post_quantum_no_exits_turn_off"));
   ApplyPeerCount(std::nullopt);   // seed the peers status line ("0 peers" + dot)
   w_.BalanceWarning().Title(Loc("insufficient_balance"));
   w_.BalanceWarning().Message(Loc("insufficient_balance_message"));
@@ -1096,6 +1100,26 @@ void ConnectPage::ApplyConnectStatus() {
       heroConnection = urnw::ConnectCanvas::State::Disconnected;
       break;
   }
+  // ---- no post-quantum exits (owner, 2026-11-24: "Tell them, let them
+  // choose") ----------------------------------------------------------------
+  // The SDK found the selected location with no post-quantum exits while
+  // post-quantum encryption is on, and exits there without it. Rather than a
+  // headline and a hero that say connecting for as long as the user waits,
+  // the line says so and the two choices under it offer the ways out: pick
+  // another location, or turn post-quantum off. Nothing changes until the
+  // user picks one; the location and the setting stay as they are. The
+  // decision is the SDK's (ConnectViewController.getPostQuantumUnavailable),
+  // so this only renders it, never over a connection that has providers.
+  const bool postQuantumNotice = postQuantumUnavailable_ && render != Health::Connected;
+  if (postQuantumNotice) {
+    text = hstring{urnw::Format("post_quantum_no_exits",
+                                urnw::Widen(postQuantumUnavailableLocation_))};
+    dot = urnw::colors::kUrCoral;
+    // a settled state, not a transition: no climbing dots
+    heroConnection = urnw::ConnectCanvas::State::Error;
+  }
+  w_.PostQuantumNoticeActions().Visibility(postQuantumNotice ? Visibility::Visible
+                                                             : Visibility::Collapsed);
   w_.StatusText().Text(text);
 
   // ---- soft-kill-switch honesty (#27; RECOVERY.md's "says Connected but
@@ -1167,10 +1191,12 @@ void ConnectPage::ApplyConnectStatus() {
   // convention every not-yet-in-store string on this page uses.
   {
     std::wstring reason;
-    const bool stalled = render == Health::Connecting ||
-                         render == Health::Evaluating ||
-                         render == Health::Degraded ||
-                         render == Health::Failed;
+    // the post-quantum notice is the reason, and its line says it
+    const bool stalled = !postQuantumNotice &&
+                         (render == Health::Connecting ||
+                          render == Health::Evaluating ||
+                          render == Health::Degraded ||
+                          render == Health::Failed);
     if (stalled) {
       if (windowStallReason_ == "platform-unreachable") {
         reason = AdvW("conn_reason_platform", L"Contacting the platform…");
@@ -1184,7 +1210,7 @@ void ConnectPage::ApplyConnectStatus() {
                       L"Signing in to the platform is failing…");
       }
     }
-    if (render == Health::Failed && reason.empty()) {
+    if (!postQuantumNotice && render == Health::Failed && reason.empty()) {
       reason = AdvW("conn_failed_detail",
                     L"No providers could be reached. Retry rebuilds the "
                     L"connection from scratch.");
@@ -1335,6 +1361,12 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // ApplyConnectStatus as the reason line under the hero
   const std::string previousStallReason = windowStallReason_;
   windowStallReason_ = stats.windowStallReason;
+  // the no-post-quantum-exits notice, decided by the SDK, rendered by
+  // ApplyConnectStatus; the location name is external text, filtered here as
+  // the selected provider row's is
+  postQuantumUnavailable_ = stats.postQuantumUnavailable;
+  postQuantumUnavailableLocation_ =
+      urnw::kit::SanitizeExternalDisplayText(stats.postQuantumUnavailableLocation);
   // Can't reach URnetwork: offer the connection region picker, once as the
   // diagnosis turns to it, by the sdk's one rule for every app
   // (urnet::cantReachOnStall). The prompt only opens the picker; the region is
@@ -4499,6 +4531,24 @@ void ConnectPage::OnDnsCardClick(IInspectable const&, RoutedEventArgs const&) {
 
 void ConnectPage::OnLocationRowClick(IInspectable const&, RoutedEventArgs const&) {
   ShowLocationChooserSheet();
+}
+
+// The no-post-quantum-exits notice's first choice: the location chooser, as
+// the location row opens it.
+void ConnectPage::OnPostQuantumNoticePickLocation(IInspectable const&, RoutedEventArgs const&) {
+  ShowLocationChooserSheet();
+}
+
+// Its second choice: post-quantum off, through the option's own switch and
+// the same push its toggle makes, which saves it to the app's state and the
+// device (SdkHost::SetPerformanceSettings). Quietly flipped, pushed once, as
+// OnConnectionModeChanged moves Fixed IP.
+void ConnectPage::OnPostQuantumNoticeTurnOff(IInspectable const&, RoutedEventArgs const&) {
+  if (!w_.PostQuantumToggle().IsOn()) return;
+  updatingControls_ = true;
+  w_.PostQuantumToggle().IsOn(false);
+  updatingControls_ = false;
+  PushPerformanceSettings();
 }
 
 void ConnectPage::OnPeersLineClick(IInspectable const&, RoutedEventArgs const&) {

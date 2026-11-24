@@ -4230,6 +4230,8 @@ void SdkHost::SubscribeStats() {
   // ConnectViewController: status, provider grid/window size, selected location.
   presentationSubs_.push_back(connectVc_->addConnectionStatusListener(pub));
   presentationSubs_.push_back(connectVc_->addGridListener(pub));
+  // the notice that the selected location has no post-quantum exits
+  presentationSubs_.push_back(connectVc_->addPostQuantumUnavailableListener(pub));
   presentationSubs_.push_back(connectVc_->addSelectedLocationListener(
       [this](std::optional<urnet::ConnectLocation> location) {
         KeepSelectedLocation(std::move(location));
@@ -4299,6 +4301,14 @@ LiveStats SdkHost::ReadStats() {
   if (connectVc_) {
     s.connectionStatus = connectVc_->getConnectionStatus();
     s.connected = connectVc_->getConnected();
+    // The SDK decides the no-post-quantum-exits notice; this only carries it
+    // to the page. A view-controller read like the two above, no rpc.
+    if (auto notice = connectVc_->getPostQuantumUnavailable()) {
+      s.postQuantumUnavailable = true;
+      if (notice->location && notice->location->name) {
+        s.postQuantumUnavailableLocation = *notice->location->name;
+      }
+    }
     // getGrid() returns a HANDLE, not a value, and while nothing is connected
     // the Go side has no grid object at all — the call comes back as handle 0.
     // The old code called all four grid getters on that zero handle anyway,
@@ -4450,6 +4460,9 @@ LiveStats SdkHost::ReadStats() {
     // design cannot claim the connect attempt failed
     s.windowStallReason.clear();
     s.windowFailed = false;
+    // nor that a location has no post-quantum exits for it
+    s.postQuantumUnavailable = false;
+    s.postQuantumUnavailableLocation.clear();
   }
 
   // ---- the control channel is gone: the same clamp, the same reason -------
@@ -4482,6 +4495,8 @@ LiveStats SdkHost::ReadStats() {
     s.gridHeight = 0;
     s.windowStallReason.clear();
     s.windowFailed = false;
+    s.postQuantumUnavailable = false;
+    s.postQuantumUnavailableLocation.clear();
   }
 
   // ---- aggregate connection health (#27) -----------------------------------

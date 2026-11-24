@@ -193,6 +193,11 @@ class ConnectPage {
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnDnsCardClick(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the two choices of the no-post-quantum-exits notice (owner, 2026-11-24)
+  void OnPostQuantumNoticePickLocation(winrt::Windows::Foundation::IInspectable const&,
+                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPostQuantumNoticeTurnOff(winrt::Windows::Foundation::IInspectable const&,
+                                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
@@ -709,6 +714,11 @@ class ConnectPage {
   // off LiveStats for the reason line ApplyConnectStatus renders. Empty means
   // nothing to say (idle, or a service that predates the field).
   std::string windowStallReason_;
+  // The SDK's no-post-quantum-exits notice off the same snapshot
+  // (LiveStats::postQuantumUnavailable), and its location's name, already
+  // sanitized for display. ApplyConnectStatus renders it.
+  bool postQuantumUnavailable_ = false;
+  std::string postQuantumUnavailableLocation_;
   // The last applied push's pre-clamp connection status, for the inspector's
   // raw-status row (D5).
   std::string rawConnectionStatus_;

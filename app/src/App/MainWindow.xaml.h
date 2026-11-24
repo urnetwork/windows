@@ -447,6 +447,11 @@ struct MainWindow : MainWindowT<MainWindow> {
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the two choices of the no-post-quantum-exits notice (owner, 2026-11-24)
+  void OnPostQuantumNoticePickLocation(winrt::Windows::Foundation::IInspectable const&,
+                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPostQuantumNoticeTurnOff(winrt::Windows::Foundation::IInspectable const&,
+                                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // D5: the connection inspector's "clear the selection" action.
   void OnInspectorClear(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);

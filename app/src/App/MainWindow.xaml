@@ -922,6 +922,24 @@
                                                        Style="{StaticResource UrSupportingTextStyle}"
                                                        TextWrapping="Wrap" TextTrimming="None"
                                                        Visibility="Collapsed" />
+                                            <!-- owner 2026-11-24, "Tell them, let them choose":
+                                                 the two choices of the no-post-quantum-exits
+                                                 notice the status line carries, stacked so a
+                                                 longer translation never pushes the rail
+                                                 wider. Shown only with it. One writer:
+                                                 ConnectPage::ApplyConnectStatus; labels from
+                                                 ConnectPage::ApplyStrings. -->
+                                            <StackPanel x:Name="PostQuantumNoticeActions"
+                                                        Orientation="Vertical" Spacing="8"
+                                                        Margin="0,4,0,0"
+                                                        Visibility="Collapsed">
+                                                <Button x:Name="PostQuantumNoticePickLocationButton"
+                                                        Style="{StaticResource UrSecondaryButtonStyle}"
+                                                        Click="OnPostQuantumNoticePickLocation" />
+                                                <Button x:Name="PostQuantumNoticeTurnOffButton"
+                                                        Style="{StaticResource UrSecondaryButtonStyle}"
+                                                        Click="OnPostQuantumNoticeTurnOff" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
