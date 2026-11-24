@@ -6317,13 +6317,16 @@ std::optional<urnet::TransportStatus> SdkHost::CurrentTransportStatus(
 }
 
 namespace {
-// A profile in the drawer's terms.
+// A profile in the drawer's terms. No profile is the SDK's default profile:
+// window type auto, direct off and post-quantum on
+// (urnet::defaultPerformanceProfile; macOS loadPerformanceProfileFromDevice
+// parity).
 PerformanceSettings PerformanceSettingsFrom(
-    const std::optional<urnet::PerformanceProfile>& profile) {
+    const std::optional<urnet::PerformanceProfile>& savedProfile) {
   PerformanceSettings s;
-  if (!profile) return s;  // nil profile â‰¡ window type auto, everything off
-  // a nil profile and window type "auto" mean the same thing (macOS
-  // loadPerformanceProfileFromDevice parity)
+  const std::optional<urnet::PerformanceProfile> profile =
+      savedProfile ? savedProfile : urnet::defaultPerformanceProfile();
+  if (!profile) return s;
   if (profile->window_type == urnet::WindowTypeQuality) {
     s.mode = ConnectionMode::Web;
   } else if (profile->window_type == urnet::WindowTypeSpeed) {
