@@ -17,6 +17,13 @@
 // kill switch's armed policy, another policy left in force, then the service's
 // own failsafe stop.
 //
+// The SDK's notice that the selected location has no post-quantum exits right
+// now (LiveStats::postQuantumUnavailable, owner 2026-11-24) replaces the
+// attempt's words, as it replaces the page's connecting line: never over a
+// connection, never over the tunnel-down lines, and not over a held tap, which
+// says what it asked for until it settles. It rides the same stats push as the
+// health and is held and dropped with it.
+//
 // The menu offers Connect or Disconnect only with a status to act on: signed in,
 // and once the service has told this process its tunnel's state. Without one a
 // Connect reached a bootstrap that declines it (signed out,
@@ -79,6 +86,9 @@ struct Facts {
   // a connect tap held until the pass that runs it has published (TapHold.h):
   // the tray says connecting from the tap on, as it does for a starting tunnel
   bool connectHeld = false;
+  // the last stats push's SDK notice that the selected location has no
+  // post-quantum exits right now, held and dropped with the health
+  bool postQuantumUnavailable = false;
 };
 
 // The tooltip's status after the app name. Each one is a line the connect page
@@ -91,6 +101,8 @@ enum class Status {
   Degraded,
   Connecting,
   Failed,
+  // the SDK's notice: the selected location has no post-quantum exits right now
+  PostQuantumUnavailable,
   // the routes are still installed with no tunnel up
   Disconnecting,
   // the kill switch's armed policy holds the machine
@@ -142,6 +154,11 @@ inline constexpr View Decide(const Facts& facts) {
         // a transient disagreement between the two feeds: claim nothing more
         break;
     }
+    // the SDK's notice in place of the attempt's words
+    if (facts.postQuantumUnavailable && !facts.connectHeld &&
+        view.status != Status::Connected && view.status != Status::None) {
+      view.status = Status::PostQuantumUnavailable;
+    }
     return view;
   }
   if (facts.tunnel == Tunnel::Starting || facts.connectHeld) {
@@ -152,6 +169,10 @@ inline constexpr View Decide(const Facts& facts) {
     view.status = attempt == health::State::Evaluating ? Status::FindingProviders
                   : attempt == health::State::Failed   ? Status::Failed
                                                        : Status::Connecting;
+    // and the SDK's notice in their place, unless a tap is held
+    if (facts.postQuantumUnavailable && !facts.connectHeld) {
+      view.status = Status::PostQuantumUnavailable;
+    }
     return view;
   }
   if (facts.routesInstalled) {

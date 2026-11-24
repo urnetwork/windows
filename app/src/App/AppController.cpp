@@ -32,6 +32,7 @@
 #include "Startup.h"
 #include "Strings.h"
 #include "Top200Binding.h"
+#include "UrComponents.h"  // kit::SanitizeExternalDisplayText — the tray's post-quantum notice
 #include "WindowShell.h"
 
 using namespace winrt;
@@ -718,7 +719,12 @@ void AppController::OnTunnelState(const proto::TunnelStatus& status) {
   // keeps it. Without this, a tray showing Degraded when the window was hidden
   // would keep saying so across a reconnect that fixed everything (stats stop
   // flowing while hidden, so nothing else would ever correct it).
-  if (!(connected_ && isUp)) trayHealth_.reset();
+  if (!(connected_ && isUp)) {
+    trayHealth_.reset();
+    // and the SDK's no post-quantum exits notice, from the same pushes
+    trayPostQuantumUnavailable_ = false;
+    trayPostQuantumUnavailableLocation_.clear();
+  }
   // --- #41: the service turned the tunnel off BY ITSELF ----------------------
   //
   // The one transition the user did not ask for, and therefore the only one that
@@ -841,9 +847,19 @@ void AppController::OnStats(const LiveStats& stats) {
   // A read that began after the held tap settled says what it left.
   const bool tapHeld = trayTap_.has_value();
   trayTap_ = taphold::AfterSnapshot(trayTap_, stats.gestureSettled);
+  // The SDK's no post-quantum exits notice rides the same snapshot; its
+  // location's name is external text, filtered as the connect page filters it.
+  const std::string postQuantumUnavailableLocation =
+      stats.postQuantumUnavailable
+          ? kit::SanitizeExternalDisplayText(stats.postQuantumUnavailableLocation)
+          : std::string();
   if (trayHealth_ != std::optional<health::State>{stats.health} ||
-      tapHeld != trayTap_.has_value()) {
+      tapHeld != trayTap_.has_value() ||
+      trayPostQuantumUnavailable_ != stats.postQuantumUnavailable ||
+      trayPostQuantumUnavailableLocation_ != postQuantumUnavailableLocation) {
     trayHealth_ = stats.health;
+    trayPostQuantumUnavailable_ = stats.postQuantumUnavailable;
+    trayPostQuantumUnavailableLocation_ = postQuantumUnavailableLocation;
     UpdateTray();
   }
   // The contract status is reset with the destination, the user's Disconnect
@@ -1228,6 +1244,7 @@ tray::Facts AppController::CurrentTrayFacts() const {
   facts.health = held ? held : trayHealth_;
   facts.connectHeld = held == health::State::Connecting;
   facts.actionIsDisconnect = gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth());
+  facts.postQuantumUnavailable = trayPostQuantumUnavailable_;
   return facts;
 }
 
@@ -1270,6 +1287,11 @@ void AppController::UpdateTray() {
       // a start the service could not finish, or the window honesty layer's
       // terminal outcome (track 2): the page shows the reason and a Retry
       status = pages::AdvW("conn_failed", L"Couldn't connect");
+      break;
+    case tray::Status::PostQuantumUnavailable:
+      // the SDK's notice, in the connect page's words (owner, 2026-11-24)
+      status = urnw::Format("post_quantum_no_exits",
+                            urnw::Widen(trayPostQuantumUnavailableLocation_));
       break;
     // #41: states that are not "disconnected" though no tunnel is up, which the
     // app name alone would render as an idle machine. The icon keeps the

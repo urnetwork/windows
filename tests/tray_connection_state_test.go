@@ -171,6 +171,16 @@ func TestTrayConnectionStateRejectsConnectedBeforeTheTunnel(t *testing.T) {
 	}, "FAIL connected needs the tunnel up", "connected only with the tunnel up: tunnel starting")
 }
 
+// Without the SDK's no post-quantum exits notice in its place, a start in
+// progress said "Connecting" for as long as the connect page said the notice.
+func TestTrayConnectionStateRejectsConnectingOverNoPostQuantumExits(t *testing.T) {
+	requireTrayStateFailure(t, func(source string) string {
+		return replaceTrayStateOnce(t, source,
+			"    if (facts.postQuantumUnavailable && !facts.connectHeld) {\n      view.status = Status::PostQuantumUnavailable;\n    }\n",
+			"")
+	}, "FAIL no post-quantum exits replaces the attempt", "no post-quantum exits over a start in progress")
+}
+
 // A failed start with nothing else to say read as the app name alone.
 func TestTrayConnectionStateRejectsAFailedStartReadAsIdle(t *testing.T) {
 	requireTrayStateFailure(t, func(source string) string {
@@ -272,15 +282,16 @@ func TestTrayConnectionStateWiring(t *testing.T) {
 		"the decision reads the status; a second reading here can disagree with it",
 		"lastTunnelStatus_", "connected_", "trayHealth_")
 	for status, id := range map[string]string{
-		"Connected":         `Localized("connected")`,
-		"FindingProviders":  `"conn_finding_providers"`,
-		"Degraded":          `"conn_degraded"`,
-		"Connecting":        `Localized("connecting_status_indicator")`,
-		"Failed":            `"conn_failed"`,
-		"Disconnecting":     `"conn_tray_disconnecting"`,
-		"BlockedKillSwitch": `"conn_tray_blocked_kill_switch"`,
-		"BlockedNoTunnel":   `"conn_tray_blocked_no_tunnel"`,
-		"FailsafeStopped":   `"conn_tray_failsafe_stopped"`,
+		"Connected":              `Localized("connected")`,
+		"FindingProviders":       `"conn_finding_providers"`,
+		"Degraded":               `"conn_degraded"`,
+		"Connecting":             `Localized("connecting_status_indicator")`,
+		"Failed":                 `"conn_failed"`,
+		"PostQuantumUnavailable": `"post_quantum_no_exits"`,
+		"Disconnecting":          `"conn_tray_disconnecting"`,
+		"BlockedKillSwitch":      `"conn_tray_blocked_kill_switch"`,
+		"BlockedNoTunnel":        `"conn_tray_blocked_no_tunnel"`,
+		"FailsafeStopped":        `"conn_tray_failsafe_stopped"`,
 	} {
 		if !strings.Contains(trayStatusCase(t, update, status), id) {
 			t.Errorf("AppController::UpdateTray: %s is not named %s", status, id)
@@ -300,6 +311,7 @@ func TestTrayConnectionStateWiring(t *testing.T) {
 		"facts.failsafeStop = proto::IsFailsafeStop(lastTunnelStatus_->stop_reason);",
 		"facts.health = held ? held : trayHealth_;",
 		"facts.actionIsDisconnect = gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth());",
+		"facts.postQuantumUnavailable = trayPostQuantumUnavailable_;",
 	} {
 		if !strings.Contains(facts, want) {
 			t.Errorf("AppController::CurrentTrayFacts: missing %s", want)
