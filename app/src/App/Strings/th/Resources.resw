@@ -8011,6 +8011,10 @@
     <value>แพ็กเกจนี้ไม่พร้อมใช้งานในขณะนี้ โปรดลองอีกครั้งภายหลัง</value>
     <comment>Checkout (ur.io's payment screens; the plan purchase in the F-Droid and dapp Android builds; the upgrade sheet in the macOS direct download, Windows and Linux): the server cannot sell this Pro plan right now (error.code plan_unavailable: no price or product is configured for it). Nothing was charged.</comment>
   </data>
+  <data name="site_post_quantum_encryption_in_apps" xml:space="preserve">
+    <value>“การเข้ารหัสแบบโพสต์ควอนตัม” ใช้ได้ในแอปบนเดสก์ท็อปและมือถือ</value>
+    <comment>ur.io Connect screen: the note on the post quantum encryption option, which is off and cannot be turned on in the browser. The browser's connections run on hosted devices, which run without post-quantum encryption; the desktop and mobile apps have it on by default. Name the option by its label (post_quantum_encryption), exactly as the apps show it.</comment>
+  </data>
   <data name="site_save_your_seedphrase" xml:space="preserve">
     <value>บันทึกซีดเฟรสของคุณ</value>
     <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>

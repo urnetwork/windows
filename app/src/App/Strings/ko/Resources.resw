@@ -8010,6 +8010,10 @@
     <value>이 요금제는 현재 이용할 수 없습니다. 나중에 다시 시도하세요.</value>
     <comment>Checkout (ur.io's payment screens; the plan purchase in the F-Droid and dapp Android builds; the upgrade sheet in the macOS direct download, Windows and Linux): the server cannot sell this Pro plan right now (error.code plan_unavailable: no price or product is configured for it). Nothing was charged.</comment>
   </data>
+  <data name="site_post_quantum_encryption_in_apps" xml:space="preserve">
+    <value>'포스트 양자 암호화'는 데스크톱 및 모바일 앱에서 쓸 수 있습니다.</value>
+    <comment>ur.io Connect screen: the note on the post quantum encryption option, which is off and cannot be turned on in the browser. The browser's connections run on hosted devices, which run without post-quantum encryption; the desktop and mobile apps have it on by default. Name the option by its label (post_quantum_encryption), exactly as the apps show it.</comment>
+  </data>
   <data name="site_save_your_seedphrase" xml:space="preserve">
     <value>시드 문구를 저장하세요</value>
     <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
