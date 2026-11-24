@@ -22,7 +22,8 @@
 // attempt's words, as it replaces the page's connecting line: never over a
 // connection, never over the tunnel-down lines, and not over a held tap, which
 // says what it asked for until it settles. It rides the same stats push as the
-// health and is held and dropped with it.
+// health, the device's notice while the window is hidden, and is held until
+// no session is live.
 //
 // The menu offers Connect or Disconnect only with a status to act on: signed in,
 // and once the service has told this process its tunnel's state. Without one a
@@ -87,7 +88,7 @@ struct Facts {
   // the tray says connecting from the tap on, as it does for a starting tunnel
   bool connectHeld = false;
   // the last stats push's SDK notice that the selected location has no
-  // post-quantum exits right now, held and dropped with the health
+  // post-quantum exits right now, held until no session is live
   bool postQuantumUnavailable = false;
 };
 

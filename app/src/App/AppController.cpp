@@ -719,9 +719,12 @@ void AppController::OnTunnelState(const proto::TunnelStatus& status) {
   // keeps it. Without this, a tray showing Degraded when the window was hidden
   // would keep saying so across a reconnect that fixed everything (stats stop
   // flowing while hidden, so nothing else would ever correct it).
-  if (!(connected_ && isUp)) {
-    trayHealth_.reset();
-    // and the SDK's no post-quantum exits notice, from the same pushes
+  if (!(connected_ && isUp)) trayHealth_.reset();
+  // The SDK's no post-quantum exits notice is the device's state, not this
+  // tunnel session's evidence, and each change of it pushes stats with the
+  // window hidden too (SdkHost::BootstrapSession): held across the live
+  // session's own transitions, dropped when no session is live.
+  if (!proto::IsSessionLive(status.state)) {
     trayPostQuantumUnavailable_ = false;
     trayPostQuantumUnavailableLocation_.clear();
   }

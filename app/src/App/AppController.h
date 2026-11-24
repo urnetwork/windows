@@ -387,10 +387,13 @@ class AppController {
   // within the tunnel session that produced it (see OnTunnelState).
   std::optional<health::State> trayHealth_;
   // The SDK's notice that the selected location has no post-quantum exits
-  // right now, off the same stats push as trayHealth_ and held and cleared
-  // with it (LiveStats::postQuantumUnavailable), and the location's name,
-  // filtered for display as the connect page filters it. The tray says it in
-  // place of the attempt's words (TrayConnectionState.h).
+  // right now, off the same stats push as trayHealth_
+  // (LiveStats::postQuantumUnavailable: the connect view controller's while
+  // the window presents, the device's while it is hidden), and the location's
+  // name, filtered for display as the connect page filters it. Held across a
+  // hide and the live session's transitions, dropped when no session is live
+  // (OnTunnelState). The tray says it in place of the attempt's words
+  // (TrayConnectionState.h).
   bool trayPostQuantumUnavailable_ = false;
   std::string trayPostQuantumUnavailableLocation_;
   // The tap the tray holds (TapHold.h): its health stands in for the pushed

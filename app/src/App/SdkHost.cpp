@@ -4083,6 +4083,29 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
       if (onRemoteChanged_) onRemoteChanged_(remoteConnected);
     };
     subs_.push_back(device_->addRemoteChangeListener(remoteChanged));
+    // The device's notice that the selected location has no post-quantum exits
+    // right now (owner, 2026-11-24), functional like the session listeners
+    // below: kept here and carried by the stats push each change asks for, so
+    // the tray says it in place of connecting with the window hidden
+    // (ReadStats). Registered before setRpcServer, as the remote listener is:
+    // the remote fires it with the service's notice when it syncs, so the first
+    // sync, which may complete at once, brings a reattached session's notice.
+    {
+      std::scoped_lock lock(devicePostQuantumMutex_);
+      devicePostQuantumGeneration_ = generation;
+      devicePostQuantumUnavailable_.reset();
+    }
+    subs_.push_back(device_->addPostQuantumUnavailableChangeListener(
+        [this, generation](std::optional<urnet::PostQuantumUnavailable> notice) {
+          {
+            std::scoped_lock lock(devicePostQuantumMutex_);
+            // a session that ended or was replaced since says nothing
+            if (generation != devicePostQuantumGeneration_) return;
+            devicePostQuantumUnavailable_ = std::move(notice);
+          }
+          // on the publish worker: the read's getters are rpcs
+          RepublishStats();
+        }));
     device_->setRpcServer(clientPem, serverCertPem, hostPort);
     // Listener APIs are edge-triggered. Perform the level check as well so an
     // already-connected remote cannot remain pending forever.
@@ -4347,6 +4370,16 @@ LiveStats SdkHost::ReadStats() {
     // no controller reports on it: the health tracker reads it over an active
     // capture as the connection asked for (ConnectionHealth.h)
     s.statusFromLocation = s.connected;
+    // nor says the no-post-quantum-exits notice: the device's, as its listener
+    // kept it (BootstrapSession), for the tray. Not an rpc.
+    {
+      std::scoped_lock lock(devicePostQuantumMutex_);
+      if (devicePostQuantumUnavailable_) {
+        s.postQuantumUnavailable = true;
+        const auto& location = devicePostQuantumUnavailable_->location;
+        if (location && location->name) s.postQuantumUnavailableLocation = *location->name;
+      }
+    }
   }
   if (contractVc_) {
     // Most recent throughput point that has a Remote (tunneled) sample.
@@ -4535,6 +4568,13 @@ LiveStats SdkHost::ReadStats() {
             .count();
     std::scoped_lock healthLock(healthMutex_);
     s.health = healthTracker_.Update(hs, nowMillis);
+    // With no grid feed, Connected is the location's claim or a held one, and
+    // the device's no-post-quantum-exits notice is its word that its window has
+    // not connected (sdk device_local_post_quantum.go): the snapshot reads
+    // connecting, which the tray says the notice in place of.
+    if (!hs.gridKnown && s.postQuantumUnavailable && s.health == health::State::Connected) {
+      s.health = health::State::Connecting;
+    }
     s.provenProviderCount = proven;
     s.healthReevalAtMillis = healthTracker_.ReevalAtMillis();
   }
@@ -9059,6 +9099,13 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   EndTransportDelay();
   // The client limit feed the same way: no session, no hold to show.
   EndClientLimit();
+  // and the device's no post-quantum exits notice: a listener still in flight
+  // finds its session gone
+  {
+    std::scoped_lock lock(devicePostQuantumMutex_);
+    devicePostQuantumGeneration_ = 0;
+    devicePostQuantumUnavailable_.reset();
+  }
   // The blocked count reads nothing more, and drops a read still in flight: no
   // session, no count.
   {
