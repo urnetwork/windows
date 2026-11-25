@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <tuple>
 #include <vector>
 
 #include "HelperLog.h"
@@ -28,6 +29,7 @@
 #include "UpdateFormats.h"
 #include "UpdateResult.h"
 #include "UpdateResultJson.h"
+#include "UpdateSignature.h"
 #include "Version.h"
 
 namespace urnw::updater {
@@ -685,6 +687,69 @@ int ApplyUpdate(std::wstring_view tagArgument) {
                                                selection.digestHex));
   }
   log.Line("SHA-256 {} matches GitHub's for {}", actual, selection.assetName);
+
+  // ---- 6b. the release's signed SHA256SUMS (UpdateSignature.h) -----------------
+  // Fetched from the same release object, the same way as the package: its
+  // feed's URL, one redirect to GitHub's asset storage, then the bytes.
+  enum class Fetch { Got, Failed };
+  auto fetchSmallAsset = [&](std::string_view name, const std::string& url, std::string& bytes) {
+    if (!update::IsFeedAssetUrl(feed, selection.tag, name, url)) {
+      error = "its URL is not its feed's: " + url;
+      return Fetch::Failed;
+    }
+    HttpResponse hop;
+    if (!HttpGet(WidenAscii(url), nullptr, 0, nullptr, hop, error)) return Fetch::Failed;
+    if (hop.status != 302 || !update::IsAllowedAssetRedirect(hop.location) ||
+        !HttpUrlHostIsOneOf(WidenAscii(hop.location), update::kAssetRedirectHosts)) {
+      error = std::format("it answered {}, not one redirect to GitHub's release assets", hop.status);
+      return Fetch::Failed;
+    }
+    HttpResponse got;
+    if (!HttpGet(
+            WidenAscii(hop.location), nullptr, update::kMaxSumsBytes,
+            [&bytes](const char* data, unsigned long size) {
+              bytes.append(data, size);
+              return true;
+            },
+            got, error)) {
+      return Fetch::Failed;
+    }
+    if (got.status != 200) {
+      error = std::format("it answered {}", got.status);
+      return Fetch::Failed;
+    }
+    return Fetch::Got;
+  };
+  std::optional<std::string> sums;
+  std::optional<std::string> sumsSignature;
+  for (auto [name, url, into] :
+       {std::tuple{update::kSumsAssetName, &selection.sumsUrl, &sums},
+        std::tuple{update::kSumsSignatureAssetName, &selection.sumsSignatureUrl, &sumsSignature}}) {
+    if (url->empty()) continue;
+    std::string bytes;
+    if (fetchSmallAsset(name, *url, bytes) != Fetch::Got) {
+      held.Close();
+      ::DeleteFileW(package.c_str());
+      return refuse(Refusal::Download, std::format("{}: {}", name, error));
+    }
+    *into = std::move(bytes);
+  }
+  const update::SignatureCheck signature =
+      update::CheckReleaseSignature(sums, sumsSignature, selection.assetName, actual,
+                                    update::kRequireUpdateSignature, update::ReleasePublicKey());
+  switch (signature.verdict) {
+    case update::SignatureVerdict::Verified:
+      log.Line("signature: {}", signature.reason);
+      break;
+    case update::SignatureVerdict::Unsigned:
+      log.Line("warning: {}; installing on GitHub's SHA-256 and the package checks alone",
+               signature.reason);
+      break;
+    case update::SignatureVerdict::Refused:
+      held.Close();
+      ::DeleteFileW(package.c_str());
+      return refuse(Refusal::Signature, signature.reason);
+  }
 
   // ---- 7. the package is this product's, at this release's version --------------
   {

@@ -940,6 +940,9 @@ winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity ConnectPage::ApplyUpdateRe
     case Refusal::Digest:
       why = L"the download did not match GitHub's SHA-256 for it";
       break;
+    case Refusal::Signature:
+      why = L"the download did not match the release's signed checksums";
+      break;
     case Refusal::Package:
       why = L"the package is not this release of URnetwork";
       break;

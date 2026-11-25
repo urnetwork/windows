@@ -286,6 +286,10 @@ struct Selection {
   std::string assetName;
   std::string assetUrl;
   std::string digestHex;  // lowercase
+  // The same release's SHA256SUMS and SHA256SUMS.sig (UpdateSignature.h),
+  // empty when it has none.
+  std::string sumsUrl;
+  std::string sumsSignatureUrl;
 
   // Releases that parsed but could not be offered, with why, for the log.
   struct Skip {
@@ -424,6 +428,12 @@ inline Selection SelectRelease(std::vector<Release> const& releases, std::string
     s.assetName = name;
     s.assetUrl = match->url;
     s.digestHex = std::move(digestHex);
+    s.sumsUrl.clear();
+    s.sumsSignatureUrl.clear();
+    for (auto const& asset : rel.assets) {
+      if (asset.name == "SHA256SUMS") s.sumsUrl = asset.url;
+      if (asset.name == "SHA256SUMS.sig") s.sumsSignatureUrl = asset.url;
+    }
   }
   return s;
 }
