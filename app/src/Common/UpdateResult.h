@@ -63,6 +63,10 @@ enum class Refusal : std::uint32_t {
   // GitHub refused the release list (403 or 429): it limits the requests
   // each network may make, and this one has spent them for now.
   RateLimited = 0x2000000D,
+  // The release's SHA256SUMS.sig does not verify under the release key, the
+  // installer is not its line in the signed SHA256SUMS, or the release has
+  // no signature while one is required (UpdateSignature.h).
+  Signature = 0x2000000E,
 };
 
 // The Win32 customer bit: set on every Refusal, never on a msiexec code.

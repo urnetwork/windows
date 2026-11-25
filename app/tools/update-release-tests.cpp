@@ -1090,7 +1090,7 @@ void Outcomes() {
        {Refusal::NotElevated, Refusal::NotInstalled, Refusal::DevBuild, Refusal::BadArguments,
         Refusal::Busy, Refusal::ReleaseList, Refusal::NotOffered, Refusal::Download,
         Refusal::Digest, Refusal::Package, Refusal::Staging, Refusal::InstallerNotStarted,
-        Refusal::RateLimited}) {
+        Refusal::RateLimited, Refusal::Signature}) {
     const auto code = static_cast<std::int64_t>(refusal);
     Check(IsRefusal(code) && OutcomeOf(code) == Outcome::Refused,
           "helper refusal " + std::to_string(code) + " is a refusal");
