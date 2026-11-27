@@ -1011,6 +1011,15 @@
                                         AutomationProperties.AutomationId="acceptance.connect"
                                         Style="{StaticResource UrPaneActionPrimaryStyle}"
                                         Click="OnConnectToggle" />
+                                <!-- the failed state's Disconnect beside Retry, while the
+                                     failed session still holds the traffic and the line above
+                                     says to disconnect (BalanceGate.h disconnectBeside). Shown
+                                     and labelled by ConnectPage. -->
+                                <Button x:Name="ConnectFailedDisconnectButton"
+                                        Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                        Margin="12,0,12,12"
+                                        Visibility="Collapsed"
+                                        Click="OnConnectFailedDisconnect" />
                                 <!-- network peers (apple ConnectActions parity) -->
                                 <Button x:Name="PeersLine" MinHeight="36"
                                         Style="{StaticResource UrPaneRowButtonStyle}"

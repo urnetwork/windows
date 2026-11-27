@@ -159,6 +159,10 @@ class ConnectPage {
   // ---- XAML event handlers (forwarded from MainWindow) ----
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the failed state's Disconnect beside Retry: disconnects, and never
+  // reconnects after it
+  void OnConnectFailedDisconnect(winrt::Windows::Foundation::IInspectable const&,
+                                 winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnConnectionModeChanged(
       winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);

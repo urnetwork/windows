@@ -323,6 +323,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   // XAML event handlers — home
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnConnectFailedDisconnect(winrt::Windows::Foundation::IInspectable const&,
+                                 winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnNavSelectionChanged(
       winrt::Microsoft::UI::Xaml::Controls::NavigationView const&,
       winrt::Microsoft::UI::Xaml::Controls::NavigationViewSelectionChangedEventArgs const&);

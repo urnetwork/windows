@@ -183,6 +183,44 @@ void TestConnectButton() {
   }
 }
 
+// A failure over a standing session offers Disconnect beside Retry: Retry
+// holds the traffic again, so with Retry alone the tray was the only way out.
+void TestFailedOffersDisconnectBesideRetry() {
+  struct Case {
+    const char* what;
+    bool failed, actionIsDisconnect, confirming, outOfBalance;
+    ConnectButtonAction action;
+    bool disconnectBeside;
+  };
+  const Case cases[] = {
+      {"failed over a session: retry, disconnect beside", true, true, false, false,
+       ConnectButtonAction::Retry, true},
+      {"failed while confirming: retry waits, disconnect beside", true, true, true, false,
+       ConnectButtonAction::Retry, true},
+      {"failed with no destination: retry, nothing to disconnect", true, false, false, false,
+       ConnectButtonAction::Retry, false},
+      {"failed out of balance: the button disconnects, nothing beside", true, true, false,
+       true, ConnectButtonAction::Disconnect, false},
+      {"connected: the button disconnects, nothing beside", false, true, false, false,
+       ConnectButtonAction::Disconnect, false},
+      {"disconnected: connect, nothing beside", false, false, false, false,
+       ConnectButtonAction::Connect, false},
+  };
+  for (const auto& c : cases) {
+    for (const bool transitional : {false, true}) {
+      const ConnectButton b = DecideConnectButton(c.failed, c.actionIsDisconnect, c.confirming,
+                                                  c.outOfBalance, transitional, false);
+      const std::string what = std::string("failed state: ") + c.what +
+                               (transitional ? " (connecting)" : "");
+      Check(b.action == c.action,
+            what + ": action " + Name(b.action) + ", want " + Name(c.action));
+      Check(b.disconnectBeside == c.disconnectBeside,
+            what + ": disconnect beside " + (b.disconnectBeside ? "true" : "false") +
+                ", want " + (c.disconnectBeside ? "true" : "false"));
+    }
+  }
+}
+
 // (b) no automatic disconnect, however long the gate holds
 void TestNoAutoDisconnect() {
   GateNoticeTracker tracker;
@@ -968,6 +1006,7 @@ void TestBannerOffersDisconnect() {
 int main() {
   TestGate();
   TestConnectButton();
+  TestFailedOffersDisconnectBesideRetry();
   TestNoAutoDisconnect();
   TestNotice();
   TestTrayConnectBlockedOutOfBalance();

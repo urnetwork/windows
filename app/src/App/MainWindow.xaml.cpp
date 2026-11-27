@@ -3603,6 +3603,9 @@ void MainWindow::OnAccountMenu(IInspectable const& s, RoutedEventArgs const& e) 
 void MainWindow::OnConnectToggle(IInspectable const& s, RoutedEventArgs const& e) {
   connect_->OnConnectToggle(s, e);
 }
+void MainWindow::OnConnectFailedDisconnect(IInspectable const& s, RoutedEventArgs const& e) {
+  connect_->OnConnectFailedDisconnect(s, e);
+}
 void MainWindow::OnConnectionModeChanged(SelectorBar const& s,
                                          SelectorBarSelectionChangedEventArgs const& e) {
   connect_->OnConnectionModeChanged(s, e);

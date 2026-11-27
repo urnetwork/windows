@@ -235,6 +235,8 @@ void ConnectPage::ApplyStrings() {
   // them)
   w_.PostQuantumNoticePickLocationButton().Content(LocBox("post_quantum_no_exits_pick_location"));
   w_.PostQuantumNoticeTurnOffButton().Content(LocBox("post_quantum_no_exits_turn_off"));
+  // the failed state's Disconnect beside Retry (ApplyConnectStatus shows it)
+  w_.ConnectFailedDisconnectButton().Content(LocBox("disconnect"));
   ApplyPeerCount(std::nullopt);   // seed the peers status line ("0 peers" + dot)
   w_.BalanceWarning().Title(Loc("insufficient_balance"));
   w_.BalanceWarning().Message(Loc("insufficient_balance_message"));
@@ -386,6 +388,8 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
     Sdk().Disconnect();
     return;
   }
+  // (a disconnect without the retry is the Disconnect beside it,
+  // OnConnectFailedDisconnect)
   // Out of balance a connect starts nothing and the upgrade path shows instead
   // (BalanceGate.h, start connect). Asked here, before the optimistic
   // "Connecting" below, so a blocked press does not flash it; the button is
@@ -438,6 +442,13 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   health_ = urnw::health::State::Connecting;
   ApplyConnectStatus();
   Sdk().ConnectSelected();
+}
+
+// The Disconnect beside Retry in the failed state (BalanceGate.h
+// disconnectBeside): the user's disconnect alone, never gated, as the
+// button's Disconnect above.
+void ConnectPage::OnConnectFailedDisconnect(IInspectable const&, RoutedEventArgs const&) {
+  Sdk().Disconnect();
 }
 
 // A tap on Connect whose balance is stale waits for the gate's fetch, for up
@@ -1227,11 +1238,14 @@ void ConnectPage::ApplyConnectStatus() {
   // connectionStatus in two files is two places for them to disagree, and the
   // strip is visible while the connect screen is not.
   w_.ApplyStatusStripConnection(text, dot);
-  // In the failed state the one action is Retry — the gesture predicate reads
-  // Disconnect (the SDK still holds a destination, the machine is captured),
-  // but a failure whose only offered control is "Disconnect" strands the user
-  // one manual step from the retry that usually works. OnConnectToggle keeps
-  // the two in agreement: a press in this state disconnects AND reconnects.
+  // In the failed state the button's action is Retry — the gesture predicate
+  // reads Disconnect (the SDK still holds a destination, the machine is
+  // captured), but a failure whose only offered control is "Disconnect"
+  // strands the user one manual step from the retry that usually works.
+  // OnConnectToggle keeps the two in agreement: a press in this state
+  // disconnects AND reconnects. A Retry alone stranded the user the other way:
+  // it captures the machine again, the held-traffic line says to disconnect,
+  // and the tray was the only way out. So Disconnect shows beside it.
   //
   // Out of balance the button keeps its Disconnect and that press stays
   // enabled (BalanceGate.h): it used to be disabled with the connect, which
@@ -1246,6 +1260,9 @@ void ConnectPage::ApplyConnectStatus() {
                                  ? LocBox("retry")
                                  : (disconnectAction ? LocBox("disconnect")
                                                      : LocBox("connect")));
+  // always enabled while shown: a Disconnect is never blocked
+  w_.ConnectFailedDisconnectButton().Visibility(button.disconnectBeside ? Visibility::Visible
+                                                                         : Visibility::Collapsed);
   // ...and its WEIGHT. The state is carried on four channels — the word above,
   // the dot's colour, the hero, and now the button's FILL — so none of them is
   // carrying it alone and none of them is colour-alone. Filled blue while there
