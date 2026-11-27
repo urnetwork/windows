@@ -56,6 +56,9 @@ enum class ConnectButtonAction { Connect, Disconnect, Retry };
 struct ConnectButton {
   ConnectButtonAction action = ConnectButtonAction::Connect;
   bool enabled = true;
+  // A second control beside Retry that only disconnects, always enabled (a
+  // Disconnect is always admitted).
+  bool disconnectBeside = false;
 };
 
 // The explicit connect button (not the hero).
@@ -63,6 +66,11 @@ struct ConnectButton {
 // actionIsDisconnect: gesture::ActionIsDisconnect for this instant.
 // confirming / outOfBalance: the balance states layered over the connection.
 // transitional / watchdogFired: the connecting duplicate-press guard.
+//
+// A failure over a standing session offers Retry, and Disconnect beside it:
+// Retry rebuilds the session, which holds the traffic again, while the page
+// says to disconnect to get the normal connection back. With Retry alone the
+// tray was the only way out. Android and apple offer the same pair.
 inline constexpr ConnectButton DecideConnectButton(bool failed, bool actionIsDisconnect,
                                                    bool confirming, bool outOfBalance,
                                                    bool transitional,
@@ -76,6 +84,7 @@ inline constexpr ConnectButton DecideConnectButton(bool failed, bool actionIsDis
   } else {
     b.action = ConnectButtonAction::Connect;
   }
+  b.disconnectBeside = b.action == ConnectButtonAction::Retry && actionIsDisconnect;
   const bool blocked = confirming || outOfBalance;
   if (blocked && b.action == ConnectButtonAction::Disconnect) {
     // the connecting guard exists to stop a duplicate connect, not a disconnect
