@@ -6712,6 +6712,24 @@ void SdkHost::ApplyDnsSettings(const std::optional<urnet::DnsResolverSettings>& 
   });
 }
 
+namespace {
+// A transport policy as its log line names it: the mode, then the Auto
+// priorities as written, "mode=auto auto=h1:1,h3:2,dns:3,dnspump:4", the form
+// of the sdk's "[device]transport policy" lines. Only mode names and numbers.
+std::string TransportSettingsLogText(const urnet::TransportSettings& settings) {
+  std::string text = "mode=" + settings.mode + " auto=";
+  if (settings.auto_mode_priorities) {
+    bool first = true;
+    for (const urnet::TransportModePriority& item : *settings.auto_mode_priorities) {
+      if (!first) text += ",";
+      first = false;
+      text += item.mode + ":" + std::to_string(item.priority);
+    }
+  }
+  return text;
+}
+}  // namespace
+
 void SdkHost::ApplyTransportSettings(TransportSettingsKind kind,
                                      const std::optional<urnet::TransportSettings>& opened,
                                      const urnet::TransportSettings& settings) {
@@ -6753,23 +6771,33 @@ void SdkHost::ApplyTransportSettings(TransportSettingsKind kind,
       if (onTransportSettings_) onTransportSettings_(kind, CurrentTransportSettings(kind));
       return;
     }
+    // What the write reached, which the line after the writes says (support
+    // inbox 8667). With no session a client policy reaches only the app's
+    // saved copy, which seeds the service at its next connect, and a provider
+    // policy reaches the service by the reconcile below.
+    const char* serviceReach = provider ? "gets it in the provider reconcile"
+                                        : "gets it at its next connect";
     // the device first: attached, the service applies it (make-before-break
     // migration of the live window) and persists it; detached, the DeviceRemote
     // queues it for the next sync. Both fire the change listener.
     if (device_) {
       try {
+        const bool attached = device_->getRemoteConnected();
         if (provider) {
           device_->setProviderTransportSettings(settings);
         } else {
           device_->setTransportSettings(settings);
         }
+        serviceReach = attached ? "applied it" : "gets it at the next sync";
       } catch (const std::exception& e) {
         LogWarn("sdkhost: set {} transport settings failed: {}",
                 provider ? "provider" : "client", e.what());
+        serviceReach = "did not get it";
       }
     }
     // then the app-side mirror, with or without a device: it seeds the device on
     // the next bootstrap and answers the offline reads (see the header note)
+    const char* copyReach = "is not open";
     if (localState_) {
       try {
         if (provider) {
@@ -6777,15 +6805,22 @@ void SdkHost::ApplyTransportSettings(TransportSettingsKind kind,
         } else {
           localState_->setTransportSettings(settings);
         }
+        copyReach = "took it";
       } catch (const std::exception& e) {
         LogWarn("sdkhost: persist {} transport settings failed: {}",
                 provider ? "provider" : "client", e.what());
+        copyReach = "did not take it";
       }
     }
     // No session: a provider-only device runs on the policy it was built with.
     // The reconcile's request now carries the new one, so the service builds a
     // new device for it.
     if (provider && !device_) RequestProviderReconcile("provider transport policy changed");
+    // one line a write: the policy, and whether it reached the service or only
+    // the app's saved copy
+    LogInfo("sdkhost: {} transport settings written ({}): the service {}; the app's saved copy {}",
+            provider ? "provider" : "client", TransportSettingsLogText(settings), serviceReach,
+            copyReach);
     if (onTransportSettings_) onTransportSettings_(kind, CurrentTransportSettings(kind));
   });
 }
