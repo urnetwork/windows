@@ -907,6 +907,9 @@ login_tile_secret_key
 login_verify_check_phone
 login_verify_header
 longest_streak
+low_data_warning_byte_count
+low_data_warning_percent
+low_data_warning_title
 manage_apps
 manage_devices
 manage_devices_connecting

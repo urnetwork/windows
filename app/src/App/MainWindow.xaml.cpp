@@ -447,6 +447,30 @@ MainWindow::MainWindow() {
     ProFeaturesNotice().Content(actions);
   }
 
+  // The low-data warning (the sdk's LowDataWarningForBalance): little data is
+  // left before the balance runs out. Get Pro is the client limit notice's
+  // (OpenNoticeUpgrade), shown on a plan that is not Pro; the close button puts
+  // the warning away until the sdk's next one (AppController::DismissLowDataWarning).
+  // The words are ApplyLowDataWarning's. Nothing here disconnects.
+  {
+    lowDataWarningUpgrade_ = Button();
+    solidBannerAction(lowDataWarningUpgrade_);
+    lowDataWarningUpgrade_.Content(LocBox("get_pro"));
+    lowDataWarningUpgrade_.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->OpenNoticeUpgrade();
+    });
+    LowDataWarningNotice().ActionButton(lowDataWarningUpgrade_);
+    LowDataWarningNotice().Closed(
+        [weak = get_weak()](Microsoft::UI::Xaml::Controls::InfoBar const& sender,
+                            Microsoft::UI::Xaml::Controls::InfoBarClosedEventArgs const& args) {
+          sender.Visibility(Visibility::Collapsed);
+          if (args.Reason() != Microsoft::UI::Xaml::Controls::InfoBarCloseReason::CloseButton) return;
+          // the next warning shows, whatever it says
+          if (auto self = weak.get()) self->lowDataWarningMessage_.clear();
+          urnw::App().DismissLowDataWarning();
+        });
+  }
+
   // The account sign-in notice (AuthLogoutNotice.h): the account's own sign-in
   // was refused while this device stays signed in and connected. Its close
   // button is its dismissal: closed, it takes no room above the destinations,
@@ -2848,6 +2872,31 @@ void MainWindow::ApplyAccountSignInNotice() {
   // "This session was signed out from another device." ahead of "Sign in
   // again to manage sessions." only when the server confirmed it
   bar.Message(*lead ? Loc(lead) + L" " + Loc(line) : Loc(line));
+  bar.Visibility(Visibility::Visible);
+  bar.IsOpen(true);
+}
+
+// ---- the low-data warning (the sdk's LowDataWarningForBalance) -----------------
+
+void MainWindow::SetLowDataWarning(std::wstring const& message) {
+  if (message == lowDataWarningMessage_) return;
+  lowDataWarningMessage_ = message;
+  ApplyLowDataWarning();
+}
+
+void MainWindow::ApplyLowDataWarning() {
+  auto bar = LowDataWarningNotice();
+  if (lowDataWarningMessage_.empty()) {
+    bar.IsOpen(false);
+    // a closed InfoBar still measures its margin: no gap in the connect column
+    bar.Visibility(Visibility::Collapsed);
+    return;
+  }
+  bar.Title(Loc("low_data_warning_title"));
+  bar.Message(hstring{lowDataWarningMessage_});
+  // a Pro plan has no upgrade to offer
+  if (lowDataWarningUpgrade_)
+    lowDataWarningUpgrade_.Visibility(balance_.isPro ? Visibility::Collapsed : Visibility::Visible);
   bar.Visibility(Visibility::Visible);
   bar.IsOpen(true);
 }
