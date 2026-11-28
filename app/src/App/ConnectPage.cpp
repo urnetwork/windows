@@ -89,6 +89,10 @@ void ConnectPage::Initialize() {
   WireDrawerFeeds();
   BuildSlowPill();
 
+  // the '?' at the end of the provide group's header: what providing is
+  w_.ProvideHeaderRow().Children().Append(
+      kit::MakeHelpButton(Loc("help_provide_title"), Loc("help_provide_body")));
+
   // The connections verdict filter. Wired here rather than in markup for the
   // same reason the status-dot taps are: XAML event handlers live on
   // MainWindow, which this page does not own. The selection is seeded BEFORE

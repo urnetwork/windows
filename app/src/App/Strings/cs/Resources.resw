@@ -123,6 +123,10 @@
     <value>Přidejte TAO na gas</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Přidat do oblíbených</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Nastavením na „Vždy“ můžete rychleji získat bezplatná data.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -4563,9 +4567,21 @@ správným způsobem</value>
     <value>Každá aplikace, kterou zapnete, dostane v nabídce aplikací druhý spouštěč s (mimo VPN) za názvem. Aplikace otevřená z tohoto spouštěče obchází VPN i kill switch. Aplikace, která už běží, zůstane ve VPN, dokud ji neukončíte, a aplikace Flatpak a Snap se nezobrazují.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Vyloučit</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Vyloučeno</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Vyloučená místa výstupu</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Připojení nebudou používat výstupy v těchto místech, pokud některé z nich nevyberete přímo.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Rozbaleno</value>
@@ -4823,6 +4839,14 @@ správným způsobem</value>
     <value>Odpovídá na dotazy DNS přes místní síť, dokud se spouští DNS tunelu. Místní síť tak může vidět vaše dotazy a odpovědi nemusí odpovídat vašemu výstupnímu umístění. Když je vypnuto, DNS se překládá jen přes tunel.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Zařízení jiného člena. Může se kdykoli odpojit nebo opustit síť.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Oblíbené</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>Odezva</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -5006,6 +5030,30 @@ správným způsobem</value>
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>Extender přenáší vaše připojení k URnetwork tam, kde je blokované. Váš provoz přes něj zůstává šifrovaný a extender ho nemůže číst.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>Co je extender?</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>„Čekající“ jsou data vyhrazená pro vaše otevřená připojení. Co nevyužijí, se po jejich ukončení vrátí do vašich dostupných dat.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>Co znamená „Čekající“?</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>Poskytování sdílí část vašeho internetu s ostatními členy URnetwork: jejich provoz může odcházet přes vaše připojení. Poskytovatelé mohou za sdílená data získávat odměny. Režim poskytování určuje, kdy toto zařízení poskytuje, a kdykoli můžete přestat.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>Co je poskytování?</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>Skrýt seznam poskytovatelů</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -5025,6 +5073,54 @@ správným způsobem</value>
   <data name="host_count.other" xml:space="preserve">
     <value>{} hostitelů</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>Proxy pro hotspot</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>Kopírovat údaje pro připojení</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>Zařízení na vašem Wi-Fi hotspotu nebo připojená přes USB tethering mohou používat URnetwork přes proxy HTTP nebo SOCKS5 v tomto telefonu. Jejich provoz jde pouze přes URnetwork, takže když jste odpojeni, nic se nesdílí.</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>Proxy HTTP</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>Proxy se na vašem hotspotu nepodařilo spustit. Jeho porty možná používá jiná aplikace.</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>Nové heslo</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>Nové heslo odpojí zařízení, která používají staré.</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>Sdílejte URnetwork se zařízeními na svém hotspotu.</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>Sdílet se zařízeními na hotspotu</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>Proxy SOCKS5</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>Uživatelské jméno</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>Pro zahájení sdílení zapněte Wi-Fi hotspot nebo USB tethering.</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>před {} h</value>
@@ -6170,6 +6266,10 @@ Získejte svůj bonus vytvořením sítě!</value>
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>Peněženka EthOs nebyla nalezena</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Zatím žádná vyloučená místa. Vyhledejte zemi, region nebo město, které chcete vyloučit.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Nebyly nalezeny žádné nainstalované aplikace. (Aplikace ze Store se nezobrazují.)</value>
@@ -7487,6 +7587,10 @@ který běží na zařízeních komunity ve velkém výběru zemí.</value>
     <value>Odstranit</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Odebrat z oblíbených</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Odstranit pravidlo</value>
     <comment>A button to remove a split rule.</comment>
@@ -7613,6 +7717,10 @@ který běží na zařízeních komunity ve velkém výběru zemí.</value>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Hledat aplikace</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Hledat země, regiony a města</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Hledat všechna místa</value>

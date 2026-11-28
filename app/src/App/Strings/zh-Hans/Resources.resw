@@ -123,6 +123,10 @@
     <value>添加 TAO 以支付 Gas 费</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>加入收藏</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>您可以将设置调整为“始终”，以更快地填充免费数据</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -4552,9 +4556,21 @@
     <value>你开启的每个应用都会在应用菜单中多出一个启动器，名称后带有（VPN 外）。从该启动器打开的应用会绕过 VPN 和断网保护。已在运行的应用在你退出之前仍留在 VPN 内，Flatpak 和 Snap 应用不会列出。</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>排除</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>已排除</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>排除的出口位置</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>连接不会使用这些地方的出口，除非你直接选择其中之一。</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>已展开</value>
@@ -4812,6 +4828,14 @@
     <value>在隧道 DNS 启动期间通过本地网络应答 DNS。这可能会向本地网络暴露你的查询，并返回与你的出口位置不符的结果。关闭后，DNS 仅通过隧道解析。</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>这是某位成员的设备，可能随时离线或离开网络。</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>收藏</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>反馈</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -4971,6 +4995,30 @@
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>在连接 URnetwork 受阻的地方，扩展器会中继你的连接。你的流量经过它时依然是加密的，扩展器无法读取。</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>什么是扩展器？</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>“待处理”是为你打开的连接预留的数据。连接关闭时，未用完的部分会退回你的可用数据。</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>“待处理”是什么意思？</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>提供是指与其他 URnetwork 成员共享你的一部分网络：他们的流量可以通过你的连接出去。提供者可以凭共享的数据获得奖励。提供模式决定此设备何时提供，你可以随时停止。</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>什么是提供？</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>隐藏供应商列表</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -4978,6 +5026,54 @@
   <data name="host_count.other" xml:space="preserve">
     <value>{} 个主机</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>热点代理</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>复制连接信息</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>连接到你的 Wi-Fi 热点或 USB 网络共享的设备，可以通过这部手机上的 HTTP 或 SOCKS5 代理使用 URnetwork。它们的流量只经过 URnetwork，因此在你断开连接时不会共享任何内容。</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>HTTP 代理</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>无法在你的热点上启动代理。可能有其他应用正在使用它的端口。</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>新密码</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>新密码会断开使用旧密码的设备。</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>与连接到你热点的设备共享 URnetwork。</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>与热点设备共享</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>SOCKS5 代理</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>用户名</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>打开 Wi-Fi 热点或 USB 网络共享即可开始共享。</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>{}小时前</value>
@@ -6052,6 +6148,10 @@
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>未找到 EthOs 钱包</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>还没有排除的位置。搜索国家、地区或城市即可排除。</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>未找到已安装的应用。（Store 应用不会列出。）</value>
@@ -7213,6 +7313,10 @@
     <value>移除</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>取消收藏</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>移除规则</value>
     <comment>A button to remove a split rule.</comment>
@@ -7327,6 +7431,10 @@
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>搜索应用</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>搜索国家、地区和城市</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>搜索所有地点</value>

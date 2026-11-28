@@ -123,6 +123,10 @@
     <value>Додайте TAO на газ</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Додати до обраного</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Надання за замовчуванням вимкнено. Нижче виберіть, коли ваш пристрій надає дані.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -4564,9 +4568,21 @@
     <value>Кожен увімкнений застосунок отримує в меню застосунків другий ярлик із позначкою (поза VPN) після назви. Застосунок, відкритий із цього ярлика, обходить VPN і kill switch. Застосунок, який уже працює, залишається у VPN, доки ви його не закриєте, а застосунки Flatpak і Snap не показуються.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Виключити</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Виключено</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Виключені місця виходу</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Підключення не використовуватимуть виходи в цих місцях, якщо ви не виберете одне з них напряму.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Розгорнуто</value>
@@ -4824,6 +4840,14 @@
     <value>Відповідає на DNS-запити через локальну мережу, поки запускається DNS тунелю. Це може розкрити ваші запити локальній мережі й повернути відповіді, що не відповідають вашому місцю виходу. Якщо вимкнено, DNS розв'язується лише через тунель.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Пристрій учасника. Він може будь-коли вийти з мережі або від’єднатися.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Обране</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>Зворотній зв'язок</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -5007,6 +5031,30 @@
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>Екстендер передає ваше підключення до URnetwork там, де його заблоковано. Ваш трафік залишається зашифрованим, і екстендер не може його прочитати.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>Що таке екстендер?</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>«В очікуванні» — це дані, зарезервовані для ваших відкритих підключень. Те, що вони не використають, повернеться до доступних даних, коли підключення закриються.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>Що означає «В очікуванні»?</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>Надання ділиться частиною вашого інтернету з іншими учасниками URnetwork: їхній трафік може виходити через ваше підключення. Постачальники можуть отримувати винагороди за дані, якими діляться. Режим надання визначає, коли цей пристрій надає доступ, і ви можете зупинитися будь-коли.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>Що таке надання?</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>Приховати список провайдерів</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -5026,6 +5074,54 @@
   <data name="host_count.other" xml:space="preserve">
     <value>{} хоста</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>Проксі для точки доступу</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>Копіювати дані для підключення</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>Пристрої у вашій точці доступу Wi-Fi або підключені через USB-модем можуть користуватися URnetwork через проксі HTTP або SOCKS5 на цьому телефоні. Їхній трафік іде лише через URnetwork, тож поки ви не підключені, нічого не передається.</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>Проксі HTTP</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>Не вдалося запустити проксі на вашій точці доступу. Можливо, його порти використовує інша програма.</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>Новий пароль</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>Новий пароль відключає пристрої, які використовують старий.</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>Діліться URnetwork із пристроями у вашій точці доступу.</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>Ділитися з пристроями точки доступу</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>Проксі SOCKS5</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>Ім'я користувача</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>Щоб почати ділитися, увімкніть точку доступу Wi-Fi або USB-модем.</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>{} год тому</value>
@@ -6172,6 +6268,10 @@
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>Гаманець EthOs не знайдено</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Виключених місць ще немає. Знайдіть країну, регіон або місто, щоб виключити їх.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Установлених застосунків не знайдено. (Застосунки зі Store не відображаються.)</value>
@@ -7489,6 +7589,10 @@
     <value>Видалити</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Видалити з обраного</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Видалити правило</value>
     <comment>A button to remove a split rule.</comment>
@@ -7615,6 +7719,10 @@
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Пошук застосунків</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Пошук країн, регіонів і міст</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Шукати серед усіх локацій</value>

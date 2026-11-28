@@ -7,6 +7,7 @@
 
 #include "Localization.h"
 #include "UrColors.h"
+#include "UrComponents.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -54,6 +55,9 @@ UsageBar::UsageBar(Grid barHost, StackPanel legendHost) : barHost_(barHost) {
         MakeLegendEntry(colors::kUrElectricBlue, hstring{Localized("used_data_key")}));
     legendHost.Children().Append(
         MakeLegendEntry(colors::kUrCoral, hstring{Localized("pending_data_key")}));
+    // the '?' beside Pending's key: what Pending is
+    legendHost.Children().Append(kit::MakeHelpButton(hstring{Localized("help_pending_title")},
+                                                     hstring{Localized("help_pending_body")}));
     legendHost.Children().Append(
         MakeLegendEntry(colors::kTextFaint, hstring{Localized("available_data_key")}));
   }
