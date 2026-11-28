@@ -4999,6 +4999,30 @@ richtig auf</value>
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>Ein Extender leitet deine Verbindung zu URnetwork weiter, wo sie blockiert ist. Dein Datenverkehr bleibt dabei verschlüsselt, und der Extender kann ihn nicht lesen.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>Was ist ein Extender?</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>„Ausstehend“ sind Daten, die für deine offenen Verbindungen reserviert sind. Was sie nicht verbrauchen, geht beim Schließen zurück zu deinen verfügbaren Daten.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>Was bedeutet „Ausstehend“?</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>Beim Bereitstellen teilst du einen Teil deines Internets mit anderen URnetwork-Mitgliedern: Ihr Datenverkehr kann über deine Verbindung ins Internet gehen. Anbieter können für die geteilten Daten Belohnungen verdienen. Der Bereitstellungsmodus legt fest, wann dieses Gerät bereitstellt, und du kannst jederzeit aufhören.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>Was ist Bereitstellen?</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>Anbieter-Liste ausblenden</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>

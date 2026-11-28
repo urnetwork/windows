@@ -4891,6 +4891,30 @@
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>익스텐더는 URnetwork 연결이 차단된 곳에서 연결을 중계합니다. 트래픽은 암호화된 상태로 통과하므로 익스텐더가 내용을 읽을 수 없습니다.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>익스텐더란 무엇인가요?</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>‘대기 중’은 열려 있는 연결을 위해 확보된 데이터입니다. 사용되지 않은 부분은 연결이 닫히면 사용 가능한 데이터로 돌아갑니다.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>‘대기 중’이란 무엇인가요?</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>제공은 인터넷의 일부를 다른 URnetwork 회원과 공유하는 것입니다. 회원의 트래픽이 사용자의 연결을 통해 나갈 수 있습니다. 제공자는 공유한 데이터에 대해 보상을 받을 수 있습니다. 제공 모드로 이 기기가 제공하는 시점을 정하며, 언제든지 중단할 수 있습니다.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>제공이란 무엇인가요?</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>제공업체 목록 숨기기</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>

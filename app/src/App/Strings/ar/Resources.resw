@@ -5143,6 +5143,30 @@
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>يمرّر الموسّع اتصالك إلى URnetwork حيث يكون محظورًا. تبقى حركة مرورك مشفّرة عبره، ولا يستطيع الموسّع قراءتها.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>ما هو الموسّع؟</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>«معلّق» هو بيانات محجوزة لاتصالاتك المفتوحة. ما لا تستخدمه منها يعود إلى بياناتك المتاحة عند إغلاقها.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>ما معنى «معلّق»؟</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>التوفير يشارك جزءًا من اتصالك بالإنترنت مع أعضاء URnetwork الآخرين: يمكن أن تخرج حركة مرورهم عبر اتصالك. يمكن للموفّرين كسب مكافآت مقابل البيانات التي يشاركونها. يحدد وضع التوفير متى يوفّر هذا الجهاز، ويمكنك التوقف في أي وقت.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>ما هو التوفير؟</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>إخفاء قائمة المزودين</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>

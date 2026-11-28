@@ -120,6 +120,41 @@ Controls::Border MakeDivider() {
   return rule;
 }
 
+Button MakeHelpButton(winrt::hstring const& title, winrt::hstring const& body) {
+  Button button;
+  button.Width(28);
+  button.Height(28);
+  button.Padding(ThicknessHelper::FromUniformLength(0));
+  button.Background(nullptr);
+  button.BorderThickness(ThicknessHelper::FromUniformLength(0));
+  button.VerticalAlignment(VerticalAlignment::Center);
+  FontIcon glyph;
+  glyph.FontFamily(IconFont());
+  glyph.Glyph(L"");  // Unknown: a question mark in a circle
+  glyph.FontSize(14);
+  glyph.Foreground(urnw::colors::MutedBrush());
+  button.Content(glyph);
+  Automation::AutomationProperties::SetName(button, title);
+  ToolTipService::SetToolTip(button, winrt::box_value(title));
+
+  StackPanel content;
+  content.Spacing(8);
+  content.MaxWidth(320);
+  TextBlock heading;
+  heading.Text(title);
+  heading.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+  heading.TextWrapping(TextWrapping::Wrap);
+  content.Children().Append(heading);
+  TextBlock text;
+  text.Text(body);
+  text.TextWrapping(TextWrapping::Wrap);
+  content.Children().Append(text);
+  Flyout flyout;
+  flyout.Content(content);
+  button.Flyout(flyout);
+  return button;
+}
+
 FrameworkElement MakeSectionHeader(winrt::hstring const& glyph, winrt::hstring const& text) {
   StackPanel row;
   row.Orientation(Controls::Orientation::Horizontal);

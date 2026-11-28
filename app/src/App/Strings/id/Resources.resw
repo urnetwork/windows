@@ -4891,6 +4891,30 @@ cara yang benar</value>
   <data name="hash_value" xml:space="preserve">
     <value>#{}</value>
   </data>
+  <data name="help_extender_body" xml:space="preserve">
+    <value>Extender meneruskan koneksi Anda ke URnetwork di tempat koneksi itu diblokir. Lalu lintas Anda tetap terenkripsi saat melewatinya, dan extender tidak dapat membacanya.</value>
+    <comment>Body of the short help for extenders (title: "What is an extender?"), opened from a '?' button next to Extenders. An extender relays the connection to URnetwork where the network is blocked; the traffic stays encrypted and the extender cannot read it.</comment>
+  </data>
+  <data name="help_extender_title" xml:space="preserve">
+    <value>Apa itu extender?</value>
+    <comment>Title of the short help that a '?' button next to Extenders opens (and that button's accessible name). Use the app's own word for extender (extenders, in the singular).</comment>
+  </data>
+  <data name="help_pending_body" xml:space="preserve">
+    <value>“Tertunda” adalah data yang dicadangkan untuk koneksi Anda yang terbuka. Yang tidak terpakai kembali ke data tersedia Anda saat koneksi ditutup.</value>
+    <comment>Body of the short help for the usage bar's Pending (title: "What is Pending?"). Use the usage bar's words for Pending and Available (pending_data_key, available_data_key) as they read in your language. No time promise for the return.</comment>
+  </data>
+  <data name="help_pending_title" xml:space="preserve">
+    <value>Apa arti “Tertunda”?</value>
+    <comment>Title of the short help that a '?' button next to the usage bar's Pending opens (and that button's accessible name). Quote the usage bar's own word for Pending (pending_data_key) as it reads in your language.</comment>
+  </data>
+  <data name="help_provide_body" xml:space="preserve">
+    <value>Penyediaan membagikan sebagian internet Anda dengan anggota URnetwork lain: lalu lintas mereka dapat keluar melalui koneksi Anda. Penyedia dapat memperoleh hadiah atas data yang mereka bagikan. Mode penyediaan menentukan kapan perangkat ini menyediakan, dan Anda dapat berhenti kapan saja.</value>
+    <comment>Body of the short help for providing (title: "What is providing?"), opened from a '?' button next to the provide controls. Plain and honest: other members' traffic can leave through the user's connection; rewards are possible, not promised. Keep Provide mode as the app's label for that setting.</comment>
+  </data>
+  <data name="help_provide_title" xml:space="preserve">
+    <value>Apa itu penyediaan?</value>
+    <comment>Title of the short help that a '?' button next to the provide controls opens (and that button's accessible name): what providing means. Use the same word for providing as the app's Provide mode label.</comment>
+  </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>Sembunyikan Daftar Penyedia</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>

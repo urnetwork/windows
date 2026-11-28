@@ -1091,9 +1091,11 @@
                                          Margin="12,8" Severity="Warning" />
 
                                 <!-- provide ....................................... -->
+                                <!-- the row ends with the '?' that says what providing
+                                     is, added by ConnectPage::Initialize -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                VerticalAlignment="Center">
+                                    <StackPanel x:Name="ProvideHeaderRow" Orientation="Horizontal"
+                                                Spacing="8" VerticalAlignment="Center">
                                         <!-- provide indicator (apple parity): solid dot =
                                              Network tier; dot + ring = Public tier -->
                                         <Grid Width="12" Height="12" VerticalAlignment="Center">

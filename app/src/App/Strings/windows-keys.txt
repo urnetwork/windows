@@ -785,6 +785,12 @@ gossip_url
 got_it
 guest
 guest_convert_explanation
+help_extender_body
+help_extender_title
+help_pending_body
+help_pending_title
+help_provide_body
+help_provide_title
 host_count
 hours_ago_abbrev
 how_are_we_doing

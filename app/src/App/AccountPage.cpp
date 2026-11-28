@@ -788,6 +788,7 @@ void AccountPage::BuildExtenderPane() {
     auto made = kit::MakePaneGroupHeader(Loc(key));
     extenderLabels_.emplace_back(made.title, key);
     host.Children().Append(made.root);
+    return made;
   };
   auto field = [&](Panel const& into, const char* key, bool multiline) {
     TextBlock caption{nullptr};
@@ -801,7 +802,10 @@ void AccountPage::BuildExtenderPane() {
     return button;
   };
 
-  header("extender_settings");
+  // the pane's first header ends with the '?' that says what an extender is
+  header("extender_settings")
+      .trailing.Children()
+      .Append(kit::MakeHelpButton(Loc("help_extender_title"), Loc("help_extender_body")));
   extenderDnsBox_ = field(host, "extender_dns_name", /*multiline=*/false);
   extenderGossipBox_ = field(host, "gossip_url", /*multiline=*/false);
   extenderHostsBox_ = field(host, "extender_hosts", /*multiline=*/true);
