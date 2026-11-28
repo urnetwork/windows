@@ -996,6 +996,7 @@ void SettingsPage::ResetForSignOut() {
   networkName_.clear();
   deviceName_.clear();
   authTypes_.clear();
+  emailSignIn_.clear();
   preferencesLoaded_ = false;
 
   // Then the visible state, so nothing on screen still claims to describe it.
@@ -1089,22 +1090,33 @@ void SettingsPage::LoadNetworkUser() {
     const bool failed = !error.empty() || !result || !result->network_user;
     std::vector<std::string> methods;
     std::string networkName;
+    std::string emailSignIn;
     if (!failed) {
       methods = ParseAuthMethods(*result->network_user);
       networkName = result->network_user->network_name;
+      // the address an email change replaces (the sdk's NetworkUser.EmailSignIn);
+      // a throw must not leave the sdk's callback
+      try {
+        emailSignIn = urnet::networkUserEmailSignIn(result->network_user);
+      } catch (const std::exception& e) {
+        LogWarn("settings: the email sign-in could not be read: {}", e.what());
+      }
     }
     if (failed) LogWarn("settings: getNetworkUser failed: {}", error);
-    queue.TryEnqueue([weak, failed, methods = std::move(methods), networkName]() mutable {
+    queue.TryEnqueue([weak, failed, methods = std::move(methods), networkName,
+                      emailSignIn]() mutable {
       auto self = weak.get();
       if (!self) return;
       auto& page = self->settings();
       if (failed) {
         page.authTypes_.clear();
+        page.emailSignIn_.clear();
         page.RenderAuthMethods(FieldState::Failed);
         return;
       }
       page.authTypes_ = std::move(methods);
       page.networkName_ = networkName;
+      page.emailSignIn_ = emailSignIn;
       page.RenderAuthMethods(page.authTypes_.empty() ? FieldState::Empty : FieldState::Loaded);
     });
   });
@@ -1279,8 +1291,22 @@ void SettingsPage::RenderAuthMethods(rows::FieldState state) {
     // out of the network permanently, so the confirmation has to be a distinct
     // deliberate act with an explicit Cancel.
     remove.Click([this, authType](auto const&, auto const&) { ConfirmRemoveAuth(authType); });
+    // The email sign-in's verified change (EmailChangeSheet), beside Remove,
+    // while the account has an email sign-in to change.
+    FrameworkElement trailing = remove;
+    if (authType == "email" && !emailSignIn_.empty()) {
+      Button change;
+      change.Content(winrt::box_value(Loc("email_change")));
+      change.Click([this](auto const&, auto const&) { ShowEmailChangeSheet(); });
+      StackPanel actions;
+      actions.Orientation(Orientation::Horizontal);
+      actions.Spacing(8);
+      actions.Children().Append(change);
+      actions.Children().Append(remove);
+      trailing = actions;
+    }
     Row(authMethodsPanel_, kit::MakeRowGlyph(kSignInMethodGlyph),
-        winrt::to_hstring(AuthMethodLabel(authType)), hstring{}, remove);
+        winrt::to_hstring(AuthMethodLabel(authType)), hstring{}, trailing);
   }
 }
 
@@ -1753,6 +1779,26 @@ winrt::fire_and_forget SettingsPage::ShowAddAuthSheet() {
   } catch (...) {
   }
   addAuthSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+winrt::fire_and_forget SettingsPage::ShowEmailChangeSheet() {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    auto weak = w_.get_weak();
+    emailChangeSheet_ = urnw::EmailChangeSheet::Create(self->Content().XamlRoot(), Sdk(), [weak] {
+      // the new email: the sign-in methods and the profile's auth line
+      if (auto window = weak.get()) {
+        window->settings().LoadNetworkUser();
+        window->account().LoadAccount();
+      }
+    });
+    co_await emailChangeSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  emailChangeSheet_.reset();
   w_.SetSheetOpen(false);
 }
 

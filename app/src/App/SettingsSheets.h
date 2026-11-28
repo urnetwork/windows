@@ -318,6 +318,78 @@ class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer cooldownTimer_{nullptr};
 };
 
+// ---- Change email (the verified email change, sdk api_email_change.go) -----
+//
+// The email sign-in row's Change email, in three steps in one dialog: the new
+// address (urnet::validateEmailChangeAddress before anything is sent), then
+// the two codes the server sends, one to the current email (masked by the
+// server) and one to the new one, then the done step. The sdk sends the change
+// with the network credential and fails before sending without one, so a
+// sign-in with none is told to sign in again first (Api::hasNetworkCredential).
+// Every refusal comes back as a code (urnet::AuthEmailChangeErrorCode*), worded
+// here, with the server's message for a code this build does not know.
+// - a wrong code keeps the fields, and a side whose code was confirmed stays
+//   done (its field is off);
+// - a refusal that ends the request (urnet::authEmailChangeErrorEndsRequest:
+//   nothing waiting, too many wrong codes, the address taken) goes back to the
+//   new address;
+// - closing the dialog at the codes step cancels the waiting change
+//   (authEmailChangeCancel, nothing waits on its answer).
+// `onChanged` runs once the change completed, so the methods and the profile
+// read the new email.
+class EmailChangeSheet : public std::enable_shared_from_this<EmailChangeSheet> {
+ public:
+  static std::shared_ptr<EmailChangeSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
+      std::function<void()> onChanged);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  enum class Step { NewEmail, Codes, Done };
+
+  EmailChangeSheet(SdkHost& sdk, std::function<void()> onChanged)
+      : sdk_(sdk), onChanged_(std::move(onChanged)) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void Render();
+  // step 1: POST /auth/email-change with the typed address
+  void SendCodes();
+  void ApplySendCodes(std::optional<urnet::AuthEmailChangeResult> const& result,
+                      std::optional<std::string> const& err);
+  // step 2: POST /auth/email-change/confirm with the codes still needed
+  void Confirm();
+  void ApplyConfirm(std::optional<urnet::AuthEmailChangeConfirmResult> const& result,
+                    std::optional<std::string> const& err);
+
+  SdkHost& sdk_;
+  std::function<void()> onChanged_;
+  Step step_ = Step::NewEmail;
+  // a request is in flight: the buttons and the fields wait for it
+  bool busy_ = false;
+  // where the codes went: the current email as the server masked it, and the
+  // new email as the server normalized it
+  std::string currentEmail_;
+  std::string newEmail_;
+  // a side whose code the server confirmed: its field is done
+  bool currentConfirmed_ = false;
+  bool newConfirmed_ = false;
+  // the done step's address, and whether the other sessions were signed out
+  std::string email_;
+  bool othersSignedOut_ = false;
+  winrt::hstring error_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel newEmailPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox emailBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel codesPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock codesSentText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox currentCodeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox newCodeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel donePanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock doneText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock othersText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
+};
+
 // ---- Create an account, for a legacy guest network ------------------------
 //
 // GuestConversion.h: adds an email/phone + password sign-in to the CURRENT

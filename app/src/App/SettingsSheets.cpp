@@ -981,6 +981,45 @@ void RunCooldownTimer(winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer co
   }
 }
 
+// An email change refusal (urnet::AuthEmailChangeError) in this app's words:
+// each code the sdk names has its line, and a code this build does not know
+// shows the server's message.
+hstring EmailChangeErrorText(urnet::AuthEmailChangeError const& error) {
+  static constexpr struct {
+    const char* code;
+    const char* text;
+  } kLines[] = {
+      {urnet::AuthEmailChangeErrorCodeOwnerOnly, "email_change_sign_in_required"},
+      {urnet::AuthEmailChangeErrorCodeNoEmail, "email_change_no_email"},
+      {urnet::AuthEmailChangeErrorCodeEmailUnverified, "email_change_email_unverified"},
+      {urnet::AuthEmailChangeErrorCodeInvalidEmail, "email_change_invalid_email"},
+      {urnet::AuthEmailChangeErrorCodeSameEmail, "email_change_same_email"},
+      {urnet::AuthEmailChangeErrorCodeEmailInUse, "email_change_email_in_use"},
+      {urnet::AuthEmailChangeErrorCodeRateLimited, "account_too_many_tries"},
+      {urnet::AuthEmailChangeErrorCodeSendFailed, "account_code_send_failed"},
+      {urnet::AuthEmailChangeErrorCodeNoChange, "email_change_expired"},
+      {urnet::AuthEmailChangeErrorCodeCodeInvalid, "account_code_invalid"},
+      {urnet::AuthEmailChangeErrorCodeTooManyTries, "email_change_too_many_tries"},
+  };
+  for (auto const& line : kLines) {
+    if (error.code == line.code) return Loc(line.text);
+  }
+  return error.message.empty() ? Loc("something_went_wrong") : H(error.message);
+}
+
+// A code field of the email change, with the numeric keyboard where there is
+// one; EmailChangeSheet::Render names the address its code went to.
+TextBox MakeEmailChangeCodeBox() {
+  TextBox box;
+  box.Style(Lookup(L"UrTextInputStyle"));
+  winrt::Microsoft::UI::Xaml::Input::InputScope scope;
+  winrt::Microsoft::UI::Xaml::Input::InputScopeName number;
+  number.NameValue(winrt::Microsoft::UI::Xaml::Input::InputScopeNameValue::Number);
+  scope.Names().Append(number);
+  box.InputScope(scope);
+  return box;
+}
+
 }  // namespace
 
 // ---- AddAuthSheet ----------------------------------------------------------
@@ -1294,6 +1333,278 @@ void AddAuthSheet::Render() {
       !busy && !GuestConversion::Trim(Narrow(codeBox_.Text().c_str())).empty());
   ShowSendNotice(noticeText_, conversion_->ShownNotice());
   RunCooldownTimer(cooldownTimer_, *conversion_);
+}
+
+// ---- EmailChangeSheet ------------------------------------------------------
+
+std::shared_ptr<EmailChangeSheet> EmailChangeSheet::Create(XamlRoot const& root, SdkHost& sdk,
+                                                           std::function<void()> onChanged) {
+  auto sheet = std::shared_ptr<EmailChangeSheet>(new EmailChangeSheet(sdk, std::move(onChanged)));
+  sheet->Build(root);
+  return sheet;
+}
+
+void EmailChangeSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeSheet(root, Loc("email_change_title"));
+  dialog_.DefaultButton(ContentDialogButton::Primary);
+
+  StackPanel content;
+  content.MinWidth(380);
+  content.Spacing(12);
+
+  // ---- step 1: the new address ----
+  newEmailPanel_ = StackPanel();
+  newEmailPanel_.Spacing(12);
+  Supporting(newEmailPanel_, Loc("email_change_body"));
+  emailBox_ = TextBox();
+  emailBox_.Style(Lookup(L"UrTextInputStyle"));
+  emailBox_.Header(winrt::box_value(Loc("email_change_new_email")));
+  {
+    winrt::Microsoft::UI::Xaml::Input::InputScope scope;
+    winrt::Microsoft::UI::Xaml::Input::InputScopeName email;
+    email.NameValue(winrt::Microsoft::UI::Xaml::Input::InputScopeNameValue::EmailSmtpAddress);
+    scope.Names().Append(email);
+    emailBox_.InputScope(scope);
+  }
+  emailBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  newEmailPanel_.Children().Append(emailBox_);
+  content.Children().Append(newEmailPanel_);
+
+  // ---- step 2: a code from each address ----
+  codesPanel_ = StackPanel();
+  codesPanel_.Spacing(12);
+  codesSentText_ = Supporting(codesPanel_, hstring{});
+  currentCodeBox_ = MakeEmailChangeCodeBox();
+  currentCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codesPanel_.Children().Append(currentCodeBox_);
+  newCodeBox_ = MakeEmailChangeCodeBox();
+  newCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codesPanel_.Children().Append(newCodeBox_);
+  content.Children().Append(codesPanel_);
+
+  // ---- done ----
+  donePanel_ = StackPanel();
+  donePanel_.Spacing(8);
+  doneText_ = TextBlock();
+  doneText_.FontSize(14);
+  doneText_.TextWrapping(TextWrapping::Wrap);
+  donePanel_.Children().Append(doneText_);
+  othersText_ = Supporting(donePanel_, hstring{});
+  content.Children().Append(donePanel_);
+
+  errorText_ = TextBlock();
+  errorText_.FontSize(12);
+  errorText_.TextWrapping(TextWrapping::Wrap);
+  errorText_.Foreground(colors::DangerBrush());
+  errorText_.Visibility(Visibility::Collapsed);
+  content.Children().Append(errorText_);
+
+  ScrollViewer scroller;
+  scroller.Content(content);
+  dialog_.Content(scroller);
+  dialog_.PrimaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);  // every step runs in this one dialog
+        auto self = weak.lock();
+        if (!self) return;
+        if (self->step_ == Step::NewEmail) {
+          self->SendCodes();
+        } else if (self->step_ == Step::Codes) {
+          self->Confirm();
+        }
+      });
+  // Closing it at the codes step (Cancel, Esc) ends the waiting change, so its
+  // codes stop working. Nothing waits on the answer: a change that ended
+  // already answers no_change.
+  dialog_.Closing([weak = weak_from_this()](auto const&, auto const&) {
+    auto self = weak.lock();
+    if (!self || self->step_ != Step::Codes) return;
+    if (!self->sdk_.IsLoggedIn() || !self->sdk_.apiReady()) return;
+    self->sdk_.api().authEmailChangeCancel(
+        [](std::optional<urnet::AuthEmailChangeCancelResult> result,
+           std::optional<std::string> err) {
+          if (err) {
+            LogWarn("email change: the cancel did not reach the server: {}", *err);
+          } else if (result && result->error) {
+            LogInfo("email change: the cancel answered {}", result->error->code);
+          }
+        });
+  });
+  Render();
+}
+
+void EmailChangeSheet::SendCodes() {
+  if (busy_) return;
+  const std::string email = Trim(Narrow(emailBox_.Text().c_str()));
+  if (email.empty()) return;
+  // the sdk's check of the address, before anything is sent
+  if (!urnet::validateEmailChangeAddress(email).empty()) {
+    error_ = Loc("email_change_invalid_email");
+    Render();
+    return;
+  }
+  // the sdk sends the change with the network credential and fails before
+  // sending without one
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady() || !sdk_.api().hasNetworkCredential()) {
+    error_ = Loc("email_change_sign_in_required");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  urnet::AuthEmailChangeArgs args;
+  args.new_email = email;
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().authEmailChange(args, [queue, weak = weak_from_this()](
+                                       std::optional<urnet::AuthEmailChangeResult> result,
+                                       std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplySendCodes(result, err);
+    });
+  });
+}
+
+void EmailChangeSheet::ApplySendCodes(std::optional<urnet::AuthEmailChangeResult> const& result,
+                                      std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("email change: the request failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    error_ = EmailChangeErrorText(*result->error);
+    Render();
+    return;
+  }
+  step_ = Step::Codes;
+  currentEmail_ = result->current_email.value_or(std::string());
+  newEmail_ = result->new_email.value_or(Trim(Narrow(emailBox_.Text().c_str())));
+  currentConfirmed_ = false;
+  newConfirmed_ = false;
+  error_ = hstring{};
+  currentCodeBox_.Text(hstring{});
+  newCodeBox_.Text(hstring{});
+  Render();
+  currentCodeBox_.Focus(FocusState::Programmatic);
+}
+
+void EmailChangeSheet::Confirm() {
+  if (busy_) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady() || !sdk_.api().hasNetworkCredential()) {
+    error_ = Loc("email_change_sign_in_required");
+    Render();
+    return;
+  }
+  // only the codes still to be entered; the sdk normalizes them
+  urnet::AuthEmailChangeConfirmArgs args;
+  if (!currentConfirmed_) args.current_code = Trim(Narrow(currentCodeBox_.Text().c_str()));
+  if (!newConfirmed_) args.new_code = Trim(Narrow(newCodeBox_.Text().c_str()));
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().authEmailChangeConfirm(args, [queue, weak = weak_from_this()](
+                                              std::optional<urnet::AuthEmailChangeConfirmResult> result,
+                                              std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplyConfirm(result, err);
+    });
+  });
+}
+
+void EmailChangeSheet::ApplyConfirm(std::optional<urnet::AuthEmailChangeConfirmResult> const& result,
+                                    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("email change: the confirm failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->complete) {
+    step_ = Step::Done;
+    email_ = result->email.value_or(newEmail_);
+    othersSignedOut_ = result->other_sessions_signed_out.value_or(false);
+    error_ = hstring{};
+    Render();
+    // the methods and the profile read the new email
+    if (onChanged_) onChanged_();
+    return;
+  }
+  if (urnet::authEmailChangeErrorEndsRequest(result->error)) {
+    // nothing waits any more (expired, too many wrong codes, the address
+    // taken): the new address again, with the reason
+    step_ = Step::NewEmail;
+    currentEmail_.clear();
+    newEmail_.clear();
+    currentConfirmed_ = false;
+    newConfirmed_ = false;
+    error_ = EmailChangeErrorText(*result->error);
+    currentCodeBox_.Text(hstring{});
+    newCodeBox_.Text(hstring{});
+    Render();
+    return;
+  }
+  // a side whose code was confirmed stays done (the sdk's NeedsCurrentCode and
+  // NeedsNewCode); a wrong code keeps the fields as they are
+  currentConfirmed_ = currentConfirmed_ || result->current_confirmed;
+  newConfirmed_ = newConfirmed_ || result->new_confirmed;
+  error_ = result->error ? EmailChangeErrorText(*result->error) : hstring{};
+  Render();
+}
+
+void EmailChangeSheet::Render() {
+  const bool newEmail = step_ == Step::NewEmail;
+  const bool codes = step_ == Step::Codes;
+  newEmailPanel_.Visibility(newEmail ? Visibility::Visible : Visibility::Collapsed);
+  codesPanel_.Visibility(codes ? Visibility::Visible : Visibility::Collapsed);
+  donePanel_.Visibility(step_ == Step::Done ? Visibility::Visible : Visibility::Collapsed);
+  emailBox_.IsEnabled(!busy_);
+  // each code field names the address its code went to; a confirmed one is done
+  auto codeHeader = [](std::string const& address, bool confirmed) {
+    std::wstring text = Format("email_change_code_sent_to", Widen(address));
+    if (confirmed) text += L" ✓";
+    return winrt::box_value(hstring{text});
+  };
+  currentCodeBox_.Header(codeHeader(currentEmail_, currentConfirmed_));
+  newCodeBox_.Header(codeHeader(newEmail_, newConfirmed_));
+  currentCodeBox_.IsEnabled(!busy_ && !currentConfirmed_);
+  newCodeBox_.IsEnabled(!busy_ && !newConfirmed_);
+  codesSentText_.Text(
+      hstring{Format("email_change_codes_sent", Widen(currentEmail_), Widen(newEmail_))});
+  doneText_.Text(hstring{Format("email_change_done", Widen(email_))});
+  othersText_.Text(
+      Loc(othersSignedOut_ ? "email_change_others_signed_out" : "email_change_others_hint"));
+  errorText_.Text(error_);
+  errorText_.Visibility(error_.empty() ? Visibility::Collapsed : Visibility::Visible);
+  if (newEmail) {
+    dialog_.PrimaryButtonText(Loc("email_change_send_codes"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && !Trim(Narrow(emailBox_.Text().c_str())).empty());
+    dialog_.CloseButtonText(Loc("cancel"));
+    dialog_.DefaultButton(ContentDialogButton::Primary);
+  } else if (codes) {
+    const bool ready =
+        (currentConfirmed_ || !Trim(Narrow(currentCodeBox_.Text().c_str())).empty()) &&
+        (newConfirmed_ || !Trim(Narrow(newCodeBox_.Text().c_str())).empty());
+    dialog_.PrimaryButtonText(Loc("email_change"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && ready);
+    dialog_.CloseButtonText(Loc("cancel"));
+    dialog_.DefaultButton(ContentDialogButton::Primary);
+  } else {
+    // done: nothing left to send
+    dialog_.PrimaryButtonText(hstring{});
+    dialog_.CloseButtonText(Loc("done"));
+    dialog_.DefaultButton(ContentDialogButton::Close);
+  }
 }
 
 // ---- GuestConversionSheet --------------------------------------------------

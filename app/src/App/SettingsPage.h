@@ -113,7 +113,8 @@ class SettingsPage {
   urnw::kit::Snackbar& settingsSnackbar() { return snackbar_; }
 
   // Re-read the network user; called by the add-auth sheet after it links a
-  // method, and by the remove path after it unlinks one.
+  // method, by the remove path after it unlinks one, and by the email change
+  // sheet once the email changed.
   void LoadNetworkUser();
 
   // Re-read the referral network when MainWindow opens the dedicated
@@ -228,6 +229,8 @@ class SettingsPage {
   winrt::fire_and_forget ShowDeviceNameSheet();
   winrt::fire_and_forget ShowAuthCodeSheet();
   winrt::fire_and_forget ShowAddAuthSheet();
+  // the email sign-in row's Change email (EmailChangeSheet)
+  winrt::fire_and_forget ShowEmailChangeSheet();
   winrt::fire_and_forget ShowReferralNetworkSheet();
   winrt::fire_and_forget ShowIdentitySheet();
   winrt::fire_and_forget ShowDeleteAccountSheet();
@@ -327,6 +330,9 @@ class SettingsPage {
   std::string networkName_;
   std::string deviceName_;
   std::vector<std::string> authTypes_;
+  // the account's email sign-in (urnet::networkUserEmailSignIn), "" for none:
+  // the email row offers Change email only with one
+  std::string emailSignIn_;
   // Guards the product-updates write the way apple's AccountPreferencesViewModel
   // does: the toggle's own Toggled event fires when the LOAD writes it, and
   // without this that echo would post the value straight back to the server.
@@ -342,6 +348,7 @@ class SettingsPage {
   std::shared_ptr<urnw::DeviceNameSheet> deviceNameSheet_;
   std::shared_ptr<urnw::AuthCodeSheet> authCodeSheet_;
   std::shared_ptr<urnw::AddAuthSheet> addAuthSheet_;
+  std::shared_ptr<urnw::EmailChangeSheet> emailChangeSheet_;
   std::shared_ptr<urnw::ReferralNetworkSheet> referralSheet_;
   std::shared_ptr<urnw::BlockedLocationsSheet> blockedSheet_;
   std::shared_ptr<urnw::PostQuantumIdentitySheet> identitySheet_;
