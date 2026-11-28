@@ -92,6 +92,8 @@ void ConnectPage::Initialize() {
   // the '?' at the end of the provide group's header: what providing is
   w_.ProvideHeaderRow().Children().Append(
       kit::MakeHelpButton(Loc("help_provide_title"), Loc("help_provide_body")));
+  // the selected location's favorite star, beside its row
+  w_.FavoriteStarButton().Click([this](auto const&, auto const&) { ToggleFavorite(); });
 
   // The connections verdict filter. Wired here rather than in markup for the
   // same reason the status-dot taps are: XAML event handlers live on
@@ -344,6 +346,7 @@ void ConnectPage::ApplyStrings() {
   }
   if (foldDoorHeader_.title) foldDoorHeader_.title.Text(Loc("client_statistics"));
   ApplyLocationRowName();
+  ApplyFavoriteStar();
   w_.DohLabel().Text(Loc("dns_over_https"));
   w_.UdnsLabel().Text(Loc("unencrypted_dns"));
   w_.LdnsLabel().Text(Loc("local_dns"));
@@ -1371,6 +1374,15 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   w_.LocationText().Text(locationName.empty() ? Loc("best_available_provider")
                                               : H(locationName));
   ApplyLocationRowName();  // the row's name carries the provider, not just the label
+  // the star follows the selection; the favorites are read only when it moves
+  const bool sameSelection =
+      IsBestAvailableSelected(starLocation_)
+          ? IsBestAvailableSelected(stats.selectedLocation)
+          : stats.selectedLocation && IsLocationSelected(starLocation_, *stats.selectedLocation);
+  if (!sameSelection) {
+    starLocation_ = stats.selectedLocation;
+    ApplyFavoriteStar();
+  }
   // The SDK's connection status: the only signal in the client that carries a
   // CONNECTING state. It was read into LiveStats and never used. A start
   // waiting on its balance, or a held tap, keeps showing its own state
@@ -3991,6 +4003,29 @@ void ConnectPage::ApplySplitRulesList() {
                       : Loc(rule.routeLocal ? "local" : "remote"));
     host.Children().Append(row.root);
   }
+}
+
+void ConnectPage::ApplyFavoriteStar() {
+  const bool favoritable = starLocation_ && urnet::canFavoriteLocation(*starLocation_);
+  w_.FavoriteStarButton().Visibility(favoritable ? Visibility::Visible : Visibility::Collapsed);
+  if (!favoritable) return;
+  const auto favorites = Sdk().FavoriteLocations();
+  favoriteShown_ = std::any_of(favorites.begin(), favorites.end(), [&](auto const& favorite) {
+    return IsLocationSelected(starLocation_, favorite);
+  });
+  // FavoriteStarFill, FavoriteStar
+  w_.FavoriteStarIcon().Glyph(favoriteShown_ ? L"\uE735" : L"\uE734");
+  const hstring label =
+      favoriteShown_ ? Loc("remove_from_favorites") : Loc("add_to_favorites");
+  ToolTipService::SetToolTip(w_.FavoriteStarButton(), winrt::box_value(label));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(w_.FavoriteStarButton(),
+                                                                        label);
+}
+
+void ConnectPage::ToggleFavorite() {
+  if (!starLocation_) return;
+  Sdk().SetFavoriteLocation(*starLocation_, !favoriteShown_);
+  ApplyFavoriteStar();
 }
 
 // "Selected provider, Berlin". Naming the row after its LABEL alone left a

@@ -445,6 +445,41 @@ class BlockedLocationsSheet : public std::enable_shared_from_this<BlockedLocatio
   rows::FieldState countriesState_ = rows::FieldState::Loading;
 };
 
+// ---- Excluded exit locations (sdk exit_location_preferences.go) ----------
+//
+// The countries, regions (such as US states) and cities a connection's picks
+// avoid, kept in the LocalState, and a search to add more: the provider
+// location search the location list asks, once typing pauses. Every change
+// applies to a connection in place (SdkHost::SetExcludedExitLocation).
+class ExcludedExitLocationsSheet
+    : public std::enable_shared_from_this<ExcludedExitLocationsSheet> {
+ public:
+  static std::shared_ptr<ExcludedExitLocationsSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  explicit ExcludedExitLocationsSheet(SdkHost& sdk) : sdk_(sdk) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void RenderExcluded();
+  void RenderResults();
+  void Search();
+  void SetExcluded(urnet::ConnectLocation const& location, bool excluded);
+
+  SdkHost& sdk_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel excludedPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock excludedEmpty_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox search_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel resultPanel_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer searchTimer_{nullptr};
+  // the last search's places, its best matches first
+  std::vector<urnet::ConnectLocation> results_;
+  // a newer query drops an older answer
+  uint64_t searchSequence_ = 0;
+};
+
 // ---- Post quantum identity (apple PostQuantumIdentityPanel + Providers) ----
 //
 // This device's public identity key hash, with the identicon the SDK renders

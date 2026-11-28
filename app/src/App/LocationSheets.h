@@ -59,8 +59,9 @@ class LocationChooserSheet : public std::enable_shared_from_this<LocationChooser
   void AppendSection(winrt::hstring const& title,
                      std::optional<urnet::ConnectLocationList> const& items,
                      std::optional<urnet::ConnectLocation> const& selected);
+  // `note` replaces the provider count line when it is not empty.
   winrt::Microsoft::UI::Xaml::Controls::Grid MakeLocationRow(
-      const urnet::ConnectLocation& location, bool selected);
+      const urnet::ConnectLocation& location, bool selected, winrt::hstring const& note = {});
   winrt::Microsoft::UI::Xaml::Controls::Grid MakePeerRow(const urnet::NetworkPeer& peer,
                                                          bool selected);
   winrt::Microsoft::UI::Xaml::Controls::Grid MakeBestAvailableRow(bool selected);
