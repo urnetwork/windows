@@ -126,6 +126,10 @@ class AppController {
   // it does not come back on the next show, only for the next refusal. UI
   // thread.
   void DismissAccountSignInNotice();
+  // The main window's low-data warning was closed (its close button): it does
+  // not come back on the next show, only with the sdk's next warning. UI
+  // thread.
+  void DismissLowDataWarning();
 
   // ---- a sign-in approved on a web page (UrIoApproval.h) ---------------------
   // "Continue in browser" in the browser sign-in sheet. The attempt lives here, not
@@ -239,6 +243,13 @@ class AppController {
   // The user is not looking at the window: hidden to the tray, minimized, or
   // behind another app's.
   bool InBackground() const;
+  // ---- the low-data warning (sdk LowDataWarningForBalance) ----
+  // A warning the balance store reported: its words for the window's notice,
+  // and the tray's notification while the window is in the background. It
+  // only informs; never a disconnect.
+  void OnLowDataWarning(urnet::LowDataWarning const& warning);
+  // The window's copy of the notice (visible window only; resynced on show).
+  void PublishLowDataWarning();
   // ---- the network's Pro features in use (ProFeaturesNotice.h) ----
   // Opens the sdk's ProFeaturesViewController on the Api for this sign-in, its
   // listener first, then starts it (the first read of the proxies). One per
@@ -377,6 +388,9 @@ class AppController {
   // what the main window's account sign-in notice says, None for nothing:
   // until its close, or the next sign-in or sign-out
   authlogout::AccountSignInNotice accountSignInNotice_ = authlogout::AccountSignInNotice::None;
+  // what the main window's low-data warning says, "" for nothing: until its
+  // close, the next warning, or the next sign-in or sign-out
+  std::wstring lowDataWarningMessage_;
   bool connected_ = false;
   // #27: the last aggregate connection health a stats push carried, so the
   // tray can say Evaluating/Degraded instead of a false Connected. nullopt is

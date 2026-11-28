@@ -471,6 +471,11 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
                                   : std::string(),
       activeFamilies);
 
+  // little data left: the sdk says when, once per threshold per balance
+  // period, and remembers it in the LocalState. It only informs; nothing
+  // disconnects
+  const std::optional<urnet::LowDataWarning> lowDataWarning = sdk_.LowDataWarningForBalance(result);
+
   if (IsSupporterWithBalance()) {
     // nothing left to poll for
     StopConfirmation(/*timedOut=*/false);
@@ -479,6 +484,7 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
     EnsureBackgroundPolling();
   }
   Publish();
+  if (lowDataWarning && onLowDataWarning_) onLowDataWarning_(*lowDataWarning);
 }
 
 void SubscriptionBalanceStore::EnsureBackgroundPolling() {

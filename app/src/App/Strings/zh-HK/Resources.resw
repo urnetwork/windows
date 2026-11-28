@@ -5572,6 +5572,18 @@
     <value>最長連續</value>
     <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
+  <data name="low_data_warning_byte_count" xml:space="preserve">
+    <value>只剩 {} 數據。</value>
+    <comment>Body of the low-data warning (title: "Running low on data") when the available data falls to a fixed amount (1 GiB). {amount} is the available data as a size, e.g. 980 MB. Shown once per balance period in an in-app alert and a local notification.</comment>
+  </data>
+  <data name="low_data_warning_percent" xml:space="preserve">
+    <value>你的數據只剩 {0}%（{1}）。</value>
+    <comment>Body of the low-data warning (title: "Running low on data") when the available data falls to a part of the period's data. {percent} is a whole number from 1 to 100 (the % sign follows it in the text); {amount} is the available data as a size, e.g. 2.9 GB. Shown once per balance period in an in-app alert and a local notification.</comment>
+  </data>
+  <data name="low_data_warning_title" xml:space="preserve">
+    <value>數據即將用完</value>
+    <comment>Title of the low-data warning: an in-app alert and a local notification shown once when the available data falls to 10% of the period's data, and once when it falls to 1 GiB. It only informs; nothing is disconnected. Short.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>最低用戶/IP比率以存取內容</value>
     <comment>Call to action</comment>
