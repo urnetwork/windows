@@ -72,6 +72,16 @@ class WalletConnect {
   // provider "google". The state carries the same platform claim.
   void OpenGoogleOAuth(const std::string& apiUrl, const std::string& state,
                        const std::string& nonce);
+  // Sign in with Microsoft through the api: the sdk's attempt
+  // (urnet::MicrosoftSignInAttempt) holds the state and the nonce and builds
+  // `startUrl`, <api>/auth/microsoft/start?state=…&nonce=…; the api sends the
+  // browser on to Microsoft with its own client and returns to
+  // urnetwork://oauth/microsoft?state=…&id_token=… (or &error=…), which
+  // HandleDeepLink hands whole to on_microsoft_return for the attempt to check
+  // (MicrosoftSignInAttempt::finish). This only opens the url. An empty url
+  // (the sdk made no attempt) and a browser that would not open both go to
+  // on_error as the sign-in's error line, error_signing_in_with_microsoft.
+  void OpenMicrosoftOAuth(const std::string& startUrl);
   // The state of one Apple or Google attempt: base64url of
   // {"platform":"windows","token":…}. The api's callbacks read the platform
   // claim to pick the return scheme; the token is what makes it unique.
@@ -100,6 +110,9 @@ class WalletConnect {
   std::function<void(std::string message, std::string pageText)> on_solana_error;
   // the raw urnetwork://bittensor-* hand-back link
   std::function<void(std::string url)> on_bittensor_return;
+  // the raw urnetwork://oauth/microsoft hand-back link, a url the sdk says is
+  // a Microsoft sign-in return (urnet::isMicrosoftSignInReturnUrl)
+  std::function<void(std::string url)> on_microsoft_return;
   // urnetwork://oauth/<provider>?state=<state>&id_token=<token>, or
   // ?state=<state>&error=<message>. `error` is non-empty when the api's
   // callback reported one or returned no token.

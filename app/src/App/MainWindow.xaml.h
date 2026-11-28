@@ -289,11 +289,14 @@ struct MainWindow : MainWindowT<MainWindow> {
   // gates Get started on a non-empty field
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  // Google / Apple through the provider's web flow (SdkHost::SignInWithSso)
+  // Google / Apple / Microsoft through the provider's web flow
+  // (SdkHost::SignInWithSso)
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSignInWithMicrosoft(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // seedphrase sign-in, and the instant (seedphrase-only) account
   void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);

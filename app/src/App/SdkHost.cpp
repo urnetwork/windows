@@ -2098,6 +2098,9 @@ void SdkHost::SetupWalletCallbacks() {
   // Bittensor hand-backs go to the session helper, never through the routes
   // above: it decides whether the link belongs to the proof in flight.
   wallet_.on_bittensor_return = [this](std::string url) { HandleBittensorReturn(url); };
+  // Microsoft's return goes to the sdk's attempt in flight, which checks the
+  // echoed state and the token's nonce itself.
+  wallet_.on_microsoft_return = [this](std::string url) { HandleMicrosoftReturn(url); };
   wallet_.on_error = [this](std::string err) {
     // The browser could not open for a Bittensor proof: answer that proof.
     {
@@ -2506,7 +2509,7 @@ void SdkHost::HandleDeepLink(const std::string& url) {
   }
   // Every browser round trip answers here: the wallet bridge hosts and the
   // urnetwork://oauth/<provider> return of the api's Google / Apple callbacks
-  // (on_sso below).
+  // (on_sso below) and of its Microsoft callback (HandleMicrosoftReturn).
   wallet_.HandleDeepLink(url);
 }
 
@@ -2534,7 +2537,7 @@ void SdkHost::AuthNetworkClientWithLocale(const urnet::AuthNetworkClientArgs& ar
                                 &urnet::detail::oneshot_auth_network_client, fn);
 }
 
-// ---- Sign in with Google / Apple (the provider's web flow, the api's callback) ---
+// ---- Sign in with Google / Apple / Microsoft (the provider's web flow, the api's callback) ---
 
 
 bool SdkHost::HasPendingAuthJwt() {
@@ -2543,7 +2546,7 @@ bool SdkHost::HasPendingAuthJwt() {
 }
 
 void SdkHost::SignInWithSso(const std::string& provider, std::function<void(AuthResult)> done) {
-  if (provider != "google" && provider != "apple") {
+  if (provider != "google" && provider != "apple" && provider != urnet::AuthJwtTypeMicrosoft) {
     if (done) done({false, false, "unknown sign-in provider"});
     return;
   }
@@ -2575,20 +2578,110 @@ void SdkHost::OpenSsoAttempt(const std::string& provider, add_sign_in::SsoPurpos
   // centrally, and the token that comes back signs into the ACTIVE space
   // through AuthLoginWithSso -> /auth/login, which verifies signature +
   // audience with no provider config of its own.
+  const std::string apiUrl = ids::kOperatorApiUrl;
+  if (provider == urnet::AuthJwtTypeMicrosoft) {
+    // Microsoft's attempt is the sdk's: the state (with this platform's claim)
+    // and the nonce, the start url on the same operator's api, and the check
+    // of the return (HandleMicrosoftReturn). No attempt or no url opens no
+    // browser, which on_error answers as one that would not open.
+    std::shared_ptr<urnet::MicrosoftSignInAttempt> attempt;
+    std::string startUrl;
+    try {
+      attempt = std::make_shared<urnet::MicrosoftSignInAttempt>(
+          urnet::newMicrosoftSignInAttempt(urnet::OAuthPlatformWindows));
+      startUrl = attempt->startUrl(apiUrl);
+    } catch (const std::exception& e) {
+      LogError("sdkhost: no Microsoft sign-in attempt: {}", e.what());
+    }
+    ssoAttempt_ = SsoAttempt{.provider = provider, .purpose = purpose, .microsoft = attempt};
+    LogInfo("sdkhost: {} sign-in armed{}", provider,
+            purpose == add_sign_in::SsoPurpose::Add ? " (adding a sign-in method)" : "");
+    // opens the browser; the rest continues on the deep-link callback
+    wallet_.OpenMicrosoftOAuth(attempt ? startUrl : std::string());
+    return;
+  }
   const std::string state = WalletConnect::OAuthState(urnet::generateNonce());
   ssoAttempt_ = SsoAttempt{provider, state, urnet::generateNonce(), purpose};
   // the provider (and whether it is an add): the state and the nonce are the
   // attempt's secrets
   LogInfo("sdkhost: {} sign-in armed{}", provider,
           purpose == add_sign_in::SsoPurpose::Add ? " (adding a sign-in method)" : "");
-  const std::string apiUrl = ids::kOperatorApiUrl;
   // opens the browser; the rest continues on the deep-link callback (on_sso)
-  // both callers admit only these two providers: no other flow exists
+  // both callers admit only these providers: no other flow exists
   if (provider == "apple") {
     wallet_.OpenAppleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
   } else if (provider == "google") {
     wallet_.OpenGoogleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
   }
+}
+
+void SdkHost::HandleMicrosoftReturn(const std::string& url) {
+  // NO MICROSOFT ATTEMPT IN FLIGHT: as for a Google or Apple return (on_sso), a
+  // late or replayed one must not move the auth state.
+  if (!ssoAttempt_ || !ssoAttempt_->microsoft) {
+    LogWarn("sdkhost: a Microsoft sign-in return arrived with no Microsoft sign-in in flight, ignoring it");
+    return;
+  }
+  // The sdk checks the echoed state and the token's nonce. A return that
+  // cannot be used comes back as an error whose message starts with its code
+  // (urnet::MicrosoftSignInErrorCode*): only that closed code is kept, since
+  // the rest of the message can quote the link, which any program can fire.
+  std::string idToken;
+  std::string failure;
+  try {
+    if (auto result = ssoAttempt_->microsoft->finish(url)) idToken = result->IdToken;
+    if (idToken.empty()) failure = urnet::MicrosoftSignInErrorCodeNoToken;
+  } catch (const std::exception& e) {
+    failure = urnet::microsoftSignInErrorCodeOf(e.what());
+    if (failure.empty()) failure = urnet::MicrosoftSignInErrorCodeFailed;
+  }
+  // another attempt's return (a stale tab, a replayed link): this one keeps
+  // waiting for its own
+  if (failure == urnet::MicrosoftSignInErrorCodeNotThisAttempt) {
+    LogWarn("sdkhost: a Microsoft sign-in return did not match the sign-in in flight, ignoring it");
+    return;
+  }
+  const SsoAttempt attempt = *ssoAttempt_;
+  const std::uint64_t authEpoch = walletAuthEpoch_;
+  ssoAttempt_.reset();
+  LogInfo("sdkhost: a Microsoft sign-in return matched the sign-in in flight{}",
+          failure.empty() ? std::string() : "; it carried " + failure);
+  const bool add =
+      add_sign_in::RouteSsoReturn(attempt.purpose) == add_sign_in::SsoReturnRoute::AddAuth;
+  if (!failure.empty()) {
+    // What the person sees: nothing for a cancel on Microsoft's page, the
+    // unavailable line while the server has no Microsoft sign-in configured,
+    // and the sign-in's error line for anything else.
+    const bool cancelled = failure == urnet::MicrosoftSignInErrorCodeCancelled;
+    const std::string message =
+        cancelled ? std::string()
+                  : Narrow(Localized(failure == urnet::MicrosoftSignInErrorCodeNotConfigured
+                                         ? "microsoft_sign_in_unavailable"
+                                         : "error_signing_in_with_microsoft"));
+    if (add) {
+      if (auto addDone = std::exchange(ssoAddDone_, nullptr)) {
+        addDone(std::string(),
+                cancelled ? std::string(add_sign_in::kProviderCancelled) : message);
+      }
+      return;
+    }
+    auto done = std::exchange(walletAuthDone_, nullptr);
+    if (!done) return;
+    // a cancel leaves the sign-in screen as it was
+    SetRegistrationAuthState(authEpoch, cancelled ? AuthState::LoggedOut : AuthState::Error,
+                             message);
+    done({false, false, message});
+    return;
+  }
+  // Who started the attempt decides where its token goes, as for on_sso: an
+  // add-owned attempt adds the identity to the current network and never
+  // signs in.
+  if (add) {
+    if (auto addDone = std::exchange(ssoAddDone_, nullptr)) addDone(idToken, std::string());
+    return;
+  }
+  auto done = std::exchange(walletAuthDone_, nullptr);
+  AuthLoginWithSso(attempt.provider, idToken, done ? done : [](AuthResult) {}, authEpoch);
 }
 
 // ---- adding a sign-in method (AddSignIn.h) ---------------------------------
@@ -2597,7 +2690,7 @@ void SdkHost::OpenSsoAttempt(const std::string& provider, add_sign_in::SsoPurpos
 
 void SdkHost::SsoTokenForAdd(const std::string& provider,
                              std::function<void(std::string, std::string)> done) {
-  if (provider != "google" && provider != "apple") {
+  if (provider != "google" && provider != "apple" && provider != urnet::AuthJwtTypeMicrosoft) {
     if (done) done(std::string(), "unknown sign-in provider");
     return;
   }

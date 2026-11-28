@@ -276,10 +276,12 @@ void LoginPage::UpdateCarouselRunning() {
 
 void LoginPage::ApplyStrings() {
   // sign in — initial. The login stack rule every app follows (ur.io
-  // ConnectDialog is the reference): three full-width pills, then the other
-  // ways in as square icon tiles four per row, then a bare centred "or" and the
-  // email / phone field with its URTextInputLabel above it.
+  // ConnectDialog is the reference): the full-width pills (Microsoft beside
+  // Google), then the other ways in as square icon tiles four per row, then a
+  // bare centred "or" and the email / phone field with its URTextInputLabel
+  // above it.
   w_.GoogleSignInText().Text(Loc("sign_in_with_google"));
+  w_.MicrosoftSignInText().Text(Loc("sign_in_with_microsoft"));
   w_.AppleSignInText().Text(Loc("sign_in_with_apple"));
   w_.InstantAccountButton().Content(LocBox("create_instant_account"));
   // The tiles carry a one-word caption; the sentence each stands for is their
@@ -372,6 +374,8 @@ void LoginPage::ApplyStrings() {
 void LoginPage::ApplySignInAutomationNames() {
   Automation::AutomationProperties::SetName(w_.GoogleSignInButton(),
                                             Loc("sign_in_with_google"));
+  Automation::AutomationProperties::SetName(w_.MicrosoftSignInButton(),
+                                            Loc("sign_in_with_microsoft"));
   Automation::AutomationProperties::SetName(w_.AppleSignInButton(),
                                             Loc("sign_in_with_apple"));
   Automation::AutomationProperties::SetName(w_.SeedphraseSignInButton(),
@@ -1442,6 +1446,7 @@ void LoginPage::SetWalletSignInEnabled(bool enabled) {
   w_.SolanaSignInButton().IsEnabled(enabled);
   w_.AuthCodeButton().IsEnabled(enabled);
   w_.GoogleSignInButton().IsEnabled(enabled);
+  w_.MicrosoftSignInButton().IsEnabled(enabled);
   w_.AppleSignInButton().IsEnabled(enabled);
   w_.SeedphraseSignInButton().IsEnabled(enabled);
   w_.InstantAccountButton().IsEnabled(enabled);
@@ -1518,14 +1523,17 @@ void LoginPage::OnWindowReactivated() {
   SetWalletSignInEnabled(true);
 }
 
-// ---- Sign in with Google / Apple (the provider's web flow) ------------------
-// Neither has a native desktop flow here, so both open the provider's own
-// sign-in page in the default browser with the api's callback as the redirect;
-// the api returns the identity token on urnetwork://oauth/<provider>, which
-// protocol activation routes back into SdkHost (SdkHost::SignInWithSso checks
-// the attempt's state and nonce before authLogin). Everything here does is
-// disable the sign-in affordances while that is happening and surface whatever
-// comes back.
+// ---- Sign in with Google / Apple / Microsoft (the provider's web flow) ------
+// None has a native desktop flow here, so each opens a sign-in page in the
+// default browser: Google's and Apple's own with the api's callback as the
+// redirect, Microsoft's through the api's start endpoint; the api returns the
+// identity token on urnetwork://oauth/<provider>, which protocol activation
+// routes back into SdkHost (SdkHost::SignInWithSso checks the attempt's state
+// and nonce before authLogin, through the sdk's attempt for Microsoft).
+// Everything here does is disable the sign-in affordances while that is
+// happening and surface whatever comes back: SdkHost answers a Microsoft
+// cancel with no error, so nothing shows, and its other refusals in the
+// store's words.
 
 void LoginPage::StartSsoSignIn(const char* provider) {
   SetInitialLoginError(hstring());
@@ -1552,6 +1560,10 @@ void LoginPage::OnSignInWithGoogle(IInspectable const&, RoutedEventArgs const&) 
 
 void LoginPage::OnSignInWithApple(IInspectable const&, RoutedEventArgs const&) {
   StartSsoSignIn("apple");
+}
+
+void LoginPage::OnSignInWithMicrosoft(IInspectable const&, RoutedEventArgs const&) {
+  StartSsoSignIn(urnet::AuthJwtTypeMicrosoft);
 }
 
 // ---- Sign in with a seedphrase (macOS LoginSeedphraseView) -----------------

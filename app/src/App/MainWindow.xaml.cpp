@@ -3524,6 +3524,9 @@ void MainWindow::OnSignInWithGoogle(IInspectable const& s, RoutedEventArgs const
 void MainWindow::OnSignInWithApple(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithApple(s, e);
 }
+void MainWindow::OnSignInWithMicrosoft(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithMicrosoft(s, e);
+}
 void MainWindow::OnSignInWithSeedphrase(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithSeedphrase(s, e);
 }

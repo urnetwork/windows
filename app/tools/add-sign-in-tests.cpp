@@ -1,6 +1,6 @@
 // Executable spec for adding a sign-in method (App/AddSignIn.h): Settings'
 // add sheet offers the same options as ur.io and the other apps (Apple,
-// Google, a Solana or Bittensor wallet, email or phone), and adding one only
+// Google, Microsoft, a Solana or Bittensor wallet, email or phone), and adding one only
 // ever posts the credential to addAuth on the current network; it never signs
 // in as the added identity. Run against the SAME header the app compiles, on
 // any host with a C++20 compiler, with a fake session that holds each answer
@@ -65,19 +65,32 @@ class FakeSession : public asi::AddSignInSession {
 
 void TestOptions() {
   // every app's option set, in ur.io's order
-  Expect("four methods", asi::kMethodCount == 4);
+  Expect("five methods", asi::kMethodCount == 5);
   Expect("apple first", asi::kMethods[0] == asi::Method::Apple);
   Expect("google second", asi::kMethods[1] == asi::Method::Google);
-  Expect("wallet third", asi::kMethods[2] == asi::Method::Wallet);
-  Expect("email last", asi::kMethods[3] == asi::Method::Email);
+  Expect("microsoft third", asi::kMethods[2] == asi::Method::Microsoft);
+  Expect("wallet fourth", asi::kMethods[3] == asi::Method::Wallet);
+  Expect("email last", asi::kMethods[4] == asi::Method::Email);
   Expect("opens on email", asi::kDefaultMethod == asi::Method::Email);
   Expect("two wallet chains", asi::kWalletChainCount == 2);
   Expect("solana first", asi::kWalletChains[0] == asi::WalletChain::Solana);
   Expect("bittensor second", asi::kWalletChains[1] == asi::WalletChain::Bittensor);
   Expect("labels", asi::MethodLabelKey(asi::Method::Apple) == "apple" &&
                        asi::MethodLabelKey(asi::Method::Google) == "google" &&
+                       asi::MethodLabelKey(asi::Method::Microsoft) == "microsoft" &&
                        asi::MethodLabelKey(asi::Method::Wallet) == "wallet" &&
                        asi::MethodLabelKey(asi::Method::Email) == "site_app_email");
+  Expect("provider buttons", asi::ProviderButtonKey(asi::Method::Apple) == "sign_in_with_apple" &&
+                                 asi::ProviderButtonKey(asi::Method::Google) == "sign_in_with_google" &&
+                                 asi::ProviderButtonKey(asi::Method::Microsoft) == "sign_in_with_microsoft" &&
+                                 asi::ProviderButtonKey(asi::Method::Wallet).empty());
+  // the auth_jwt_type each provider's token is added with (the sdk's
+  // AuthJwtTypeMicrosoft for Microsoft)
+  Expect("providers", asi::SsoProvider(asi::Method::Apple) == "apple" &&
+                          asi::SsoProvider(asi::Method::Google) == "google" &&
+                          asi::SsoProvider(asi::Method::Microsoft) == "microsoft" &&
+                          asi::SsoProvider(asi::Method::Wallet).empty() &&
+                          asi::SsoProvider(asi::Method::Email).empty());
   Expect("chain labels", asi::WalletChainLabelKey(asi::WalletChain::Solana) == "solana_wallet" &&
                              asi::WalletChainLabelKey(asi::WalletChain::Bittensor) == "bittensor_wallet");
   Expect("chain hints",
@@ -85,13 +98,17 @@ void TestOptions() {
              asi::WalletChainHintKey(asi::WalletChain::Bittensor) ==
                  "connect_bittensor_wallet_to_add_sign_in_method");
   Expect("provider hints", asi::MethodHintKey(asi::Method::Apple) == "sign_in_with_your_apple_id_to" &&
-                               asi::MethodHintKey(asi::Method::Google) == "sign_in_with_google_to_add_it");
+                               asi::MethodHintKey(asi::Method::Google) == "sign_in_with_google_to_add_it" &&
+                               asi::MethodHintKey(asi::Method::Microsoft) ==
+                                   "sign_in_with_microsoft_to_add_it");
   Expect("only email has a code", asi::NeedsVerification(asi::Method::Email) &&
                                       !asi::NeedsVerification(asi::Method::Apple) &&
                                       !asi::NeedsVerification(asi::Method::Google) &&
+                                      !asi::NeedsVerification(asi::Method::Microsoft) &&
                                       !asi::NeedsVerification(asi::Method::Wallet));
   Expect("added lines", asi::AddedMessageKey(asi::Method::Apple) == "apple_sign_in_method_added" &&
                             asi::AddedMessageKey(asi::Method::Google) == "google_sign_in_method_added" &&
+                            asi::AddedMessageKey(asi::Method::Microsoft) == "microsoft_sign_in_method_added" &&
                             asi::AddedMessageKey(asi::Method::Wallet) == "wallet_sign_in_method_added");
   // the shared chooser's wallets are the Bittensor option's wallets
   Expect("bittensor add purpose", asi::kBittensorPurpose == "add" &&
@@ -152,6 +169,21 @@ void TestErrors() {
     session.pendingToken("", "superseded by the add sheet closing");
     Expect("quiet cancel shows nothing", flow.Error().empty() && flow.ErrorKey().empty() && !flow.Busy());
     Expect("quiet cancel adds nothing", session.calls.size() == 1 && !flow.Added());
+  }
+  {
+    // backed out on Microsoft's own page: nothing to say, and the method can
+    // be started again
+    FakeSession session;
+    asi::AddSignInFlow flow(session);
+    flow.StartProvider(asi::Method::Microsoft);
+    session.pendingToken("", std::string(asi::kProviderCancelled));
+    Expect("provider cancel shows nothing",
+           flow.Error().empty() && flow.ErrorKey().empty() && !flow.Busy() && !flow.Added());
+    Expect("provider cancel is quiet", asi::IsQuietCancel(asi::kProviderCancelled) &&
+                                           !asi::IsQuietCancel("cancelled") &&
+                                           !asi::IsQuietCancel(""));
+    flow.StartProvider(asi::Method::Microsoft);
+    Expect("provider cancel: starts again", flow.Busy() && session.calls.size() == 2);
   }
   {
     FakeSession session;
@@ -215,6 +247,7 @@ int main() {
   TestSsoReturnRoute();
   TestProvider(asi::Method::Apple, "apple");
   TestProvider(asi::Method::Google, "google");
+  TestProvider(asi::Method::Microsoft, "microsoft");
   TestWallet(asi::WalletChain::Solana, asi::kSolanaPhantom, "SOL");
   TestWallet(asi::WalletChain::Solana, asi::kSolanaSolflare, "SOL");
   for (int i = 0; i < urnw::bittensor::kChooserWalletCount; ++i) {

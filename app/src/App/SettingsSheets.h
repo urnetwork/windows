@@ -256,13 +256,13 @@ class AuthCodeSheet : public std::enable_shared_from_this<AuthCodeSheet> {
 
 // ---- Add auth method (apple AddAuthSheet, ur.io AddSignInSheet) -------------
 //
-// The options every app offers (AddSignIn.h), in order: Apple, Google, a
-// Solana or Bittensor wallet, and an email or phone.
+// The options every app offers (AddSignIn.h), in order: Apple, Google,
+// Microsoft, a Solana or Bittensor wallet, and an email or phone.
 // - Email/phone + password, then the emailed code: added (onChanged reloads
 //   the methods, the dialog closes) only once the code is verified
 //   (GuestConversion, the flow the guest conversion uses).
-// - Apple / Google: the provider's web flow in the browser under an add-owned
-//   attempt (SdkHost::SsoTokenForAdd), then addAuth{auth_jwt}.
+// - Apple / Google / Microsoft: the provider's web flow in the browser under
+//   an add-owned attempt (SdkHost::SsoTokenForAdd), then addAuth{auth_jwt}.
 // - Solana: Phantom or Solflare through the ur.io bridge signs a fresh
 //   challenge (SdkHost::SignSolanaForAdd), then addAuth{wallet_auth}.
 // - Bittensor: the shared chooser's wallets (BittensorWalletFlow.h) through the

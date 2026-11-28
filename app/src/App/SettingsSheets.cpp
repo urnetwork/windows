@@ -860,8 +860,8 @@ class SdkGuestConversionSession : public GuestConversionSession {
   std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
-// The SDK side of adding Apple, Google or a wallet (AddSignIn.h). SdkHost
-// produces the credential under an add-owned flow; this posts it to addAuth on
+// The SDK side of adding Apple, Google, Microsoft or a wallet (AddSignIn.h).
+// SdkHost produces the credential under an add-owned flow; this posts it to addAuth on
 // the current network. Nothing here signs in, refreshes or replaces the jwt.
 // Every answer is marshalled onto the dialog's queue; one that arrives after
 // the sheet is gone is dropped by `alive_`.
@@ -1058,7 +1058,10 @@ void AddAuthSheet::Build(XamlRoot const& root) {
   // ---- the method: the same options and order as every app and ur.io ----
   methodPicker_ = RadioButtons();
   methodPicker_.Header(winrt::box_value(Loc("method")));
-  methodPicker_.MaxColumns(add_sign_in::kMethodCount);
+  // Five options do not fit one row of radio buttons (each at least 120 wide)
+  // in the sheet. Two columns, filled down: the three providers, then a wallet
+  // and an email.
+  methodPicker_.MaxColumns(2);
   int selected = 0;
   for (int i = 0; i < add_sign_in::kMethodCount; ++i) {
     methodPicker_.Items().Append(
@@ -1076,7 +1079,7 @@ void AddAuthSheet::Build(XamlRoot const& root) {
   });
   content.Children().Append(methodPicker_);
 
-  // ---- Apple / Google: the provider's web flow in the browser ----
+  // ---- Apple / Google / Microsoft: the provider's web flow in the browser ----
   providerPanel_ = StackPanel();
   providerPanel_.Spacing(12);
   providerHint_ = Supporting(providerPanel_, hstring{});
@@ -1256,8 +1259,8 @@ void AddAuthSheet::StartWallet(add_sign_in::WalletChain chain, std::string const
 }
 
 void AddAuthSheet::Render() {
-  // Apple, Google and a wallet are added once addAuth accepts them (no code);
-  // an email or phone once its code is verified
+  // Apple, Google, Microsoft and a wallet are added once addAuth accepts them
+  // (no code); an email or phone once its code is verified
   const GuestConversionStep step =
       add_->Added() ? GuestConversionStep::Done : conversion_->Step();
   const bool busy = conversion_->Busy() || add_->Busy();
