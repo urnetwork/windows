@@ -148,6 +148,7 @@ class SubscriptionBalanceStore {
   using ChangeHandler =
       std::function<void(BalanceSnapshot const&, BalancePollState const&)>;
   using ReferralCelebrationHandler = std::function<void(ReferralCelebration const&)>;
+  using LowDataWarningHandler = std::function<void(urnet::LowDataWarning const&)>;
 
   explicit SubscriptionBalanceStore(SdkHost& sdk) : sdk_(sdk) {}
   ~SubscriptionBalanceStore();
@@ -156,6 +157,10 @@ class SubscriptionBalanceStore {
   void Initialize(winrt::Microsoft::UI::Dispatching::DispatcherQueue queue);
 
   void SetChangeHandler(ChangeHandler h) { onChange_ = std::move(h); }
+  // A loaded balance the sdk says to warn about: little data is left (once per
+  // threshold per balance period, SdkHost::LowDataWarningForBalance). Fires on
+  // the UI thread, after the change handler of the same balance.
+  void SetLowDataWarningHandler(LowDataWarningHandler h) { onLowDataWarning_ = std::move(h); }
   // Stop/start every timer with window visibility (shown and not minimized).
   // A confirmation pauses with the window, and showing it again fires an
   // immediate poll with the banked budget. Re-showing also always fetches
@@ -298,6 +303,7 @@ class SubscriptionBalanceStore {
   int64_t fetchSettledAtMillis_ = 0;
   ChangeHandler onChange_;
   ReferralCelebrationHandler onReferralCelebration_;
+  LowDataWarningHandler onLowDataWarning_;
   ReferralCodeFetch referral_;
   ReferralTotalsFetch totals_;
   urnw::ReferralTerms terms_;

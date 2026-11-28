@@ -1067,6 +1067,18 @@
                                          Visibility="Collapsed"
                                          AutomationProperties.AutomationId="acceptance.pro-features.notice"
                                          Margin="12,8" Severity="Warning" />
+                                <!-- little data is left before the balance runs out (the sdk's
+                                     LowDataWarningForBalance, once per threshold per balance
+                                     period): how much, Get Pro (the action, the client limit
+                                     notice's upgrade path) on a plan that is not Pro, and the
+                                     close button, which puts it away until the next warning.
+                                     Title, message, the action's visibility, IsOpen and
+                                     Visibility are written by MainWindow::ApplyLowDataWarning
+                                     (one writer); the action is built in the MainWindow ctor
+                                     beside the Pro features notice's. Nothing here disconnects. -->
+                                <InfoBar x:Name="LowDataWarningNotice" IsOpen="False" IsClosable="True"
+                                         Visibility="Collapsed"
+                                         Margin="12,8" Severity="Warning" />
                                 <!-- the VPN service needs setting up / starting / updating:
                                      the action is ONE elevated `urnetworkd install`. Title,
                                      message, action label and IsOpen are all written by

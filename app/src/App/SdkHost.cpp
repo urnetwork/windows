@@ -1790,6 +1790,18 @@ std::string SdkHost::StoredByJwt() {
   }
 }
 
+std::optional<urnet::LowDataWarning> SdkHost::LowDataWarningForBalance(
+    urnet::SubscriptionBalanceResult const& result) {
+  std::scoped_lock lock(mutex_);
+  if (!localState_) return std::nullopt;
+  try {
+    return urnet::lowDataWarningForBalance(*localState_, result);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: low data warning failed: {}", e.what());
+    return std::nullopt;
+  }
+}
+
 void SdkHost::RefreshJwt() {
   std::scoped_lock lock(mutex_);
   if (!device_) return;

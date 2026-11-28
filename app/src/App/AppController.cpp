@@ -30,6 +30,7 @@
 #include "ProtocolHandler.h"
 #include "SingleInstance.h"
 #include "Startup.h"
+#include "StatsFormat.h"  // FormatByteCountCompact — the low-data warning's amount
 #include "Strings.h"
 #include "Top200Binding.h"
 #include "UrComponents.h"  // kit::SanitizeExternalDisplayText — the tray's post-quantum notice
@@ -47,6 +48,9 @@ constexpr int kBalloonBittensorKey = 1;
 // The client limit notice's (ClientLimitNotice.h): its click opens the window,
 // whose connect screen says what to do.
 constexpr int kBalloonClientLimit = 2;
+// The low-data warning's (sdk LowDataWarningForBalance): its click opens the
+// window, whose connect screen says it.
+constexpr int kBalloonLowDataWarning = 3;
 std::unique_ptr<AppController> g_app;
 
 // The controller, and the SdkHost in it, outlive a thread still running inside
@@ -149,11 +153,12 @@ void AppController::Start() {
   cb.onLeftClick = [this](POINT anchor) { ShowWindow(&anchor); };
   cb.onShowWindow = [this] { ShowWindow(nullptr); };
   // the one-tap key's reminder opens Earnings with the Key screen, and the
-  // client limit notice the window; the other notifications open nothing, as
-  // before
+  // client limit notice and the low-data warning the window; the other
+  // notifications open nothing, as before
   cb.onBalloonClick = [this](int tag) {
     if (tag == kBalloonBittensorKey) OpenEarningsKeyScreen();
     if (tag == kBalloonClientLimit) ShowWindow(nullptr);
+    if (tag == kBalloonLowDataWarning) ShowWindow(nullptr);
   };
   // ONE RULE, SHARED WITH THE WINDOW. The tray used to test `state == Up` while
   // the connect page tested the SDK's connect status, and in the state the owner
@@ -376,6 +381,11 @@ void AppController::Start() {
       }
     }
   });
+  // Little data left (the sdk's LowDataWarningForBalance, once per threshold
+  // per balance period): the connect screen's notice, and the tray's while the
+  // window is in the background. Nothing disconnects.
+  balance_.SetLowDataWarningHandler(
+      [this](const urnet::LowDataWarning& warning) { OnLowDataWarning(warning); });
   // Referral celebrations (the king-frog gold moments). The store only polls
   // while the window is visible, so a celebration always has a window to land
   // in; the visibility check is belt-and-suspenders.
@@ -698,6 +708,9 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
     PublishClientLimit();
     clientLimitBalanceLoaded_ = false;
     clientLimitBalancePro_ = false;
+    // a low-data warning is about the previous session's balance
+    lowDataWarningMessage_.clear();
+    PublishLowDataWarning();
   }
   // the tray always reflects state; only push into the window when it is
   // actually visible (resynced on show) so a hidden window doesn't churn.
@@ -1077,6 +1090,37 @@ void AppController::PublishClientLimit() {
 }
 
 bool AppController::InBackground() const { return !windowVisible_ || !windowFocused_; }
+
+// ---- the low-data warning (sdk LowDataWarningForBalance) ---------------------
+
+void AppController::OnLowDataWarning(const urnet::LowDataWarning& warning) {
+  // the amount as the usage bar and the data sheet print it
+  const std::wstring amount = Widen(FormatByteCountCompact(warning.AvailableByteCount));
+  const int64_t percent = warning.AvailablePercent;
+  lowDataWarningMessage_ = warning.Kind == urnet::LowDataWarningKindPercent
+                               ? Format("low_data_warning_percent", percent, amount)
+                               : Format("low_data_warning_byte_count", amount);
+  // one line per warning, as the other notices log: a balloon cannot be read
+  // back from the shell
+  LogInfo("app: low data warning posted ({})", warning.Kind);
+  // with the window in front, its notice says it
+  if (InBackground()) {
+    tray_.ShowBalloon(Localized("low_data_warning_title"), lowDataWarningMessage_,
+                      kBalloonLowDataWarning);
+  }
+  PublishLowDataWarning();
+}
+
+void AppController::PublishLowDataWarning() {
+  if (!windowVisible_ || !window_) return;
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    self->SetLowDataWarning(lowDataWarningMessage_);
+}
+
+void AppController::DismissLowDataWarning() {
+  LogInfo("app: low data warning -> closed");
+  lowDataWarningMessage_.clear();
+}
 
 void AppController::RetryClientLimit() {
   LogInfo("app: client limit notice -> Retry");
@@ -1663,6 +1707,8 @@ void AppController::ReconcileWindowPresentation() {
     self->SetProFeaturesNotice(proFeaturesPrompt_);
     // and the account sign-in notice, for a refusal that came while hidden
     self->SetAccountSignInNotice(accountSignInNotice_);
+    // and the low-data warning, until it is closed
+    self->SetLowDataWarning(lowDataWarningMessage_);
     sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     // a tap the tray holds, made while the window was hidden

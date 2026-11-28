@@ -5620,6 +5620,18 @@ enviamos para verificar tu identidad.</value>
     <value>Racha más larga</value>
     <comment>Points leaderboard: secondary stat, the best run of consecutive weeks (blocks) with points; a week whose points couldn't be awarded doesn't break a run.</comment>
   </data>
+  <data name="low_data_warning_byte_count" xml:space="preserve">
+    <value>Solo te quedan {} de datos.</value>
+    <comment>Body of the low-data warning (title: "Running low on data") when the available data falls to a fixed amount (1 GiB). {amount} is the available data as a size, e.g. 980 MB. Shown once per balance period in an in-app alert and a local notification.</comment>
+  </data>
+  <data name="low_data_warning_percent" xml:space="preserve">
+    <value>Solo te queda el {0}% de tus datos ({1}).</value>
+    <comment>Body of the low-data warning (title: "Running low on data") when the available data falls to a part of the period's data. {percent} is a whole number from 1 to 100 (the % sign follows it in the text); {amount} is the available data as a size, e.g. 2.9 GB. Shown once per balance period in an in-app alert and a local notification.</comment>
+  </data>
+  <data name="low_data_warning_title" xml:space="preserve">
+    <value>Te quedan pocos datos</value>
+    <comment>Title of the low-data warning: an in-app alert and a local notification shown once when the available data falls to 10% of the period's data, and once when it falls to 1 GiB. It only informs; nothing is disconnected. Short.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>La menor proporción de usuarios por IP para acceder a contenido</value>
     <comment>Call to action</comment>

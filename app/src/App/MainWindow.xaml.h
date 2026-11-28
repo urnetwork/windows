@@ -159,6 +159,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // sign-in was refused while this device stays signed in and connected.
   // None closes it. Re-renders only on a change.
   void SetAccountSignInNotice(urnw::authlogout::AccountSignInNotice notice);
+  // The low-data warning (AppController, the sdk's LowDataWarningForBalance)
+  // -> the LowDataWarningNotice InfoBar: how little data is left, Get Pro on a
+  // plan that is not Pro, and its close button. "" closes it. Re-renders only
+  // on a change.
+  void SetLowDataWarning(std::wstring const& message);
   // The device list (ManageDevicesSheet), in the single-sheet gate: from the
   // notices' Manage devices and Settings, or, `forSignIn`, for the sign-in the
   // client limit refused, with `message` above the list. Its Pro features
@@ -604,6 +609,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ApplyAccountSignInNotice();
   urnw::authlogout::AccountSignInNotice accountSignInNotice_ =
       urnw::authlogout::AccountSignInNotice::None;
+  // The low-data warning's one writer (SetLowDataWarning): its words and Get
+  // Pro, open and shown, or closed and collapsed.
+  void ApplyLowDataWarning();
+  std::wstring lowDataWarningMessage_;
+  winrt::Microsoft::UI::Xaml::Controls::Button lowDataWarningUpgrade_{nullptr};
   // A notice's Get Pro: the client limit notice's, the Pro features notice's
   // and the device list's. The upgrade sheet, after the in-place conversion
   // for a guest: the balance banner's upgrade path, which changes the plan and
