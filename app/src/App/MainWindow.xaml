@@ -2893,7 +2893,9 @@
                                                    Style="{StaticResource UrPaneMetaStyle}" />
                                     </Grid>
                                 </Border>
-                                <!-- connected: the coldkey, what it means, and change -->
+                                <!-- connected: the coldkey, what it means, change, and
+                                     disconnect while the wallet read says it can be
+                                     disconnected (WalletPage::ApplyKeyWalletCard) -->
                                 <Border x:Name="WalletConnectedPanel" Visibility="Collapsed"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
@@ -2909,15 +2911,27 @@
                                                 Style="{StaticResource UrPaneActionSecondaryStyle}"
                                                 HorizontalAlignment="Stretch"
                                                 Click="OnChangeWallet" />
+                                        <!-- the outlined action in the danger colour: with no
+                                             payout wallet the earnings can't be paid out -->
+                                        <Button x:Name="DisconnectWalletButton"
+                                                Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                Foreground="{StaticResource UrDangerBrush}"
+                                                HorizontalAlignment="Stretch"
+                                                Visibility="Collapsed"
+                                                Click="OnDisconnectWallet" />
                                     </StackPanel>
                                 </Border>
-                                <!-- not connected: the not-retroactive line, the bridge
+                                <!-- not connected: no payout wallet at all, when the wallet
+                                     read says so, the not-retroactive line, the bridge
                                      button, and the manual paste fallback (still
                                      signed) folded under a link -->
                                 <Border x:Name="WalletDisconnectedPanel"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
                                     <StackPanel Spacing="10">
+                                        <TextBlock x:Name="WalletNoPayoutText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" Visibility="Collapsed" />
                                         <!-- plain note, then a "Learn more" link in the pink
                                              accent with the outward glyph that opens the protocol
                                              site; inline, so it shares the last line when it fits -->

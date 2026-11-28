@@ -380,15 +380,17 @@ struct MainWindow : MainWindowT<MainWindow> {
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
   void OnConnectWallet(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // Earnings: the manual-address fallback, the connected wallet's change
-  // action, the claim dialogs (v1 and settlement v2), the Top 200 route and the
-  // ur.xyz link.
+  // Earnings: the manual-address fallback, the connected wallet's change and
+  // disconnect actions, the claim dialogs (v1 and settlement v2), the Top 200
+  // route and the ur.xyz link.
   void OnEnterAddressManually(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnConnectWalletAddress(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnChangeWallet(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnDisconnectWallet(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClaimAlpha(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClaimV2(winrt::Windows::Foundation::IInspectable const&,

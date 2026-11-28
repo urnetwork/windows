@@ -68,6 +68,7 @@ namespace urnw {
 
 class EmojiTagSheet;
 class TransportSettingsSheet;
+class WalletDisconnectSheet;
 
 class WalletPage {
  public:
@@ -132,6 +133,10 @@ class WalletPage {
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnChangeWallet(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the connected wallet's Disconnect wallet (WalletDisconnectSheet), offered
+  // while the wallet read says it can be disconnected
+  winrt::fire_and_forget OnDisconnectWallet(winrt::Windows::Foundation::IInspectable const&,
+                                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnEnterAddressManually(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletAddressChanged(
@@ -286,6 +291,10 @@ class WalletPage {
 
   // ---- the coldkey
   void ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state);
+  // What the wallet read's GET /sn/wallet answer says of the payout wallet
+  // (walletDisconnectable_, walletNone_), drawn on the card; `ok` false (a
+  // failed read) says nothing, so neither the action nor the line shows.
+  void ApplyWalletPayout(bool ok, bool disconnectable, bool hasWallet);
   // The bridge answered with a signed challenge (either path). Validates the
   // address before anything is sent to the account, then attaches it.
   void ApplyWalletSigned(uint32_t generation, bool ok, std::string const& address,
@@ -616,6 +625,15 @@ class WalletPage {
 
   std::optional<SnWalletInfo> snWallet_;
   Fetch walletState_ = Fetch::Loading;
+  // From the wallet read's GET /sn/wallet answer (ApplyWalletPayout): a wallet
+  // connected without a signed payout consent can be disconnected
+  // (urnet::snWalletDisconnectable), and no wallet at all is attached, so
+  // nothing can be paid out (!urnet::snWalletHasWallet). Both false until a
+  // read answers, and after a failed one.
+  bool walletDisconnectable_ = false;
+  bool walletNone_ = false;
+  // the Disconnect wallet dialog while it shows
+  std::shared_ptr<urnw::WalletDisconnectSheet> disconnectSheet_;
   bool connectingWallet_ = false;
   bool manualPanelOpen_ = false;
   bool manualAddressOk_ = false;

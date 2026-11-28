@@ -1007,9 +1007,10 @@ hstring EmailChangeErrorText(urnet::AuthEmailChangeError const& error) {
   return error.message.empty() ? Loc("something_went_wrong") : H(error.message);
 }
 
-// A code field of the email change, with the numeric keyboard where there is
-// one; EmailChangeSheet::Render names the address its code went to.
-TextBox MakeEmailChangeCodeBox() {
+// A field for an emailed confirmation code (the email change's two, the payout
+// wallet disconnect's), with the numeric keyboard where there is one; its
+// sheet gives it its label.
+TextBox MakeCodeBox() {
   TextBox box;
   box.Style(Lookup(L"UrTextInputStyle"));
   winrt::Microsoft::UI::Xaml::Input::InputScope scope;
@@ -1018,6 +1019,28 @@ TextBox MakeEmailChangeCodeBox() {
   scope.Names().Append(number);
   box.InputScope(scope);
   return box;
+}
+
+// A payout wallet disconnect refusal (urnet::SnWalletDisconnectError) in this
+// app's words. no_wallet is not one: the sheet closes and the card reads the
+// wallet again. owner_only and a code this build does not know show the
+// server's message.
+hstring WalletDisconnectErrorText(urnet::SnWalletDisconnectError const& error) {
+  static constexpr struct {
+    const char* code;
+    const char* text;
+  } kLines[] = {
+      {urnet::SnWalletDisconnectErrorCodeConsentInForce, "wallet_disconnect_consent_in_force"},
+      {urnet::SnWalletDisconnectErrorCodeEmailRequired, "wallet_disconnect_email_required"},
+      {urnet::SnWalletDisconnectErrorCodeRateLimited, "account_too_many_tries"},
+      {urnet::SnWalletDisconnectErrorCodeSendFailed, "account_code_send_failed"},
+      {urnet::SnWalletDisconnectErrorCodeCodeInvalid, "account_code_invalid"},
+      {urnet::SnWalletDisconnectErrorCodeCodeExpired, "account_code_expired"},
+  };
+  for (auto const& line : kLines) {
+    if (error.code == line.code) return Loc(line.text);
+  }
+  return error.message.empty() ? Loc("something_went_wrong") : H(error.message);
 }
 
 }  // namespace
@@ -1379,12 +1402,12 @@ void EmailChangeSheet::Build(XamlRoot const& root) {
   codesPanel_ = StackPanel();
   codesPanel_.Spacing(12);
   codesSentText_ = Supporting(codesPanel_, hstring{});
-  currentCodeBox_ = MakeEmailChangeCodeBox();
+  currentCodeBox_ = MakeCodeBox();
   currentCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) self->Render();
   });
   codesPanel_.Children().Append(currentCodeBox_);
-  newCodeBox_ = MakeEmailChangeCodeBox();
+  newCodeBox_ = MakeCodeBox();
   newCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) self->Render();
   });
@@ -1607,6 +1630,197 @@ void EmailChangeSheet::Render() {
     dialog_.PrimaryButtonText(hstring{});
     dialog_.CloseButtonText(Loc("done"));
     dialog_.DefaultButton(ContentDialogButton::Close);
+  }
+}
+
+// ---- WalletDisconnectSheet -------------------------------------------------
+
+std::shared_ptr<WalletDisconnectSheet> WalletDisconnectSheet::Create(XamlRoot const& root,
+                                                                     SdkHost& sdk) {
+  auto sheet = std::shared_ptr<WalletDisconnectSheet>(new WalletDisconnectSheet(sdk));
+  sheet->Build(root);
+  return sheet;
+}
+
+void WalletDisconnectSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeSheet(root, Loc("wallet_disconnect_title"));
+  dialog_.CloseButtonText(Loc("cancel"));
+
+  StackPanel content;
+  content.MinWidth(380);
+  content.Spacing(12);
+
+  // what having no payout wallet means, said plainly before anything is sent,
+  // and still there while the code is entered
+  TextBlock body;
+  body.Text(Loc("wallet_disconnect_body"));
+  body.FontSize(14);
+  body.TextWrapping(TextWrapping::Wrap);
+  content.Children().Append(body);
+
+  // ---- the code the server emailed ----
+  codePanel_ = StackPanel();
+  codePanel_.Spacing(12);
+  sentText_ = Supporting(codePanel_, hstring{});
+  codeBox_ = MakeCodeBox();
+  codeBox_.Header(winrt::box_value(Loc("code")));
+  codeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codePanel_.Children().Append(codeBox_);
+  content.Children().Append(codePanel_);
+
+  errorText_ = TextBlock();
+  errorText_.FontSize(12);
+  errorText_.TextWrapping(TextWrapping::Wrap);
+  errorText_.Foreground(colors::DangerBrush());
+  errorText_.Visibility(Visibility::Collapsed);
+  content.Children().Append(errorText_);
+
+  ScrollViewer scroller;
+  scroller.Content(content);
+  dialog_.Content(scroller);
+  dialog_.PrimaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);  // both steps run in this one dialog
+        auto self = weak.lock();
+        if (!self) return;
+        if (self->step_ == Step::Code) {
+          self->Disconnect();
+        } else {
+          self->SendCode();
+        }
+      });
+  Render();
+}
+
+void WalletDisconnectSheet::SendCode() {
+  if (busy_) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady()) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().snWalletDisconnectCode([queue, weak = weak_from_this()](
+                                        std::optional<urnet::SnWalletDisconnectCodeResult> result,
+                                        std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplySendCode(result, err);
+    });
+  });
+}
+
+void WalletDisconnectSheet::ApplySendCode(
+    std::optional<urnet::SnWalletDisconnectCodeResult> const& result,
+    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("wallet disconnect: the code request failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    // nothing to disconnect any more: the card reads the wallet again
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeNoWallet) {
+      outcome_ = Outcome::NoWallet;
+      dialog_.Hide();
+      return;
+    }
+    error_ = WalletDisconnectErrorText(*result->error);
+    Render();
+    return;
+  }
+  // the masked sign-in addresses the code went to
+  sentTo_.clear();
+  for (auto const& address : result->sent_to.value_or(urnet::StringList{})) {
+    if (!sentTo_.empty()) sentTo_ += ", ";
+    sentTo_ += address;
+  }
+  step_ = Step::Code;
+  error_ = hstring{};
+  codeBox_.Text(hstring{});
+  Render();
+  codeBox_.Focus(FocusState::Programmatic);
+}
+
+void WalletDisconnectSheet::Disconnect() {
+  if (busy_) return;
+  // the sdk normalizes the code as it sends it
+  const std::string typed = Trim(Narrow(codeBox_.Text().c_str()));
+  if (typed.empty()) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady()) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().snWalletDisconnect(typed, [queue, weak = weak_from_this()](
+                                           std::optional<urnet::SnWalletDisconnectResult> result,
+                                           std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplyDisconnect(result, err);
+    });
+  });
+}
+
+void WalletDisconnectSheet::ApplyDisconnect(
+    std::optional<urnet::SnWalletDisconnectResult> const& result,
+    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("wallet disconnect: the disconnect failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeNoWallet) {
+      outcome_ = Outcome::NoWallet;
+      dialog_.Hide();
+      return;
+    }
+    // no code waits any more: ask for a new one; a wrong code keeps the field
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeCodeExpired) {
+      step_ = Step::SendCode;
+      codeBox_.Text(hstring{});
+    }
+    error_ = WalletDisconnectErrorText(*result->error);
+    Render();
+    return;
+  }
+  if (!result->disconnected) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  outcome_ = Outcome::Disconnected;
+  dialog_.Hide();
+}
+
+void WalletDisconnectSheet::Render() {
+  const bool codeStep = step_ == Step::Code;
+  codePanel_.Visibility(codeStep ? Visibility::Visible : Visibility::Collapsed);
+  sentText_.Text(hstring{Format("wallet_disconnect_code_sent", Widen(sentTo_))});
+  codeBox_.IsEnabled(!busy_);
+  errorText_.Text(error_);
+  errorText_.Visibility(error_.empty() ? Visibility::Collapsed : Visibility::Visible);
+  if (codeStep) {
+    dialog_.PrimaryButtonText(Loc("wallet_disconnect"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && !Trim(Narrow(codeBox_.Text().c_str())).empty());
+    // destructive: Enter does not disconnect
+    dialog_.DefaultButton(ContentDialogButton::Close);
+  } else {
+    dialog_.PrimaryButtonText(Loc("wallet_disconnect_send_code"));
+    dialog_.IsPrimaryButtonEnabled(!busy_);
+    dialog_.DefaultButton(ContentDialogButton::Primary);
   }
 }
 

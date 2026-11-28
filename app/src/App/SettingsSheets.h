@@ -390,6 +390,58 @@ class EmailChangeSheet : public std::enable_shared_from_this<EmailChangeSheet> {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
 };
 
+// ---- Disconnect the payout wallet (sdk api_sn_wallet_disconnect.go) --------
+//
+// The Earnings Bittensor wallet card's Disconnect wallet, in one dialog: what
+// having no payout wallet means and Email me a code (POST
+// /sn/wallet/disconnect-code), then the code the server emailed to the
+// account's sign-in addresses (shown masked) and Disconnect wallet (POST
+// /sn/wallet/disconnect), which is not the default button. The server decides
+// again, when the code is asked for, whether the wallet can be disconnected.
+// Each refusal reads in its store string: a wrong code keeps the field, an
+// expired one goes back to Email me a code; owner_only and a code this build
+// does not know show the server's message, a transport failure the generic
+// line. Result() says how it ended once the dialog has closed.
+class WalletDisconnectSheet : public std::enable_shared_from_this<WalletDisconnectSheet> {
+ public:
+  // the wallet was disconnected; the server had no wallet to disconnect (the
+  // card reads the wallet again either way); or neither
+  enum class Outcome { None, Disconnected, NoWallet };
+
+  static std::shared_ptr<WalletDisconnectSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  Outcome Result() const { return outcome_; }
+
+ private:
+  enum class Step { SendCode, Code };
+
+  explicit WalletDisconnectSheet(SdkHost& sdk) : sdk_(sdk) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void Render();
+  void SendCode();
+  void ApplySendCode(std::optional<urnet::SnWalletDisconnectCodeResult> const& result,
+                     std::optional<std::string> const& err);
+  void Disconnect();
+  void ApplyDisconnect(std::optional<urnet::SnWalletDisconnectResult> const& result,
+                       std::optional<std::string> const& err);
+
+  SdkHost& sdk_;
+  Step step_ = Step::SendCode;
+  // a request is in flight: the button and the field wait for it
+  bool busy_ = false;
+  Outcome outcome_ = Outcome::None;
+  // the masked addresses the code went to, joined with ", "
+  std::string sentTo_;
+  winrt::hstring error_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel codePanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock sentText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox codeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
+};
+
 // ---- Create an account, for a legacy guest network ------------------------
 //
 // GuestConversion.h: adds an email/phone + password sign-in to the CURRENT

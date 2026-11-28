@@ -3702,6 +3702,9 @@ void MainWindow::OnConnectWalletAddress(IInspectable const& s, RoutedEventArgs c
 void MainWindow::OnChangeWallet(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnChangeWallet(s, e);
 }
+void MainWindow::OnDisconnectWallet(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnDisconnectWallet(s, e);
+}
 void MainWindow::OnClaimAlpha(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnClaimAlpha(s, e);
 }
