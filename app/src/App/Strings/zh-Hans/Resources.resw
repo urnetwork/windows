@@ -10730,6 +10730,10 @@
     <value>电子邮件或电话</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>请检查手机号码格式。请使用国家代码，并且只输入数字，例如 +15551234567。</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>输入您的电话号码或电子邮件</value>
     <comment>Login initial</comment>

@@ -9502,6 +9502,10 @@ như nó vốn phải thế.</value>
     <value>Email hoặc số điện thoại</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>Hãy kiểm tra định dạng số điện thoại. Dùng mã quốc gia và chỉ chữ số, ví dụ +15551234567.</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>Nhập số điện thoại hoặc email của bạn</value>
     <comment>Login initial</comment>

@@ -9646,6 +9646,10 @@
     <value>ईमेल या फ़ोन</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>फ़ोन नंबर का फ़ॉर्मैट जाँचें। देश का कोड और केवल अंक इस्तेमाल करें, जैसे +15551234567।</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>अपना फ़ोन नंबर या ईमेल डालें</value>
     <comment>Login initial</comment>
