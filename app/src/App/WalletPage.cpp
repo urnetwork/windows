@@ -590,6 +590,9 @@ void WalletPage::Initialize() {
   w_.WalletProviderWhyButton().Click([weak](auto const&, auto const&) {
     if (auto self = weak.get()) self->wallet().ToggleProviderWhy();
   });
+  // SN25 did not pay for this device's data: amber, as Why? tints what holds
+  // the device back (the markup has no amber brush)
+  w_.WalletProviderNotPaidText().Foreground(colors::MakeBrush(colors::kUrAmber));
   // Seed the read-only row, the running role and the provider gate from
   // SdkHost's caches, so a window built long after the session bootstrapped
   // paints what is known on its first frame. Cache reads only: no rpc, no mutex_.
@@ -649,6 +652,7 @@ void WalletPage::ApplyStrings() {
   w_.BittensorWalletHeading().Text(Loc("bittensor_wallet"));
   w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
   w_.ChangeWalletButton().Content(LocBox("earnings_change_wallet"));
+  w_.DisconnectWalletButton().Content(LocBox("wallet_disconnect"));
   w_.WalletNotRetroactiveRun().Text(Loc("wallet_not_retroactive"));
   w_.WalletLearnMoreRun().Text(Loc("learn_more"));
   w_.ConnectWalletButton().Content(LocBox("connect_bittensor_wallet"));
@@ -702,6 +706,9 @@ void WalletPage::ApplyStrings() {
   w_.WalletProviderWhyLabel().Text(Loc("provider_status_why"));
   automation::AutomationProperties::SetName(w_.WalletProviderWhyButton(),
                                             Loc("provider_status_why"));
+  // the SN25 data's label; its lines and figure follow the language through
+  // ApplyProviderStatus, which the sections' repaint below runs
+  w_.WalletUnpaidProvidedLabel().Text(Loc("unpaid_data_provided"));
   ApplyStatsSections(/*force=*/true);
   w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
   w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
@@ -886,6 +893,13 @@ void WalletPage::ResetForSignOut() {
   if (consentFlow_.timer) consentFlow_.timer.Stop();
   consentSigning_ = false;
   RebuildConsentPanel();
+
+  // What the wallet read said of that network's payout wallet: no Disconnect
+  // wallet and no no-payout line until the next account's read.
+  walletDisconnectable_ = false;
+  walletNone_ = false;
+  w_.DisconnectWalletButton().Visibility(Visibility::Collapsed);
+  kit::SetTextOrCollapse(w_.WalletNoPayoutText(), hstring{});
 }
 
 void WalletPage::LoadPoints() {
@@ -965,25 +979,79 @@ void WalletPage::LoadEpochs() {
 // ".sn_wallet") and knows its own client id, so it is the first source; with
 // no device session (before the first connect, or after Disconnect tore the
 // DeviceRemote down) the account setting answers instead.
+//
+// Whether the wallet can be disconnected, and whether the network has a payout
+// wallet at all, are the account's wallets with their payout consents (the
+// sdk's SnGetWalletResult.Disconnectable and HasWallet), which only GET
+// /sn/wallet answers: the account setting's read carries them, and with a
+// device the cached copy is synced from that read once per load
+// (Device.syncSnWallet), which also brings in a wallet that was changed or
+// disconnected elsewhere.
 void WalletPage::LoadSnWallet() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   w_.WalletStatusText().Text(Loc("loading"));
-  if (Sdk().hasDevice()) {
-    std::optional<SnWalletInfo> info;
+  // what a GET /sn/wallet answer says of the payout wallet (ApplyWalletPayout);
+  // a throw must not leave the sdk's callback
+  struct Payout {
+    bool ok = false;
+    bool disconnectable = false;
+    bool hasWallet = false;
+  };
+  auto judge = [](std::optional<urnet::SnGetWalletResult> const& result, bool ok) {
+    Payout payout{.ok = ok};
+    if (!ok) return payout;
     try {
-      if (auto wallet = Sdk().device().getSnWallet()) {
-        info = SnWalletInfo{wallet->coldkey_ss58, wallet->client_id.value_or(std::string()),
-                            wallet->set_at_millis};
-      }
+      payout.disconnectable = urnet::snWalletDisconnectable(result);
+      payout.hasWallet = urnet::snWalletHasWallet(result);
     } catch (const std::exception& e) {
-      urnw::LogError("earnings: getSnWallet failed: {}", e.what());
+      urnw::LogError("earnings: the wallet read could not be judged: {}", e.what());
+      payout.ok = false;
     }
-    ApplySnWallet(info, Fetch::Ready);
+    return payout;
+  };
+  if (Sdk().hasDevice()) {
+    // the device's copy of the coldkey
+    auto deviceWallet = []() -> std::optional<SnWalletInfo> {
+      try {
+        if (auto wallet = Sdk().device().getSnWallet()) {
+          return SnWalletInfo{wallet->coldkey_ss58, wallet->client_id.value_or(std::string()),
+                              wallet->set_at_millis};
+        }
+      } catch (const std::exception& e) {
+        urnw::LogError("earnings: getSnWallet failed: {}", e.what());
+      }
+      return std::nullopt;
+    };
+    ApplySnWallet(deviceWallet(), Fetch::Ready);
+    Sdk().device().syncSnWallet([queue, weak, judge, deviceWallet](
+                                    std::optional<urnet::SnGetWalletResult> result,
+                                    std::optional<std::string> err) {
+      const bool ok = result && !err && !result->error;
+      if (!ok) {
+        urnw::LogError("earnings: syncSnWallet failed: {}",
+                       err ? *err : (result && result->error ? result->error->message
+                                                             : std::string("no result")));
+      }
+      const Payout payout = judge(result, ok);
+      queue.TryEnqueue([weak, ok, payout, deviceWallet] {
+        auto self = weak.get();
+        if (!self) return;
+        auto& page = self->wallet();
+        // the synced copy, when it is not the coldkey the card shows
+        if (ok && Sdk().hasDevice()) {
+          const std::optional<SnWalletInfo> synced = deviceWallet();
+          const bool same = synced.has_value() == page.snWallet_.has_value() &&
+                            (!synced || synced->coldkeySs58 == page.snWallet_->coldkeySs58);
+          if (!same) page.ApplySnWallet(synced, Fetch::Ready);
+        }
+        page.ApplyWalletPayout(payout.ok, payout.disconnectable, payout.hasWallet);
+      });
+    });
     return;
   }
-  Sdk().api().snGetWallet([queue, weak](std::optional<urnet::SnGetWalletResult> result,
-                                        std::optional<std::string> err) {
+  Sdk().api().snGetWallet([queue, weak, judge](std::optional<urnet::SnGetWalletResult> result,
+                                               std::optional<std::string> err) {
     std::string error = err ? *err : std::string();
     if (error.empty() && result && result->error) error = result->error->message;
     const bool ok = result && error.empty();
@@ -994,11 +1062,20 @@ void WalletPage::LoadSnWallet() {
                           result->wallet->set_at_millis};
     }
     if (!ok) urnw::LogError("earnings: snGetWallet failed: {}", error);
-    queue.TryEnqueue([weak, info, ok] {
-      if (auto self = weak.get())
+    const Payout payout = judge(result, ok);
+    queue.TryEnqueue([weak, info, ok, payout] {
+      if (auto self = weak.get()) {
         self->wallet().ApplySnWallet(info, ok ? Fetch::Ready : Fetch::Failed);
+        self->wallet().ApplyWalletPayout(payout.ok, payout.disconnectable, payout.hasWallet);
+      }
     });
   });
+}
+
+void WalletPage::ApplyWalletPayout(bool ok, bool disconnectable, bool hasWallet) {
+  walletDisconnectable_ = ok && disconnectable;
+  walletNone_ = ok && !hasWallet;
+  ApplyKeyWalletCard();
 }
 
 // The vault, read by the SDK on this device: entitlements, leafClaimed and the
@@ -1393,6 +1470,7 @@ void WalletPage::SetConnectingWallet(bool connecting) {
   connectingWallet_ = connecting;
   w_.ConnectWalletButton().IsEnabled(!connecting);
   w_.ChangeWalletButton().IsEnabled(!connecting);
+  w_.DisconnectWalletButton().IsEnabled(!connecting);
   w_.ConnectAddressButton().IsEnabled(!connecting && manualAddressOk_);
   // "Waiting" is a state the user must be able to SEE: the browser is open
   // and the app is waiting for it to come back.
@@ -1470,6 +1548,50 @@ void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
 
 void WalletPage::OnChangeWallet(IInspectable const&, RoutedEventArgs const&) {
   StartWalletConnect(std::string());
+}
+
+// Disconnect wallet: the sheet sends both requests and says why it could not
+// (WalletDisconnectSheet). Once the wallet is gone, or the server had none to
+// disconnect, the card reads the wallet again, with the device's copy of the
+// coldkey let go first so the card does not draw a wallet that is gone while
+// the read is out; the sync of that read brings back any wallet that stays.
+winrt::fire_and_forget WalletPage::OnDisconnectWallet(IInspectable const&,
+                                                      RoutedEventArgs const&) {
+  if (connectingWallet_ || w_.sheetOpen()) co_return;
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    co_return;
+  }
+  auto self = w_.get_strong();
+  auto alive = alive_;
+  self->SetSheetOpen(true);
+  try {
+    disconnectSheet_ = urnw::WalletDisconnectSheet::Create(self->Content().XamlRoot(), Sdk());
+    co_await self->wallet().disconnectSheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("earnings: the wallet disconnect sheet failed to open: {}",
+                   urnw::Narrow(std::wstring{e.message()}));
+  } catch (...) {
+    urnw::LogError("earnings: the wallet disconnect sheet failed to open");
+  }
+  self->SetSheetOpen(false);
+  if (!*alive) co_return;
+  auto& page = self->wallet();
+  const auto outcome = page.disconnectSheet_ ? page.disconnectSheet_->Result()
+                                             : urnw::WalletDisconnectSheet::Outcome::None;
+  page.disconnectSheet_.reset();
+  if (outcome == urnw::WalletDisconnectSheet::Outcome::None) co_return;
+  if (outcome == urnw::WalletDisconnectSheet::Outcome::Disconnected) {
+    page.Notify(Loc("wallet_disconnected"), InfoBarSeverity::Success);
+  }
+  if (Sdk().hasDevice()) {
+    try {
+      Sdk().device().clearSnWalletCache();
+    } catch (const std::exception& e) {
+      urnw::LogError("earnings: clearSnWalletCache failed: {}", e.what());
+    }
+  }
+  page.LoadSnWallet();
 }
 
 // The signature is back. The address is validated BEFORE anything is sent to
@@ -1817,6 +1939,19 @@ void WalletPage::ShowEarningsActionsMenu(FrameworkElement const& anchor) {
     }
   });
   flyout.Items().Append(wallet);
+
+  // the connected wallet's Disconnect wallet, after Change wallet as on the
+  // card: shown while the card shows it
+  MenuFlyoutItem disconnect;
+  disconnect.Text(Loc("wallet_disconnect"));
+  const bool disconnectShown =
+      connected && w_.DisconnectWalletButton().Visibility() == Visibility::Visible;
+  disconnect.Visibility(disconnectShown ? Visibility::Visible : Visibility::Collapsed);
+  disconnect.IsEnabled(!connectingWallet_);
+  disconnect.Click([weak](IInspectable const& s, RoutedEventArgs const& e) {
+    if (auto self = weak.get()) self->wallet().OnDisconnectWallet(s, e);
+  });
+  flyout.Items().Append(disconnect);
 
   MenuFlyoutItem upgrade;
   upgrade.Text(Loc("upgrade_with_stripe"));
@@ -3162,10 +3297,17 @@ void WalletPage::PlaceConsentPanel() {
 }
 
 void WalletPage::ApplyKeyWalletCard() {
+  // the not-connected hint's line while the wallet read says no wallet at all
+  // is attached, so nothing can be paid out (ApplyWalletPayout)
+  kit::SetTextOrCollapse(w_.WalletNoPayoutText(),
+                         !snWallet_ && walletNone_ ? Loc("wallet_none_no_payout") : hstring{});
   if (snWallet_) {
-    // a wallet read: the card is the wallet's, as before
+    // a wallet read: the card is the wallet's, as before, with Disconnect
+    // wallet under Change wallet while the read says it can be disconnected
     keyWalletCardShown_ = false;
     w_.ChangeWalletButton().Visibility(Visibility::Visible);
+    w_.DisconnectWalletButton().Visibility(walletDisconnectable_ ? Visibility::Visible
+                                                                 : Visibility::Collapsed);
     w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
     return;
   }
@@ -3175,6 +3317,7 @@ void WalletPage::ApplyKeyWalletCard() {
     // the key went: the card is the disconnected one ApplySnWallet draws
     keyWalletCardShown_ = false;
     w_.ChangeWalletButton().Visibility(Visibility::Visible);
+    w_.DisconnectWalletButton().Visibility(Visibility::Collapsed);
     w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
     w_.WalletConnectedPanel().Visibility(Visibility::Collapsed);
     w_.WalletDisconnectedPanel().Visibility(Visibility::Visible);
@@ -3191,6 +3334,7 @@ void WalletPage::ApplyKeyWalletCard() {
   w_.WalletAddressText().Text(H(keyCard_->stored_address));
   w_.WalletConnectedNote().Text(Loc(linked ? "wallet_connected_to_protocol" : "bittensor_key_card_not_linked"));
   w_.ChangeWalletButton().Visibility(Visibility::Collapsed);
+  w_.DisconnectWalletButton().Visibility(Visibility::Collapsed);
   kit::SetTextOrCollapse(w_.WalletStatusText(), hstring{ShortAddress(keyCard_->stored_address)});
 }
 
@@ -5438,6 +5582,8 @@ void WalletPage::ReconcileProviderStatus() {
     providerStatusLoaded_ = false;
     providerStatusError_.clear();
     providerStatus_.reset();
+    providedEpoch_ = 0;
+    unpaidByteCount_ = 0;
     if (providerOnly) TakeProviderOnlyReadings(Sdk().CurrentProviderOnlyStatus());
     changed = true;
   }
@@ -5502,6 +5648,8 @@ void WalletPage::CloseProviderStatus(bool deviceAlive) {
   providerStatusLoaded_ = false;
   providerStatusError_.clear();
   providerStatus_.reset();
+  providedEpoch_ = 0;
+  unpaidByteCount_ = 0;
 }
 
 void WalletPage::ReadProviderStatus() {
@@ -5515,6 +5663,9 @@ void WalletPage::ReadProviderStatus() {
     }
     providerStatusError_ = std::move(error);
     providerStatus_ = providerStatusVc_->getProviderStatus();
+    // the network's data in the newest settled SN25 epoch, 0 without one
+    providedEpoch_ = providerStatusVc_->getProvidedEpoch();
+    unpaidByteCount_ = providerStatusVc_->getUnpaidByteCount();
   } catch (std::exception const& e) {
     // a malformed document must never take the page down
     urnw::LogError("provider status: reading the controller failed: {}", e.what());
@@ -5541,6 +5692,8 @@ void WalletPage::TakeProviderOnlyReadings(urnw::ProviderOnlyStatus const& status
   providerStatusLoaded_ = status.loaded;
   providerStatusError_ = status.error;
   providerStatus_ = status.status;
+  providedEpoch_ = status.providedEpoch;
+  unpaidByteCount_ = status.unpaidByteCount;
 }
 
 providerstatus::View WalletPage::ProviderStatusView() const {
@@ -5587,6 +5740,37 @@ void WalletPage::ApplyProviderStatus() {
   }
   if (providerWhyOpen_) RebuildProviderWhy();
   ApplyProvideReason();
+  ApplyProviderProvided();
+}
+
+void WalletPage::ApplyProviderProvided() {
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  const auto shown = [](bool visible) {
+    return visible ? Visibility::Visible : Visibility::Collapsed;
+  };
+  // This device's data in the newest settled SN25 epoch, from its status, and
+  // under it whether SN25 paid for it. Data, never an amount.
+  const providerstatus::ProvidedLines lines = providerstatus::ProvidedLinesFor(providerStatus_);
+  if (lines.shown) {
+    w_.WalletProviderProvidedText().Text(hstring{urnw::Format(
+        "provided_in_epoch", lines.epoch, urnw::Widen(urnw::FormatByteCountCompact(lines.byteCount)))});
+  }
+  kit::SetTextOrCollapse(w_.WalletProviderNotPaidText(),
+                         lines.notPaid ? Loc("provided_not_paid_no_wallet") : hstring{});
+  w_.WalletProviderProvidedRow().Visibility(shown(lines.shown));
+  // The network's unpaid data provided, over all its devices, once there is a
+  // settled epoch: the label, the figure and what it is. One fact, read once:
+  // "Unpaid data provided, 1.20 GiB".
+  const bool unpaid = providerstatus::UnpaidShown(providedEpoch_);
+  if (unpaid) {
+    const hstring value{urnw::Widen(urnw::FormatByteCountCompact(unpaidByteCount_))};
+    w_.WalletUnpaidProvidedValue().Text(value);
+    automation::AutomationProperties::SetName(w_.WalletUnpaidProvidedValue(),
+                                              Loc("unpaid_data_provided") + L", " + value);
+    w_.WalletUnpaidProvidedHelp().Text(
+        hstring{urnw::Format("unpaid_data_provided_help", providedEpoch_)});
+  }
+  w_.WalletUnpaidProvidedRow().Visibility(shown(unpaid));
 }
 
 void WalletPage::RebuildProviderWhy() {

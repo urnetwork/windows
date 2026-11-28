@@ -308,6 +308,7 @@ constexpr const char* KindLabelKey(std::string_view kind) {
   if (kind == "verify") return "sessions_kind_verify";
   if (kind == "apple") return "sessions_kind_apple";
   if (kind == "google") return "sessions_kind_google";
+  if (kind == "microsoft") return "sessions_kind_microsoft";
   if (kind == "sso") return "sessions_kind_sso";
   if (kind == "wallet") return "sessions_kind_wallet";
   if (kind == "seedphrase") return "sessions_kind_seedphrase";

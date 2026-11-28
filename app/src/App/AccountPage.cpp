@@ -58,10 +58,11 @@ constexpr wchar_t kReferralsGlyph[] = L"\uEB51";  // Heart
 constexpr wchar_t kApiKeysGlyph[] = L"\uE943";  // Code
 
 // apple AccountNavStackView.needsNameClaim: true when the account carries NONE
-// of the identity methods, i.e. it is still on its auto-generated name.
+// of the identity methods, i.e. it is still on its auto-generated name. A
+// Microsoft sign-in is one, as a Google or Apple one is.
 bool NeedsNameClaim(urnet::NetworkUser const& user) {
   static constexpr const char* kIdentityMethods[] = {"email", "phone", "google", "apple",
-                                                     "solana"};
+                                                     "microsoft", "solana"};
   if (!user.auth_types) {
     // The old single-auth_type shape; treat it the same way.
     return std::find(std::begin(kIdentityMethods), std::end(kIdentityMethods),

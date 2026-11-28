@@ -96,12 +96,14 @@
             <Grid>
 
                 <!-- Initial: THE LOGIN STACK RULE, shared by every app (ur.io
-                     ConnectDialog is the reference): up to three full-width
-                     sign-in pills, then the remaining ways in as small square
-                     icon tiles, four per row with each row filled and the rows
+                     ConnectDialog is the reference): the full-width sign-in
+                     pills, then the remaining ways in as small square icon
+                     tiles, four per row with each row filled and the rows
                      exactly as wide as the pills, then the "or" divider and the
-                     email / phone field. Windows offers Google, Apple and Create
-                     Instant Account as the pills and Secret key, Auth code,
+                     email / phone field. Windows offers Google, Microsoft, Apple
+                     and Create Instant Account as the pills (Sign in with
+                     Microsoft sits beside Google's, which makes the pills four
+                     where they were three) and Secret key, Auth code,
                      Bittensor and Solana as the tiles; nothing else is in the
                      stack. The column is widthIn(max = 512.dp) inside a centred
                      Row, as on android.
@@ -185,6 +187,29 @@
                                 </Canvas>
                             </Viewbox>
                             <TextBlock x:Name="GoogleSignInText" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Sign in with Microsoft, through the api's own web flow in
+                         the default browser (SdkHost::SignInWithSso and the
+                         sdk's MicrosoftSignInAttempt): the api talks to Microsoft
+                         with its own client and hands the identity token back
+                         on urnetwork://oauth/microsoft. -->
+                    <Button x:Name="MicrosoftSignInButton"
+                            Style="{StaticResource UrSecondaryButtonStyle}"
+                            Click="OnSignInWithMicrosoft">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- the Microsoft mark, four squares in its four brand
+                                 colours; the mark may not be recoloured -->
+                            <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                <Canvas Width="21" Height="21">
+                                    <Path Fill="#F25022" Data="M0,0H10V10H0Z" />
+                                    <Path Fill="#7FBA00" Data="M11,0H21V10H11Z" />
+                                    <Path Fill="#00A4EF" Data="M0,11H10V21H0Z" />
+                                    <Path Fill="#FFB900" Data="M11,11H21V21H11Z" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="MicrosoftSignInText" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
@@ -1268,6 +1293,61 @@
                                                       Toggled="OnPortMappingToggled" />
                                     </Grid>
                                 </Border>
+                                <!-- The sharing limits (sdk provide_share.go; owner,
+                                     2026-11-28): the most this device shares with others,
+                                     a maximum speed and a monthly data limit, each a picker
+                                     of the store's choices with a limit the cli set as one
+                                     of its own, then a line of how the month stands and what
+                                     a limit costs. Read and written through the session's
+                                     device, which keeps them in its space for the
+                                     provider-only device too, so the group is hidden, never
+                                     disabled, while there is no session's status, as the
+                                     extender rows are (N1).
+                                     ConnectPage::ApplyProvideShareRows is its one writer;
+                                     ConnectPage::Initialize wires the pickers. -->
+                                <StackPanel x:Name="ProvideShareGroup" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <TextBlock x:Name="ProvideShareLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="ProvideShareSpeedLabel"
+                                                       Style="{StaticResource UrRowTitleStyle}" />
+                                            <ComboBox x:Name="ProvideShareSpeedPicker" Grid.Column="1"
+                                                      MinWidth="120" VerticalAlignment="Center"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=ProvideShareSpeedLabel}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="ProvideShareMonthlyLabel"
+                                                       Style="{StaticResource UrRowTitleStyle}" />
+                                            <ComboBox x:Name="ProvideShareMonthlyPicker" Grid.Column="1"
+                                                      MinWidth="120" VerticalAlignment="Center"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=ProvideShareMonthlyLabel}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}"
+                                            MinHeight="0" Padding="12,8">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock x:Name="ProvideShareStatusText" TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                            <TextBlock x:Name="ProvideShareHelpText" TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
 
                                 <!-- connect options ................................ -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
@@ -2898,7 +2978,9 @@
                                                    Style="{StaticResource UrPaneMetaStyle}" />
                                     </Grid>
                                 </Border>
-                                <!-- connected: the coldkey, what it means, and change -->
+                                <!-- connected: the coldkey, what it means, change, and
+                                     disconnect while the wallet read says it can be
+                                     disconnected (WalletPage::ApplyKeyWalletCard) -->
                                 <Border x:Name="WalletConnectedPanel" Visibility="Collapsed"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
@@ -2914,15 +2996,27 @@
                                                 Style="{StaticResource UrPaneActionSecondaryStyle}"
                                                 HorizontalAlignment="Stretch"
                                                 Click="OnChangeWallet" />
+                                        <!-- the outlined action in the danger colour: with no
+                                             payout wallet the earnings can't be paid out -->
+                                        <Button x:Name="DisconnectWalletButton"
+                                                Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                Foreground="{StaticResource UrDangerBrush}"
+                                                HorizontalAlignment="Stretch"
+                                                Visibility="Collapsed"
+                                                Click="OnDisconnectWallet" />
                                     </StackPanel>
                                 </Border>
-                                <!-- not connected: the not-retroactive line, the bridge
+                                <!-- not connected: no payout wallet at all, when the wallet
+                                     read says so, the not-retroactive line, the bridge
                                      button, and the manual paste fallback (still
                                      signed) folded under a link -->
                                 <Border x:Name="WalletDisconnectedPanel"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
                                     <StackPanel Spacing="10">
+                                        <TextBlock x:Name="WalletNoPayoutText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" Visibility="Collapsed" />
                                         <!-- plain note, then a "Learn more" link in the pink
                                              accent with the outward glyph that opens the protocol
                                              site; inline, so it shares the last line when it fits -->
@@ -3594,6 +3688,47 @@
                                                          Padding="0" Margin="0"
                                                          HorizontalAlignment="Left"
                                                          Click="OnWalletProvideMode" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- The SN25 data (owner, 2026-11-28), from the same
+                                     provider status as the line above: this device's data
+                                     in the newest settled epoch, with a second line when
+                                     SN25 did not pay for it for want of a payout wallet; then
+                                     the network's unpaid data provided, over all its devices,
+                                     with what it is. Data, never an amount.
+                                     WalletPage::ApplyProviderProvided writes both rows and
+                                     collapses each while it has nothing to say. -->
+                                <Border x:Name="WalletProviderProvidedRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,8">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:Name="WalletProviderProvidedText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                        <TextBlock x:Name="WalletProviderNotPaidText" Visibility="Collapsed"
+                                                   TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="WalletUnpaidProvidedRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,8">
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="WalletUnpaidProvidedLabel"
+                                                       Style="{StaticResource UrKeyTextStyle}"
+                                                       AutomationProperties.AccessibilityView="Raw" />
+                                            <TextBlock x:Name="WalletUnpaidProvidedValue" Grid.Column="1"
+                                                       Style="{StaticResource UrValueTextStyle}" />
+                                        </Grid>
+                                        <TextBlock x:Name="WalletUnpaidProvidedHelp" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
                                     </StackPanel>
                                 </Border>
                                 <!-- the read-only extender row (N7): the Connect page's

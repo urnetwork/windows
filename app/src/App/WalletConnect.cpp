@@ -356,6 +356,13 @@ void WalletConnect::OpenGoogleOAuth(const std::string& apiUrl, const std::string
   OpenUrl(url);
 }
 
+void WalletConnect::OpenMicrosoftOAuth(const std::string& startUrl) {
+  if (!startUrl.empty() && TryOpenUrl(startUrl)) return;
+  // no attempt to start, or no browser started: the sign-in's own error line
+  LogError("wallet bridge: the Microsoft sign-in did not open in the browser");
+  if (on_error) on_error(Narrow(Localized("error_signing_in_with_microsoft")));
+}
+
 void WalletConnect::OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
                                    const std::string& nonce) {
   if (apiUrl.empty()) {
@@ -396,6 +403,12 @@ void WalletConnect::HandleOAuthReturn(const std::string& url) {
 }
 
 bool WalletConnect::HandleDeepLink(const std::string& url) {
+  // a Microsoft return is the sdk attempt's to read, whole: the sdk says which
+  // urls are one (urnetwork://oauth/microsoft)
+  if (urnet::isMicrosoftSignInReturnUrl(url)) {
+    if (on_microsoft_return) on_microsoft_return(url);
+    return true;
+  }
   std::string host, query;
   SplitUrl(url, host, query);
   if (host == kOAuthReturnHost) {

@@ -68,6 +68,7 @@ namespace urnw {
 
 class EmojiTagSheet;
 class TransportSettingsSheet;
+class WalletDisconnectSheet;
 
 class WalletPage {
  public:
@@ -132,6 +133,10 @@ class WalletPage {
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnChangeWallet(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the connected wallet's Disconnect wallet (WalletDisconnectSheet), offered
+  // while the wallet read says it can be disconnected
+  winrt::fire_and_forget OnDisconnectWallet(winrt::Windows::Foundation::IInspectable const&,
+                                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnEnterAddressManually(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletAddressChanged(
@@ -286,6 +291,10 @@ class WalletPage {
 
   // ---- the coldkey
   void ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state);
+  // What the wallet read's GET /sn/wallet answer says of the payout wallet
+  // (walletDisconnectable_, walletNone_), drawn on the card; `ok` false (a
+  // failed read) says nothing, so neither the action nor the line shows.
+  void ApplyWalletPayout(bool ok, bool disconnectable, bool hasWallet);
   // The bridge answered with a signed challenge (either path). Validates the
   // address before anything is sent to the account, then attaches it.
   void ApplyWalletSigned(uint32_t generation, bool ok, std::string const& address,
@@ -514,13 +523,14 @@ class WalletPage {
   // Releases the controller and forgets its readings; touches no XAML, so the
   // destructor can call it.
   void CloseProviderStatus(bool deviceAlive);
-  // Mirrors the controller into the page: loaded, the last poll's error and
-  // this device's status (one value copy of the SDK's struct).
+  // Mirrors the controller into the page: loaded, the last poll's error, this
+  // device's status (one value copy of the SDK's struct) and the network's
+  // SN25 figures.
   void ReadProviderStatus();
   // With no session the provider is the service's provider-only device, which
   // no controller can be opened on: SdkHost reads its status on the api while
   // this page wants it (SetProviderOnlyStatusWanted), and these take its
-  // readings into the same three fields the controller fills.
+  // readings into the same fields the controller fills.
   void ApplyProviderOnlyStatus(urnw::ProviderOnlyStatus const& status);
   void TakeProviderOnlyReadings(urnw::ProviderOnlyStatus const& status);
   // The readings through providerstatus::ViewFor; neither a controller nor the
@@ -528,6 +538,12 @@ class WalletPage {
   providerstatus::View ProviderStatusView() const;
   // The Demand row and Why? under the provider plots' gate, and the line.
   void ApplyProviderStatus();
+  // The SN25 data under the line (owner decision 2026-11-28, feature 14):
+  // this device's data in the newest settled epoch and whether SN25 paid for
+  // it (providerstatus::ProvidedLinesFor), then the network's unpaid data
+  // provided once there is an epoch (UnpaidShown); each row collapses while
+  // it has nothing to say.
+  void ApplyProviderProvided();
   void RebuildProviderWhy();
   void ToggleProviderWhy();
   // Both groups' visibility and the provider header's meta label, from
@@ -605,7 +621,11 @@ class WalletPage {
   bool providerStatusLoaded_ = false;
   std::string providerStatusError_;
   std::optional<urnet::ProviderStatus> providerStatus_;
-  // the three readings above are the provider-only device's (no session, no
+  // the network's data in the newest settled SN25 epoch: its epoch, 0 for
+  // none, and the part SN25 did not pay (getProvidedEpoch, getUnpaidByteCount)
+  int64_t providedEpoch_ = 0;
+  int64_t unpaidByteCount_ = 0;
+  // the readings above are the provider-only device's (no session, no
   // controller), from SdkHost
   bool providerOnlySource_ = false;
   bool providerWhyOpen_ = false;  // Why? starts collapsed
@@ -616,6 +636,15 @@ class WalletPage {
 
   std::optional<SnWalletInfo> snWallet_;
   Fetch walletState_ = Fetch::Loading;
+  // From the wallet read's GET /sn/wallet answer (ApplyWalletPayout): a wallet
+  // connected without a signed payout consent can be disconnected
+  // (urnet::snWalletDisconnectable), and no wallet at all is attached, so
+  // nothing can be paid out (!urnet::snWalletHasWallet). Both false until a
+  // read answers, and after a failed one.
+  bool walletDisconnectable_ = false;
+  bool walletNone_ = false;
+  // the Disconnect wallet dialog while it shows
+  std::shared_ptr<urnw::WalletDisconnectSheet> disconnectSheet_;
   bool connectingWallet_ = false;
   bool manualPanelOpen_ = false;
   bool manualAddressOk_ = false;

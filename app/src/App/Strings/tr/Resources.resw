@@ -68,9 +68,25 @@
     <value>{} (doğrulanmış)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_code_expired" xml:space="preserve">
+    <value>Bu kodun süresi doldu veya kod zaten kullanıldı. Yeni bir kod isteyin.</value>
+    <comment>Payout wallet disconnect: no confirmation code is waiting (it expired, was used, or too many wrong tries ended it); the person asks for a new one.</comment>
+  </data>
+  <data name="account_code_invalid" xml:space="preserve">
+    <value>Bu kod yanlış. Kontrol edip tekrar deneyin.</value>
+    <comment>Email change and payout wallet disconnect: a confirmation code the person entered is wrong; the request is still waiting.</comment>
+  </data>
+  <data name="account_code_send_failed" xml:space="preserve">
+    <value>Kod gönderilemedi. Lütfen tekrar deneyin.</value>
+    <comment>Email change and payout wallet disconnect: the server could not send a confirmation code; the person asks again.</comment>
+  </data>
   <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
     <value>Hesabınız satın alma işlemleri için hazır değil. Lütfen uygulamayı yeniden başlatıp tekrar deneyin.</value>
     <comment>Shown when a purchase is refused before contacting the store because the account is not ready: on apple the networkId is missing or unparseable (Shared/ViewModels/AppStoreSubscriptionManager.swift), on android the active network space has no api yet (the Stripe sheet and pay page purchasers). The purchase could never be credited to anyone. This used to be a silent no-op.</comment>
+  </data>
+  <data name="account_too_many_tries" xml:space="preserve">
+    <value>Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.</value>
+    <comment>Email change and payout wallet disconnect: too many requests or codes were sent (rate limited); the person tries again later.</comment>
   </data>
   <data name="active_extenders" xml:space="preserve">
     <value>Etkin genişleticiler</value>
@@ -4264,6 +4280,78 @@ inşa edin</value>
     <value>Bölünmüş tünel kuralını düzenle</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="email_change" xml:space="preserve">
+    <value>E-postayı değiştir</value>
+    <comment>Account, sign-in methods: the action beside the email sign-in that starts a verified email change, and the confirm button of its sheet.</comment>
+  </data>
+  <data name="email_change_body" xml:space="preserve">
+    <value>Yeni e-posta adresinizi girin. Mevcut e-posta adresinize bir kod, yeni adresinize de başka bir kod göndereceğiz. İkisini de girdiğinizde e-posta adresiniz değişir. Şifreniz aynı kalır.</value>
+    <comment>The email change sheet, first step: how the change works, above the new email field.</comment>
+  </data>
+  <data name="email_change_code_sent_to" xml:space="preserve">
+    <value>Kod gönderildi: {}</value>
+    <comment>The email change sheet, second step: the label of a code field. The argument is the address the code went to (the current email masked, or the new email).</comment>
+  </data>
+  <data name="email_change_codes_sent" xml:space="preserve">
+    <value>{0} adresine bir kod, {1} adresine de başka bir kod gönderdik.</value>
+    <comment>The email change sheet, second step: where the two codes went. The arguments are the current email, masked (j…@example.com), and the new email.</comment>
+  </data>
+  <data name="email_change_done" xml:space="preserve">
+    <value>E-posta adresiniz artık {}.</value>
+    <comment>The email change sheet, once both codes were confirmed. The argument is the new email.</comment>
+  </data>
+  <data name="email_change_email_in_use" xml:space="preserve">
+    <value>Bu e-posta adresi zaten başka bir hesap tarafından kullanılıyor.</value>
+    <comment>Email change refused: another account signs in with the new email.</comment>
+  </data>
+  <data name="email_change_email_unverified" xml:space="preserve">
+    <value>E-posta adresinizi değiştirmeden önce mevcut adresinizi doğrulayın.</value>
+    <comment>Email change refused: the current email sign-in is not verified yet.</comment>
+  </data>
+  <data name="email_change_expired" xml:space="preserve">
+    <value>Bu e-posta değişikliği onaylanmadan sona erdi. Yeniden başlayın.</value>
+    <comment>Email change: no change is waiting any more (it expired, was cancelled or never started); the sheet goes back to its first step.</comment>
+  </data>
+  <data name="email_change_invalid_email" xml:space="preserve">
+    <value>Geçerli bir e-posta adresi girin.</value>
+    <comment>Email change: the new email is not an email address.</comment>
+  </data>
+  <data name="email_change_new_email" xml:space="preserve">
+    <value>Yeni e-posta</value>
+    <comment>The email change sheet: the label of the new email field.</comment>
+  </data>
+  <data name="email_change_no_email" xml:space="preserve">
+    <value>Hesabınızda e-posta ile giriş yok. Bunun yerine giriş yöntemi olarak bir e-posta ekleyin.</value>
+    <comment>Email change refused: the account has no email sign-in to change; the person adds one as a sign-in method instead.</comment>
+  </data>
+  <data name="email_change_others_hint" xml:space="preserve">
+    <value>Diğer cihazlarınızda çıkış yapmak için Oturumlar ekranını açın.</value>
+    <comment>The email change sheet, once complete, when the server could not sign out the other sessions (the current sign-in has none to keep). Names the Sessions screen (sessions_title) exactly.</comment>
+  </data>
+  <data name="email_change_others_signed_out" xml:space="preserve">
+    <value>Diğer cihazlarınızda hesaptan çıkış yapıldı.</value>
+    <comment>The email change sheet, once complete: the account's other sessions were signed out.</comment>
+  </data>
+  <data name="email_change_same_email" xml:space="preserve">
+    <value>Bu zaten sizin e-posta adresiniz.</value>
+    <comment>Email change refused: the new email is the current email.</comment>
+  </data>
+  <data name="email_change_send_codes" xml:space="preserve">
+    <value>Kodları gönder</value>
+    <comment>The email change sheet, first step: the button that sends the two codes.</comment>
+  </data>
+  <data name="email_change_sign_in_required" xml:space="preserve">
+    <value>E-posta adresinizi değiştirmek için yeniden giriş yapın.</value>
+    <comment>Email change: the app holds no network sign-in to send the change with (the sdk's network credential), or the server answered owner_only.</comment>
+  </data>
+  <data name="email_change_title" xml:space="preserve">
+    <value>E-posta adresinizi değiştirin</value>
+    <comment>The email change sheet: its title.</comment>
+  </data>
+  <data name="email_change_too_many_tries" xml:space="preserve">
+    <value>Çok fazla yanlış kod girildi. Yeniden başlayın.</value>
+    <comment>Email change: too many wrong codes ended the request; the sheet goes back to its first step.</comment>
+  </data>
   <data name="email_e4_reason_not_needed" xml:space="preserve">
     <value>Henüz ihtiyacım olmadı</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
@@ -4479,6 +4567,10 @@ inşa edin</value>
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Google ile giriş yapılırken hata oluştu</value>
     <comment>Add sign-in method sheet (android): Google sign-in failed or was cancelled.</comment>
+  </data>
+  <data name="error_signing_in_with_microsoft" xml:space="preserve">
+    <value>Microsoft ile giriş yapılırken hata oluştu</value>
+    <comment>Sign-in screen and the add sign-in method sheet: Microsoft sign-in failed (not a cancel, which shows nothing).</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Cihaz adı güncellenirken bir hata oluştu.</value>
@@ -5800,6 +5892,18 @@ size gönderdiğimiz kodu girin.</value>
     <value>Yöntem</value>
     <comment>A label for the picker that lets the user select the sign-in method.</comment>
   </data>
+  <data name="microsoft" xml:space="preserve">
+    <value>Microsoft</value>
+    <comment>A label for Microsoft sign-in: the sign-in method in the account's list, and (apple) the Sessions screen's sign-in method of a session created with Sign in with Microsoft.</comment>
+  </data>
+  <data name="microsoft_sign_in_method_added" xml:space="preserve">
+    <value>Microsoft ile giriş yöntemi eklendi</value>
+    <comment>Snackbar message displayed when a Microsoft sign-in method is successfully added.</comment>
+  </data>
+  <data name="microsoft_sign_in_unavailable" xml:space="preserve">
+    <value>Microsoft ile giriş henüz kullanılamıyor. Başka bir giriş yöntemi deneyin.</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the server has no Microsoft sign-in configured yet (not_configured).</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{} dk önce</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
@@ -6737,6 +6841,50 @@ merkeziyetsiz bir giriş ve çıkış protokolüne dayanır.</value>
   <data name="provide_power_mode_pause_in_low_power" xml:space="preserve">
     <value>Düşük Güç Modu açıkken duraklat</value>
     <comment>Settings, provide power choice under "When on battery" on iOS and macOS (the default): pause providing while Low Power Mode is on. Use the system's own name for Low Power Mode.</comment>
+  </data>
+  <data name="provide_share_limit_reached" xml:space="preserve">
+    <value>Aylık sınıra ulaşıldı. Başkalarıyla paylaşım {} tarihinde devam edecek.</value>
+    <comment>Provide settings: the monthly data limit is reached, so this device stopped sharing with other people until the next month. The argument is the date the next month starts, such as Dec 1.</comment>
+  </data>
+  <data name="provide_share_limits" xml:space="preserve">
+    <value>Paylaşım sınırları</value>
+    <comment>Provide settings: the title of the section with the owner's limits on how much this device shares.</comment>
+  </data>
+  <data name="provide_share_limits_help" xml:space="preserve">
+    <value>Bir sınır, bu cihazın ne kadar paylaştığını azaltır; bu da güvenilirlik sıralamasını ve kazançlarını düşürebilir.</value>
+    <comment>Provide settings: what a sharing limit costs the device's owner, shown under the limits.</comment>
+  </data>
+  <data name="provide_share_max_speed" xml:space="preserve">
+    <value>En yüksek paylaşım hızı</value>
+    <comment>Provide settings: the label of the fastest speed this device shares at, for others using the network through it.</comment>
+  </data>
+  <data name="provide_share_monthly_limit" xml:space="preserve">
+    <value>Aylık veri sınırı</value>
+    <comment>Provide settings: the label of the most data this device shares with others in a calendar month.</comment>
+  </data>
+  <data name="provide_share_no_limit" xml:space="preserve">
+    <value>Sınır yok</value>
+    <comment>Provide settings: the choice of no sharing speed or monthly data limit.</comment>
+  </data>
+  <data name="provide_share_speed_mbps" xml:space="preserve">
+    <value>{} Mbps</value>
+    <comment>Provide settings: a sharing speed choice in megabits per second. The argument is the number of megabits.</comment>
+  </data>
+  <data name="provide_share_used" xml:space="preserve">
+    <value>Bu ay {} paylaşıldı</value>
+    <comment>Provide settings: the data this device shared with others this calendar month, with no monthly limit set. The argument is an amount of data such as 12.3 GiB.</comment>
+  </data>
+  <data name="provide_share_used_of_limit" xml:space="preserve">
+    <value>Bu ay {1} sınırın {0} kadarı paylaşıldı</value>
+    <comment>Provide settings: the data this device shared with others this calendar month against its monthly limit. The arguments are amounts of data such as 12.3 GiB and 50 GiB.</comment>
+  </data>
+  <data name="provided_in_epoch" xml:space="preserve">
+    <value>{0} döneminde sağlanan: {1}</value>
+    <comment>Provider status: the data a device provided that SN25 counted in a settled epoch. The arguments are the epoch number and an amount of data such as 12.3 GiB.</comment>
+  </data>
+  <data name="provided_not_paid_no_wallet" xml:space="preserve">
+    <value>Ödenmedi: ödeme cüzdanı yok</value>
+    <comment>Provider status: SN25 did not pay for a device's provided data because the device had no payout wallet.</comment>
   </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0} sa {1} dk</value>
@@ -7773,6 +7921,10 @@ içeriğine erişin</value>
     <value>Google</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with Sign in with Google. Not tagged apple: Apple's catalog is keyed by the English source, and google already carries "Google" there, so the apple screen reads that entry. Translated as google is, so every platform shows the same words.</comment>
   </data>
+  <data name="sessions_kind_microsoft" xml:space="preserve">
+    <value>Microsoft</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with Sign in with Microsoft. Not tagged apple: Apple's catalog is keyed by the English source, and microsoft already carries "Microsoft" there, so the apple screen reads that entry.</comment>
+  </data>
   <data name="sessions_kind_password" xml:space="preserve">
     <value>Şifre</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created by signing in with a password. Not tagged apple: Apple's catalog is keyed by the English source, and password_label already carries "Password" there, so the apple screen reads that entry. Translated as password_label is, so every platform shows the same words.</comment>
@@ -8011,6 +8163,14 @@ içeriğine erişin</value>
   <data name="sign_in_with_google_to_add_it" xml:space="preserve">
     <value>Giriş yöntemi olarak eklemek için Google ile giriş yapın.</value>
     <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_microsoft" xml:space="preserve">
+    <value>Microsoft ile giriş yap</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the Sign in with Microsoft button.</comment>
+  </data>
+  <data name="sign_in_with_microsoft_to_add_it" xml:space="preserve">
+    <value>Giriş yöntemi olarak eklemek için Microsoft ile giriş yapın.</value>
+    <comment>Add sign-in method sheet: how to add Microsoft as a sign-in method.</comment>
   </data>
   <data name="sign_in_with_seedphrase" xml:space="preserve">
     <value>Kurtarma ifadesiyle giriş yap</value>
@@ -9414,6 +9574,14 @@ bir internete adım atın.</value>
     <value>Daha da yüksek hızların kilidini açın ve yeni özelliklere ilk siz erişin.</value>
     <comment>Settings</comment>
   </data>
+  <data name="unpaid_data_provided" xml:space="preserve">
+    <value>Henüz ödenmemiş sağlanan veri</value>
+    <comment>Provider status: the data SN25 counted for the account's devices in the newest settled epoch but did not pay, because the device had no payout wallet.</comment>
+  </data>
+  <data name="unpaid_data_provided_help" xml:space="preserve">
+    <value>SN25'in {} döneminde saydığı ancak bağlı bir ödeme cüzdanı olmadığı için ödemediği veri. Bu bir veridir, borçlu olunan para değildir.</value>
+    <comment>Provider status: what the unpaid data provided is, under that figure. The argument is the settled epoch number.</comment>
+  </data>
   <data name="unstable_connection" xml:space="preserve">
     <value>Kararsız bağlantı</value>
     <comment>Locations list: screen reader name of the warning icon on a location whose providers may be unstable.</comment>
@@ -9916,6 +10084,38 @@ bir internete adım atın.</value>
     <value>UR protokolüne bağlı. Talep edilen tutarlar buraya gelir. Alpha, bağlandıktan sonraki dönemden itibaren birikir.</value>
     <comment>Line under the connected coldkey.</comment>
   </data>
+  <data name="wallet_disconnect" xml:space="preserve">
+    <value>Cüzdanın bağlantısını kes</value>
+    <comment>Earnings, Bittensor wallet card: the action that disconnects the connected payout wallet, and the confirm button of its dialog.</comment>
+  </data>
+  <data name="wallet_disconnect_body" xml:space="preserve">
+    <value>Ödeme cüzdanı olmadan kazançlarınız ödenemez. Daha önce ödenen kazançlar, ödendikleri cüzdan tarafından talep edilebilir olmaya devam eder. Onaylamak için hesabınıza e-postayla bir kod göndereceğiz.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: what happens with no payout wallet, said plainly, before the code is sent.</comment>
+  </data>
+  <data name="wallet_disconnect_code_sent" xml:space="preserve">
+    <value>Bir kod gönderdik: {}. Cüzdanın bağlantısını kesmek için kodu girin.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet, once the code is sent. The argument is the masked sign-in email addresses it went to, joined with commas (j…@example.com).</comment>
+  </data>
+  <data name="wallet_disconnect_consent_in_force" xml:space="preserve">
+    <value>İmzalı ödeme onayınız kazançlarınızı bu cüzdana gönderir ve yalnızca başka bir imzalı onay bunun yerini alabilir. Bunun yerine “Cüzdanı değiştir” seçeneğini kullanın.</value>
+    <comment>Earnings, the payout wallet disconnect refused because a signed payout consent (or hotkey delegation) pays the network: only a signed replacement can end it. Names the Change wallet button (sn_consent_change) exactly.</comment>
+  </data>
+  <data name="wallet_disconnect_email_required" xml:space="preserve">
+    <value>Önce hesabınıza e-posta ile giriş ekleyin. Onay kodu bu adrese gönderilir.</value>
+    <comment>Earnings, the payout wallet disconnect refused because the account has no sign-in email to send the confirmation code to.</comment>
+  </data>
+  <data name="wallet_disconnect_send_code" xml:space="preserve">
+    <value>Bana e-postayla kod gönder</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: the button that emails the confirmation code to the account's sign-in addresses.</comment>
+  </data>
+  <data name="wallet_disconnect_title" xml:space="preserve">
+    <value>Ödeme cüzdanınızın bağlantısı kesilsin mi?</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: its title.</comment>
+  </data>
+  <data name="wallet_disconnected" xml:space="preserve">
+    <value>Cüzdanın bağlantısı kesildi. Bir ödeme cüzdanı bağlayana kadar kazançlarınız ödenemez.</value>
+    <comment>Earnings, after the payout wallet was disconnected: the confirmation, saying plainly that earnings can't be paid out now.</comment>
+  </data>
   <data name="wallet_looks_new_warning" xml:space="preserve">
     <value>Bu adresin Bittensor zincirinde henüz hiçbir etkinliği yok. Yeni bir cüzdana benziyor. Devam etmeden önce size ait olduğundan emin olun.</value>
     <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
@@ -9923,6 +10123,10 @@ bir internete adım atın.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Bu cüzdan henüz bir ağa bağlı değil. Ağ oluşturmak için bir ağ adı seçin.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_none_no_payout" xml:space="preserve">
+    <value>Ödeme cüzdanı yok. Bir cüzdan bağlayana kadar kazançlarınız ödenemez.</value>
+    <comment>Earnings, Bittensor wallet card with no wallet connected: says plainly that earnings can't be paid out without a payout wallet.</comment>
   </data>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>Bir sonraki dönemden itibaren SN25α kazanmak için bir cüzdan bağlayın. Önceki dönemler geriye dönük olarak hesaba katılmaz.</value>

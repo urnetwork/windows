@@ -186,11 +186,14 @@ class LoginPage {
   // gates Get started on a non-empty field (iOS/android parity)
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  // Google / Apple through the provider's web flow (SdkHost::SignInWithSso)
+  // Google / Apple / Microsoft through the provider's web flow
+  // (SdkHost::SignInWithSso)
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSignInWithMicrosoft(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // seedphrase sign-in step
   void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -260,8 +263,9 @@ class LoginPage {
   // sign_in_oauth; the raw token reads as a broken app on the login screen.
   // Every other error passes through as-is.
   winrt::hstring MapAuthErrorForDisplay(std::string const& error);
-  // Google or Apple: open the provider's sign-in page and wait for the api's
-  // urnetwork://oauth/<provider> answer; `provider` is "google" or "apple".
+  // Google, Apple or Microsoft: open the provider's sign-in page and wait for
+  // the api's urnetwork://oauth/<provider> answer; `provider` is "google",
+  // "apple" or "microsoft" (urnet::AuthJwtTypeMicrosoft).
   void StartSsoSignIn(const char* provider);
   // seedphrase step: word count -> the warning line + the submit gate
   void ValidateSeedphrase();

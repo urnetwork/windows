@@ -572,6 +572,8 @@
     <ClInclude Include="ProviderIdleReason.h" />
     <!-- header-only and WinRT-free: tools/provider-status-tests.cpp runs it -->
     <ClInclude Include="ProviderStatusPresentation.h" />
+    <!-- header-only and WinRT-free: tools/provide-share-tests.cpp runs it -->
+    <ClInclude Include="ProvideSharePresentation.h" />
     <ClInclude Include="UrComponents.h" />
     <ClInclude Include="WalletConnect.h" />
     <!-- header-only and WinRT-free: tools/feedback-send-tests.cpp runs it -->

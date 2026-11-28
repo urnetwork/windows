@@ -3573,6 +3573,9 @@ void MainWindow::OnSignInWithGoogle(IInspectable const& s, RoutedEventArgs const
 void MainWindow::OnSignInWithApple(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithApple(s, e);
 }
+void MainWindow::OnSignInWithMicrosoft(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithMicrosoft(s, e);
+}
 void MainWindow::OnSignInWithSeedphrase(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithSeedphrase(s, e);
 }
@@ -3747,6 +3750,9 @@ void MainWindow::OnConnectWalletAddress(IInspectable const& s, RoutedEventArgs c
 }
 void MainWindow::OnChangeWallet(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnChangeWallet(s, e);
+}
+void MainWindow::OnDisconnectWallet(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnDisconnectWallet(s, e);
 }
 void MainWindow::OnClaimAlpha(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnClaimAlpha(s, e);
