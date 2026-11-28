@@ -9502,6 +9502,10 @@
     <value>電郵或電話</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>請檢查電話號碼格式。請使用國家代碼，並且只輸入數字，例如 +15551234567。</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>輸入你的電話號碼或電郵</value>
     <comment>Login initial</comment>
