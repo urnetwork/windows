@@ -68,9 +68,25 @@
     <value>{} (ověřeno)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_code_expired" xml:space="preserve">
+    <value>Platnost kódu vypršela nebo už byl použit. Vyžádejte si nový.</value>
+    <comment>Payout wallet disconnect: no confirmation code is waiting (it expired, was used, or too many wrong tries ended it); the person asks for a new one.</comment>
+  </data>
+  <data name="account_code_invalid" xml:space="preserve">
+    <value>Tento kód není správný. Zkontrolujte ho a zkuste to znovu.</value>
+    <comment>Email change and payout wallet disconnect: a confirmation code the person entered is wrong; the request is still waiting.</comment>
+  </data>
+  <data name="account_code_send_failed" xml:space="preserve">
+    <value>Kód se nepodařilo odeslat. Zkuste to prosím znovu.</value>
+    <comment>Email change and payout wallet disconnect: the server could not send a confirmation code; the person asks again.</comment>
+  </data>
   <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
     <value>Váš účet zatím není připraven na nákupy. Restartujte aplikaci a zkuste to znovu.</value>
     <comment>Shown when a purchase is refused before contacting the store because the account is not ready: on apple the networkId is missing or unparseable (Shared/ViewModels/AppStoreSubscriptionManager.swift), on android the active network space has no api yet (the Stripe sheet and pay page purchasers). The purchase could never be credited to anyone. This used to be a silent no-op.</comment>
+  </data>
+  <data name="account_too_many_tries" xml:space="preserve">
+    <value>Příliš mnoho pokusů. Zkuste to prosím později.</value>
+    <comment>Email change and payout wallet disconnect: too many requests or codes were sent (rate limited); the person tries again later.</comment>
   </data>
   <data name="active_extenders" xml:space="preserve">
     <value>Aktivní extendery</value>
@@ -4319,6 +4335,78 @@ správným způsobem</value>
     <value>Upravit pravidlo rozdělení</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="email_change" xml:space="preserve">
+    <value>Změnit e-mail</value>
+    <comment>Account, sign-in methods: the action beside the email sign-in that starts a verified email change, and the confirm button of its sheet.</comment>
+  </data>
+  <data name="email_change_body" xml:space="preserve">
+    <value>Zadejte nový e-mail. Pošleme kód na váš současný e-mail a další na nový. E-mail se změní, až zadáte oba. Heslo zůstane stejné.</value>
+    <comment>The email change sheet, first step: how the change works, above the new email field.</comment>
+  </data>
+  <data name="email_change_code_sent_to" xml:space="preserve">
+    <value>Kód odeslaný na {}</value>
+    <comment>The email change sheet, second step: the label of a code field. The argument is the address the code went to (the current email masked, or the new email).</comment>
+  </data>
+  <data name="email_change_codes_sent" xml:space="preserve">
+    <value>Poslali jsme kód na {0} a další na {1}.</value>
+    <comment>The email change sheet, second step: where the two codes went. The arguments are the current email, masked (j…@example.com), and the new email.</comment>
+  </data>
+  <data name="email_change_done" xml:space="preserve">
+    <value>Váš e-mail je nyní {}.</value>
+    <comment>The email change sheet, once both codes were confirmed. The argument is the new email.</comment>
+  </data>
+  <data name="email_change_email_in_use" xml:space="preserve">
+    <value>Tento e-mail už používá jiný účet.</value>
+    <comment>Email change refused: another account signs in with the new email.</comment>
+  </data>
+  <data name="email_change_email_unverified" xml:space="preserve">
+    <value>Před změnou nejprve ověřte svůj současný e-mail.</value>
+    <comment>Email change refused: the current email sign-in is not verified yet.</comment>
+  </data>
+  <data name="email_change_expired" xml:space="preserve">
+    <value>Tato změna e-mailu skončila dřív, než byla potvrzena. Začněte znovu.</value>
+    <comment>Email change: no change is waiting any more (it expired, was cancelled or never started); the sheet goes back to its first step.</comment>
+  </data>
+  <data name="email_change_invalid_email" xml:space="preserve">
+    <value>Zadejte platnou e-mailovou adresu.</value>
+    <comment>Email change: the new email is not an email address.</comment>
+  </data>
+  <data name="email_change_new_email" xml:space="preserve">
+    <value>Nový e-mail</value>
+    <comment>The email change sheet: the label of the new email field.</comment>
+  </data>
+  <data name="email_change_no_email" xml:space="preserve">
+    <value>Váš účet nemá přihlášení e-mailem. Místo toho ho přidejte jako způsob přihlášení.</value>
+    <comment>Email change refused: the account has no email sign-in to change; the person adds one as a sign-in method instead.</comment>
+  </data>
+  <data name="email_change_others_hint" xml:space="preserve">
+    <value>Ostatní zařízení odhlásíte v části Relace.</value>
+    <comment>The email change sheet, once complete, when the server could not sign out the other sessions (the current sign-in has none to keep). Names the Sessions screen (sessions_title) exactly.</comment>
+  </data>
+  <data name="email_change_others_signed_out" xml:space="preserve">
+    <value>Vaše ostatní zařízení byla odhlášena.</value>
+    <comment>The email change sheet, once complete: the account's other sessions were signed out.</comment>
+  </data>
+  <data name="email_change_same_email" xml:space="preserve">
+    <value>To už je váš e-mail.</value>
+    <comment>Email change refused: the new email is the current email.</comment>
+  </data>
+  <data name="email_change_send_codes" xml:space="preserve">
+    <value>Odeslat kódy</value>
+    <comment>The email change sheet, first step: the button that sends the two codes.</comment>
+  </data>
+  <data name="email_change_sign_in_required" xml:space="preserve">
+    <value>Pro změnu e-mailu se znovu přihlaste.</value>
+    <comment>Email change: the app holds no network sign-in to send the change with (the sdk's network credential), or the server answered owner_only.</comment>
+  </data>
+  <data name="email_change_title" xml:space="preserve">
+    <value>Změna e-mailu</value>
+    <comment>The email change sheet: its title.</comment>
+  </data>
+  <data name="email_change_too_many_tries" xml:space="preserve">
+    <value>Příliš mnoho chybných kódů. Začněte znovu.</value>
+    <comment>Email change: too many wrong codes ended the request; the sheet goes back to its first step.</comment>
+  </data>
   <data name="email_e4_reason_not_needed" xml:space="preserve">
     <value>Ještě jsem to nepotřeboval</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
@@ -4534,6 +4622,10 @@ správným způsobem</value>
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Chyba při přihlašování přes Google</value>
     <comment>Add sign-in method sheet (android): Google sign-in failed or was cancelled.</comment>
+  </data>
+  <data name="error_signing_in_with_microsoft" xml:space="preserve">
+    <value>Chyba při přihlašování přes Microsoft</value>
+    <comment>Sign-in screen and the add sign-in method sheet: Microsoft sign-in failed (not a cancel, which shows nothing).</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Při aktualizaci názvu zařízení došlo k chybě.</value>
@@ -5909,6 +6001,18 @@ správným způsobem</value>
   <data name="method" xml:space="preserve">
     <value>Způsob</value>
     <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
+  <data name="microsoft" xml:space="preserve">
+    <value>Microsoft</value>
+    <comment>A label for Microsoft sign-in: the sign-in method in the account's list, and (apple) the Sessions screen's sign-in method of a session created with Sign in with Microsoft.</comment>
+  </data>
+  <data name="microsoft_sign_in_method_added" xml:space="preserve">
+    <value>Způsob přihlášení Microsoft byl přidán</value>
+    <comment>Snackbar message displayed when a Microsoft sign-in method is successfully added.</comment>
+  </data>
+  <data name="microsoft_sign_in_unavailable" xml:space="preserve">
+    <value>Přihlášení pomocí Microsoft zatím není k dispozici. Zkuste se přihlásit jinak.</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the server has no Microsoft sign-in configured yet (not_configured).</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>před {} min</value>
@@ -8019,6 +8123,10 @@ kontent světa</value>
     <value>Google</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with Sign in with Google. Not tagged apple: Apple's catalog is keyed by the English source, and google already carries "Google" there, so the apple screen reads that entry. Translated as google is, so every platform shows the same words.</comment>
   </data>
+  <data name="sessions_kind_microsoft" xml:space="preserve">
+    <value>Microsoft</value>
+    <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with Sign in with Microsoft. Not tagged apple: Apple's catalog is keyed by the English source, and microsoft already carries "Microsoft" there, so the apple screen reads that entry.</comment>
+  </data>
   <data name="sessions_kind_password" xml:space="preserve">
     <value>Heslo</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created by signing in with a password. Not tagged apple: Apple's catalog is keyed by the English source, and password_label already carries "Password" there, so the apple screen reads that entry. Translated as password_label is, so every platform shows the same words.</comment>
@@ -8265,6 +8373,14 @@ kontent světa</value>
   <data name="sign_in_with_google_to_add_it" xml:space="preserve">
     <value>Přihlaste se přes Google a přidejte jej jako způsob přihlášení.</value>
     <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_microsoft" xml:space="preserve">
+    <value>Přihlásit se pomocí Microsoft</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the Sign in with Microsoft button.</comment>
+  </data>
+  <data name="sign_in_with_microsoft_to_add_it" xml:space="preserve">
+    <value>Přihlaste se přes Microsoft a přidejte jej jako způsob přihlášení.</value>
+    <comment>Add sign-in method sheet: how to add Microsoft as a sign-in method.</comment>
   </data>
   <data name="sign_in_with_seedphrase" xml:space="preserve">
     <value>Přihlásit se pomocí seed fráze</value>
@@ -10218,6 +10334,38 @@ jaký by měl být.</value>
     <value>Připojeno k protokolu UR. Vyzvednuté nároky přicházejí sem. Alpha se připisuje od epochy následující po připojení.</value>
     <comment>Line under the connected coldkey.</comment>
   </data>
+  <data name="wallet_disconnect" xml:space="preserve">
+    <value>Odpojit peněženku</value>
+    <comment>Earnings, Bittensor wallet card: the action that disconnects the connected payout wallet, and the confirm button of its dialog.</comment>
+  </data>
+  <data name="wallet_disconnect_body" xml:space="preserve">
+    <value>Bez peněženky pro výplaty vám výdělky nelze vyplatit. Již vyplacené výdělky si dál může vybrat peněženka, do které byly vyplaceny. Pro potvrzení vám pošleme kód na e-mail účtu.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: what happens with no payout wallet, said plainly, before the code is sent.</comment>
+  </data>
+  <data name="wallet_disconnect_code_sent" xml:space="preserve">
+    <value>Poslali jsme kód na {}. Zadejte ho a peněženka se odpojí.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet, once the code is sent. The argument is the masked sign-in email addresses it went to, joined with commas (j…@example.com).</comment>
+  </data>
+  <data name="wallet_disconnect_consent_in_force" xml:space="preserve">
+    <value>Váš podepsaný souhlas s výplatami posílá výdělky do této peněženky a nahradit ho může jen jiný podepsaný souhlas. Použijte místo toho „Změnit peněženku“.</value>
+    <comment>Earnings, the payout wallet disconnect refused because a signed payout consent (or hotkey delegation) pays the network: only a signed replacement can end it. Names the Change wallet button (sn_consent_change) exactly.</comment>
+  </data>
+  <data name="wallet_disconnect_email_required" xml:space="preserve">
+    <value>Nejprve k účtu přidejte přihlášení e-mailem. Potvrzovací kód se posílá na něj.</value>
+    <comment>Earnings, the payout wallet disconnect refused because the account has no sign-in email to send the confirmation code to.</comment>
+  </data>
+  <data name="wallet_disconnect_send_code" xml:space="preserve">
+    <value>Poslat kód e-mailem</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: the button that emails the confirmation code to the account's sign-in addresses.</comment>
+  </data>
+  <data name="wallet_disconnect_title" xml:space="preserve">
+    <value>Odpojit peněženku pro výplaty?</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: its title.</comment>
+  </data>
+  <data name="wallet_disconnected" xml:space="preserve">
+    <value>Peněženka byla odpojena. Dokud nepřipojíte peněženku pro výplaty, výdělky vám nelze vyplatit.</value>
+    <comment>Earnings, after the payout wallet was disconnected: the confirmation, saying plainly that earnings can't be paid out now.</comment>
+  </data>
   <data name="wallet_looks_new_warning" xml:space="preserve">
     <value>Tato adresa zatím nemá na řetězci Bittensor žádnou aktivitu. Vypadá jako nová peněženka. Než budete pokračovat, ověřte, že je vaše.</value>
     <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
@@ -10225,6 +10373,10 @@ jaký by měl být.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Tato peněženka zatím není propojena s žádnou sítí. Zvolte název sítě a vytvořte ji.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_none_no_payout" xml:space="preserve">
+    <value>Žádná peněženka pro výplaty. Dokud ji nepřipojíte, výdělky vám nelze vyplatit.</value>
+    <comment>Earnings, Bittensor wallet card with no wallet connected: says plainly that earnings can't be paid out without a payout wallet.</comment>
   </data>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>Připojte peněženku a vydělávejte SN25α od příští epochy. Předchozí epochy se zpětně nevypořádávají.</value>

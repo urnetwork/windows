@@ -827,18 +827,22 @@ class SdkHost {
   // SDK: the UI thread can ask.
   approval::Network CurrentApprovalNetwork() const;
 
-  // ---- Google / Apple SSO (the provider's web flow, the api's callback) ------
-  // Neither identity provider has a native desktop flow here, so both run in
-  // the default browser against the provider itself: Google's authorize page
-  // (code flow) or Apple's, with <api>/auth/<provider>/callback as the
-  // redirect. The api hands the identity token back on
+  // ---- Google / Apple / Microsoft SSO (the provider's web flow, the api's callback)
+  // No identity provider has a native desktop flow here, so each runs in the
+  // default browser. Google and Apple run against the provider itself:
+  // Google's authorize page (code flow) or Apple's, with
+  // <api>/auth/<provider>/callback as the redirect. Microsoft runs through the
+  // api (<api>/auth/microsoft/start), whose own client and secret talk to
+  // Microsoft; the sdk's attempt (urnet::MicrosoftSignInAttempt, platform
+  // "windows") holds its state and nonce, builds the start url and checks the
+  // return. The api hands the identity token back on
   // urnetwork://oauth/<provider>, which HandleDeepLink routes here (the same
   // client ids the ur.io login dialog uses, so the server accepts the token
   // exactly as it does for the web). The attempt's `state` must be echoed and
   // the token must carry the attempt's `nonce` claim before the token goes to
   // authLogin{auth_jwt_type:<provider>}; an identity with no network yet routes
   // to the create-network step the same way a wallet does. `provider` is
-  // "google" or "apple".
+  // "google", "apple" or "microsoft" (urnet::AuthJwtTypeMicrosoft).
   void SignInWithSso(const std::string& provider, std::function<void(AuthResult)> done);
   // An SSO identity authenticated but has no network: the id token is retained
   // for CreateNetwork (name + terms, no password), like a wallet.
@@ -932,12 +936,12 @@ class SdkHost {
   // share the browser bridge's single flow with the sign-ins (starting one
   // supersedes whatever is in flight, which is told), and `done` runs on an SDK
   // or deep-link thread, so a UI caller marshals. An error starting with
-  // "superseded by " is a quiet cancel.
+  // "superseded by " is a quiet cancel, and so is add_sign_in::kProviderCancelled.
   //
   // The provider's identity token from its web flow, like SignInWithSso, but
   // the attempt is owned by the add sheet (add_sign_in::SsoPurpose::Add): its
   // urnetwork://oauth/<provider> return is answered here and never reaches
-  // authLogin. `provider` is "google" or "apple".
+  // authLogin. `provider` is "google", "apple" or "microsoft".
   void SsoTokenForAdd(const std::string& provider,
                       std::function<void(std::string idToken, std::string error)> done);
   // A fresh SOL /auth/wallet-challenge signed by the Solana wallet through the
@@ -3429,20 +3433,25 @@ class SdkHost {
   void SetApprovalNetwork(approval::Network network);
   // an SSO identity token whose identity has no network yet, held for the
   // create-network step (the auth-jwt analogue of pendingWalletAuth_), with
-  // the provider it came from ("google" | "apple") for auth_jwt_type
+  // the provider it came from ("google" | "apple" | "microsoft") for
+  // auth_jwt_type
   std::optional<std::string> pendingAuthJwt_;
   std::uint64_t pendingAuthEpoch_ = 0;
   std::string pendingAuthJwtType_;
-  // The Google / Apple sign-in attempt in flight: its provider, the state the
-  // api's callback must echo and the nonce the returned token must carry.
-  // Cleared by its answer or
-  // by a superseding flow (CancelPendingWalletFlows).
+  // The Google / Apple / Microsoft sign-in attempt in flight: its provider,
+  // the state the api's callback must echo and the nonce the returned token
+  // must carry. Cleared by its answer or by a superseding flow
+  // (CancelPendingWalletFlows).
   struct SsoAttempt {
     std::string provider;
+    // Google and Apple: this app's own state and nonce (on_sso checks them)
     std::string state;
     std::string nonce;
     // who started it: a login (authLogin) or the add sheet (addAuth)
     add_sign_in::SsoPurpose purpose = add_sign_in::SsoPurpose::SignIn;
+    // Microsoft: the sdk's attempt, which holds its own state and nonce and
+    // checks the return itself (HandleMicrosoftReturn)
+    std::shared_ptr<urnet::MicrosoftSignInAttempt> microsoft;
   };
   std::optional<SsoAttempt> ssoAttempt_;
   // An add-owned sso attempt's answer (SsoTokenForAdd): the identity token or
@@ -3451,6 +3460,12 @@ class SdkHost {
   std::function<void(std::string, std::string)> ssoAddDone_;
   // Open the provider's web flow for a fresh attempt (state + nonce).
   void OpenSsoAttempt(const std::string& provider, add_sign_in::SsoPurpose purpose);
+  // The urnetwork://oauth/microsoft hand-back (WalletConnect): the attempt in
+  // flight reads it (urnet::MicrosoftSignInAttempt::finish). A return of
+  // another attempt is ignored and the attempt keeps waiting; any other
+  // answer ends it: the token goes where on_sso sends a Google or Apple one,
+  // and a refusal is answered in the app's words (a cancel quietly).
+  void HandleMicrosoftReturn(const std::string& url);
   // Identity of a wallet that has no network yet. The discovery signature has
   // already been consumed; create-network always requests a fresh bound
   // challenge before this value can be submitted.

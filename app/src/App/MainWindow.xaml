@@ -96,12 +96,14 @@
             <Grid>
 
                 <!-- Initial: THE LOGIN STACK RULE, shared by every app (ur.io
-                     ConnectDialog is the reference): up to three full-width
-                     sign-in pills, then the remaining ways in as small square
-                     icon tiles, four per row with each row filled and the rows
+                     ConnectDialog is the reference): the full-width sign-in
+                     pills, then the remaining ways in as small square icon
+                     tiles, four per row with each row filled and the rows
                      exactly as wide as the pills, then the "or" divider and the
-                     email / phone field. Windows offers Google, Apple and Create
-                     Instant Account as the pills and Secret key, Auth code,
+                     email / phone field. Windows offers Google, Microsoft, Apple
+                     and Create Instant Account as the pills (Sign in with
+                     Microsoft sits beside Google's, which makes the pills four
+                     where they were three) and Secret key, Auth code,
                      Bittensor and Solana as the tiles; nothing else is in the
                      stack. The column is widthIn(max = 512.dp) inside a centred
                      Row, as on android.
@@ -185,6 +187,29 @@
                                 </Canvas>
                             </Viewbox>
                             <TextBlock x:Name="GoogleSignInText" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Sign in with Microsoft, through the api's own web flow in
+                         the default browser (SdkHost::SignInWithSso and the
+                         sdk's MicrosoftSignInAttempt): the api talks to Microsoft
+                         with its own client and hands the identity token back
+                         on urnetwork://oauth/microsoft. -->
+                    <Button x:Name="MicrosoftSignInButton"
+                            Style="{StaticResource UrSecondaryButtonStyle}"
+                            Click="OnSignInWithMicrosoft">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- the Microsoft mark, four squares in its four brand
+                                 colours; the mark may not be recoloured -->
+                            <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                <Canvas Width="21" Height="21">
+                                    <Path Fill="#F25022" Data="M0,0H10V10H0Z" />
+                                    <Path Fill="#7FBA00" Data="M11,0H21V10H11Z" />
+                                    <Path Fill="#00A4EF" Data="M0,11H10V21H0Z" />
+                                    <Path Fill="#FFB900" Data="M11,11H21V21H11Z" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="MicrosoftSignInText" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
@@ -2898,7 +2923,9 @@
                                                    Style="{StaticResource UrPaneMetaStyle}" />
                                     </Grid>
                                 </Border>
-                                <!-- connected: the coldkey, what it means, and change -->
+                                <!-- connected: the coldkey, what it means, change, and
+                                     disconnect while the wallet read says it can be
+                                     disconnected (WalletPage::ApplyKeyWalletCard) -->
                                 <Border x:Name="WalletConnectedPanel" Visibility="Collapsed"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
@@ -2914,15 +2941,27 @@
                                                 Style="{StaticResource UrPaneActionSecondaryStyle}"
                                                 HorizontalAlignment="Stretch"
                                                 Click="OnChangeWallet" />
+                                        <!-- the outlined action in the danger colour: with no
+                                             payout wallet the earnings can't be paid out -->
+                                        <Button x:Name="DisconnectWalletButton"
+                                                Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                Foreground="{StaticResource UrDangerBrush}"
+                                                HorizontalAlignment="Stretch"
+                                                Visibility="Collapsed"
+                                                Click="OnDisconnectWallet" />
                                     </StackPanel>
                                 </Border>
-                                <!-- not connected: the not-retroactive line, the bridge
+                                <!-- not connected: no payout wallet at all, when the wallet
+                                     read says so, the not-retroactive line, the bridge
                                      button, and the manual paste fallback (still
                                      signed) folded under a link -->
                                 <Border x:Name="WalletDisconnectedPanel"
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
                                     <StackPanel Spacing="10">
+                                        <TextBlock x:Name="WalletNoPayoutText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" Visibility="Collapsed" />
                                         <!-- plain note, then a "Learn more" link in the pink
                                              accent with the outward glyph that opens the protocol
                                              site; inline, so it shares the last line when it fits -->

@@ -1,14 +1,15 @@
 // Adding a sign-in method to the signed-in network (Settings' AddAuthSheet):
 // the same options every app and ur.io offer (ur.io AddSignInSheet, apple
-// AddAuthSheet), in the same order: Apple, Google, a wallet (Solana or
-// Bittensor), and an email or phone.
+// AddAuthSheet), in the same order: Apple, Google, Microsoft, a wallet (Solana
+// or Bittensor), and an email or phone.
 //
 // - Email or phone + password: GuestConversion.h (addAuth, then the emailed
 //   code; added once the code is verified).
-// - Apple and Google: the provider's web flow in the browser, the same one the
-//   login page runs (SdkHost::SignInWithSso), but the attempt is owned by the
-//   add sheet (SsoPurpose::Add): its urnetwork://oauth/<provider> return goes
-//   to addAuth{auth_jwt, auth_jwt_type}, never to authLogin.
+// - Apple, Google and Microsoft: the provider's web flow in the browser, the
+//   same one the login page runs (SdkHost::SignInWithSso), but the attempt is
+//   owned by the add sheet (SsoPurpose::Add): its
+//   urnetwork://oauth/<provider> return goes to addAuth{auth_jwt,
+//   auth_jwt_type}, never to authLogin.
 // - Solana: a fresh /auth/wallet-challenge signed through the ur.io wallet
 //   bridge (Phantom or Solflare), as a bare signature request, then
 //   addAuth{wallet_auth{SOL}}.
@@ -18,8 +19,9 @@
 //
 // Adding never signs in: the flow below only ever asks the session for a
 // credential and posts it to addAuth on the current network. Nothing here can
-// install a jwt, sign out, or move the auth state; Google, Apple and wallets
-// are verified by the provider or the signature, so they have no code step.
+// install a jwt, sign out, or move the auth state; Google, Apple, Microsoft
+// and wallets are verified by the provider or the signature, so they have no
+// code step.
 //
 // Header-only and free of WinRT and the SDK, so tools/add-sign-in-tests.cpp
 // runs it with a fake session. Not thread safe: the session delivers every
@@ -36,11 +38,12 @@
 
 namespace urnw::add_sign_in {
 
-enum class Method { Apple, Google, Wallet, Email };
+enum class Method { Apple, Google, Microsoft, Wallet, Email };
 
 // The sheet's options, in order (ur.io ADD_SIGN_IN_METHODS).
-inline constexpr Method kMethods[] = {Method::Apple, Method::Google, Method::Wallet, Method::Email};
-inline constexpr int kMethodCount = 4;
+inline constexpr Method kMethods[] = {Method::Apple, Method::Google, Method::Microsoft,
+                                      Method::Wallet, Method::Email};
+inline constexpr int kMethodCount = 5;
 // The sheet opens on email (ur.io DEFAULT_ADD_SIGN_IN_METHOD).
 inline constexpr Method kDefaultMethod = Method::Email;
 
@@ -67,6 +70,8 @@ inline std::string_view MethodLabelKey(Method method) {
       return "apple";
     case Method::Google:
       return "google";
+    case Method::Microsoft:
+      return "microsoft";
     case Method::Wallet:
       return "wallet";
     case Method::Email:
@@ -82,6 +87,8 @@ inline std::string_view MethodHintKey(Method method) {
       return "sign_in_with_your_apple_id_to";
     case Method::Google:
       return "sign_in_with_google_to_add_it";
+    case Method::Microsoft:
+      return "sign_in_with_microsoft_to_add_it";
     default:
       return "";
   }
@@ -94,18 +101,23 @@ inline std::string_view ProviderButtonKey(Method method) {
       return "sign_in_with_apple";
     case Method::Google:
       return "sign_in_with_google";
+    case Method::Microsoft:
+      return "sign_in_with_microsoft";
     default:
       return "";
   }
 }
 
 // The auth_jwt_type and the SdkHost sso provider ("" for wallet and email).
+// Microsoft's is the sdk's AuthJwtTypeMicrosoft.
 inline std::string_view SsoProvider(Method method) {
   switch (method) {
     case Method::Apple:
       return "apple";
     case Method::Google:
       return "google";
+    case Method::Microsoft:
+      return "microsoft";
     default:
       return "";
   }
@@ -131,6 +143,8 @@ inline std::string_view AddedMessageKey(Method method) {
       return "apple_sign_in_method_added";
     case Method::Google:
       return "google_sign_in_method_added";
+    case Method::Microsoft:
+      return "microsoft_sign_in_method_added";
     case Method::Wallet:
       return "wallet_sign_in_method_added";
     case Method::Email:
@@ -142,7 +156,7 @@ inline std::string_view AddedMessageKey(Method method) {
 // Only an email or phone has a code to verify.
 inline bool NeedsVerification(Method method) { return method == Method::Email; }
 
-// Who started a Google / Apple browser attempt, and so who its
+// Who started a Google, Apple or Microsoft browser attempt, and so who its
 // urnetwork://oauth/<provider> return belongs to. A return from an attempt the
 // add sheet started must never sign in: it goes to addAuth on the current
 // network. A return from a login attempt goes to authLogin, as before.
@@ -204,9 +218,13 @@ struct WalletSignature {
   std::string message;
 };
 
+// The error of a provider step the person backed out of on the provider's own
+// page (Microsoft's cancelled return): a quiet cancel, as a superseded one is.
+inline constexpr std::string_view kProviderCancelled = "cancelled on the provider's page";
+
 // What the flow needs from the app. Every `done` runs on the UI thread. An
 // error that starts with "superseded by " (WalletBridgeRoute.h) is a quiet
-// cancel: another flow took over.
+// cancel: another flow took over; so is kProviderCancelled.
 class AddSignInSession {
  public:
   virtual ~AddSignInSession() = default;
@@ -224,11 +242,11 @@ class AddSignInSession {
 };
 
 inline bool IsQuietCancel(std::string_view error) {
-  return error.starts_with("superseded by ");
+  return error.starts_with("superseded by ") || error == kProviderCancelled;
 }
 
-// Apple, Google and the wallets: credential -> addAuth -> added. The email
-// method is GuestConversion's.
+// Apple, Google, Microsoft and the wallets: credential -> addAuth -> added.
+// The email method is GuestConversion's.
 class AddSignInFlow {
  public:
   explicit AddSignInFlow(AddSignInSession& session) : session_(session) {}
@@ -258,7 +276,7 @@ class AddSignInFlow {
   // the method that was added (set once addAuth succeeded)
   std::optional<Method> Added() const { return added_; }
 
-  // Apple or Google.
+  // Apple, Google or Microsoft.
   void StartProvider(Method method) {
     const std::string_view provider = SsoProvider(method);
     if (busy_ || added_ || provider.empty()) return;

@@ -256,13 +256,13 @@ class AuthCodeSheet : public std::enable_shared_from_this<AuthCodeSheet> {
 
 // ---- Add auth method (apple AddAuthSheet, ur.io AddSignInSheet) -------------
 //
-// The options every app offers (AddSignIn.h), in order: Apple, Google, a
-// Solana or Bittensor wallet, and an email or phone.
+// The options every app offers (AddSignIn.h), in order: Apple, Google,
+// Microsoft, a Solana or Bittensor wallet, and an email or phone.
 // - Email/phone + password, then the emailed code: added (onChanged reloads
 //   the methods, the dialog closes) only once the code is verified
 //   (GuestConversion, the flow the guest conversion uses).
-// - Apple / Google: the provider's web flow in the browser under an add-owned
-//   attempt (SdkHost::SsoTokenForAdd), then addAuth{auth_jwt}.
+// - Apple / Google / Microsoft: the provider's web flow in the browser under
+//   an add-owned attempt (SdkHost::SsoTokenForAdd), then addAuth{auth_jwt}.
 // - Solana: Phantom or Solflare through the ur.io bridge signs a fresh
 //   challenge (SdkHost::SignSolanaForAdd), then addAuth{wallet_auth}.
 // - Bittensor: the shared chooser's wallets (BittensorWalletFlow.h) through the
@@ -316,6 +316,130 @@ class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock noticeText_{nullptr};
   // re-renders each second while a rate limit counts down
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer cooldownTimer_{nullptr};
+};
+
+// ---- Change email (the verified email change, sdk api_email_change.go) -----
+//
+// The email sign-in row's Change email, in three steps in one dialog: the new
+// address (urnet::validateEmailChangeAddress before anything is sent), then
+// the two codes the server sends, one to the current email (masked by the
+// server) and one to the new one, then the done step. The sdk sends the change
+// with the network credential and fails before sending without one, so a
+// sign-in with none is told to sign in again first (Api::hasNetworkCredential).
+// Every refusal comes back as a code (urnet::AuthEmailChangeErrorCode*), worded
+// here, with the server's message for a code this build does not know.
+// - a wrong code keeps the fields, and a side whose code was confirmed stays
+//   done (its field is off);
+// - a refusal that ends the request (urnet::authEmailChangeErrorEndsRequest:
+//   nothing waiting, too many wrong codes, the address taken) goes back to the
+//   new address;
+// - closing the dialog at the codes step cancels the waiting change
+//   (authEmailChangeCancel, nothing waits on its answer).
+// `onChanged` runs once the change completed, so the methods and the profile
+// read the new email.
+class EmailChangeSheet : public std::enable_shared_from_this<EmailChangeSheet> {
+ public:
+  static std::shared_ptr<EmailChangeSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
+      std::function<void()> onChanged);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  enum class Step { NewEmail, Codes, Done };
+
+  EmailChangeSheet(SdkHost& sdk, std::function<void()> onChanged)
+      : sdk_(sdk), onChanged_(std::move(onChanged)) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void Render();
+  // step 1: POST /auth/email-change with the typed address
+  void SendCodes();
+  void ApplySendCodes(std::optional<urnet::AuthEmailChangeResult> const& result,
+                      std::optional<std::string> const& err);
+  // step 2: POST /auth/email-change/confirm with the codes still needed
+  void Confirm();
+  void ApplyConfirm(std::optional<urnet::AuthEmailChangeConfirmResult> const& result,
+                    std::optional<std::string> const& err);
+
+  SdkHost& sdk_;
+  std::function<void()> onChanged_;
+  Step step_ = Step::NewEmail;
+  // a request is in flight: the buttons and the fields wait for it
+  bool busy_ = false;
+  // where the codes went: the current email as the server masked it, and the
+  // new email as the server normalized it
+  std::string currentEmail_;
+  std::string newEmail_;
+  // a side whose code the server confirmed: its field is done
+  bool currentConfirmed_ = false;
+  bool newConfirmed_ = false;
+  // the done step's address, and whether the other sessions were signed out
+  std::string email_;
+  bool othersSignedOut_ = false;
+  winrt::hstring error_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel newEmailPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox emailBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel codesPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock codesSentText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox currentCodeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox newCodeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel donePanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock doneText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock othersText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
+};
+
+// ---- Disconnect the payout wallet (sdk api_sn_wallet_disconnect.go) --------
+//
+// The Earnings Bittensor wallet card's Disconnect wallet, in one dialog: what
+// having no payout wallet means and Email me a code (POST
+// /sn/wallet/disconnect-code), then the code the server emailed to the
+// account's sign-in addresses (shown masked) and Disconnect wallet (POST
+// /sn/wallet/disconnect), which is not the default button. The server decides
+// again, when the code is asked for, whether the wallet can be disconnected.
+// Each refusal reads in its store string: a wrong code keeps the field, an
+// expired one goes back to Email me a code; owner_only and a code this build
+// does not know show the server's message, a transport failure the generic
+// line. Result() says how it ended once the dialog has closed.
+class WalletDisconnectSheet : public std::enable_shared_from_this<WalletDisconnectSheet> {
+ public:
+  // the wallet was disconnected; the server had no wallet to disconnect (the
+  // card reads the wallet again either way); or neither
+  enum class Outcome { None, Disconnected, NoWallet };
+
+  static std::shared_ptr<WalletDisconnectSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  Outcome Result() const { return outcome_; }
+
+ private:
+  enum class Step { SendCode, Code };
+
+  explicit WalletDisconnectSheet(SdkHost& sdk) : sdk_(sdk) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void Render();
+  void SendCode();
+  void ApplySendCode(std::optional<urnet::SnWalletDisconnectCodeResult> const& result,
+                     std::optional<std::string> const& err);
+  void Disconnect();
+  void ApplyDisconnect(std::optional<urnet::SnWalletDisconnectResult> const& result,
+                       std::optional<std::string> const& err);
+
+  SdkHost& sdk_;
+  Step step_ = Step::SendCode;
+  // a request is in flight: the button and the field wait for it
+  bool busy_ = false;
+  Outcome outcome_ = Outcome::None;
+  // the masked addresses the code went to, joined with ", "
+  std::string sentTo_;
+  winrt::hstring error_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel codePanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock sentText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox codeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
 };
 
 // ---- Create an account, for a legacy guest network ------------------------

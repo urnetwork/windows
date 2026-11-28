@@ -861,8 +861,8 @@ class SdkGuestConversionSession : public GuestConversionSession {
   std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
-// The SDK side of adding Apple, Google or a wallet (AddSignIn.h). SdkHost
-// produces the credential under an add-owned flow; this posts it to addAuth on
+// The SDK side of adding Apple, Google, Microsoft or a wallet (AddSignIn.h).
+// SdkHost produces the credential under an add-owned flow; this posts it to addAuth on
 // the current network. Nothing here signs in, refreshes or replaces the jwt.
 // Every answer is marshalled onto the dialog's queue; one that arrives after
 // the sheet is gone is dropped by `alive_`.
@@ -982,6 +982,68 @@ void RunCooldownTimer(winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer co
   }
 }
 
+// An email change refusal (urnet::AuthEmailChangeError) in this app's words:
+// each code the sdk names has its line, and a code this build does not know
+// shows the server's message.
+hstring EmailChangeErrorText(urnet::AuthEmailChangeError const& error) {
+  static constexpr struct {
+    const char* code;
+    const char* text;
+  } kLines[] = {
+      {urnet::AuthEmailChangeErrorCodeOwnerOnly, "email_change_sign_in_required"},
+      {urnet::AuthEmailChangeErrorCodeNoEmail, "email_change_no_email"},
+      {urnet::AuthEmailChangeErrorCodeEmailUnverified, "email_change_email_unverified"},
+      {urnet::AuthEmailChangeErrorCodeInvalidEmail, "email_change_invalid_email"},
+      {urnet::AuthEmailChangeErrorCodeSameEmail, "email_change_same_email"},
+      {urnet::AuthEmailChangeErrorCodeEmailInUse, "email_change_email_in_use"},
+      {urnet::AuthEmailChangeErrorCodeRateLimited, "account_too_many_tries"},
+      {urnet::AuthEmailChangeErrorCodeSendFailed, "account_code_send_failed"},
+      {urnet::AuthEmailChangeErrorCodeNoChange, "email_change_expired"},
+      {urnet::AuthEmailChangeErrorCodeCodeInvalid, "account_code_invalid"},
+      {urnet::AuthEmailChangeErrorCodeTooManyTries, "email_change_too_many_tries"},
+  };
+  for (auto const& line : kLines) {
+    if (error.code == line.code) return Loc(line.text);
+  }
+  return error.message.empty() ? Loc("something_went_wrong") : H(error.message);
+}
+
+// A field for an emailed confirmation code (the email change's two, the payout
+// wallet disconnect's), with the numeric keyboard where there is one; its
+// sheet gives it its label.
+TextBox MakeCodeBox() {
+  TextBox box;
+  box.Style(Lookup(L"UrTextInputStyle"));
+  winrt::Microsoft::UI::Xaml::Input::InputScope scope;
+  winrt::Microsoft::UI::Xaml::Input::InputScopeName number;
+  number.NameValue(winrt::Microsoft::UI::Xaml::Input::InputScopeNameValue::Number);
+  scope.Names().Append(number);
+  box.InputScope(scope);
+  return box;
+}
+
+// A payout wallet disconnect refusal (urnet::SnWalletDisconnectError) in this
+// app's words. no_wallet is not one: the sheet closes and the card reads the
+// wallet again. owner_only and a code this build does not know show the
+// server's message.
+hstring WalletDisconnectErrorText(urnet::SnWalletDisconnectError const& error) {
+  static constexpr struct {
+    const char* code;
+    const char* text;
+  } kLines[] = {
+      {urnet::SnWalletDisconnectErrorCodeConsentInForce, "wallet_disconnect_consent_in_force"},
+      {urnet::SnWalletDisconnectErrorCodeEmailRequired, "wallet_disconnect_email_required"},
+      {urnet::SnWalletDisconnectErrorCodeRateLimited, "account_too_many_tries"},
+      {urnet::SnWalletDisconnectErrorCodeSendFailed, "account_code_send_failed"},
+      {urnet::SnWalletDisconnectErrorCodeCodeInvalid, "account_code_invalid"},
+      {urnet::SnWalletDisconnectErrorCodeCodeExpired, "account_code_expired"},
+  };
+  for (auto const& line : kLines) {
+    if (error.code == line.code) return Loc(line.text);
+  }
+  return error.message.empty() ? Loc("something_went_wrong") : H(error.message);
+}
+
 }  // namespace
 
 // ---- AddAuthSheet ----------------------------------------------------------
@@ -1020,7 +1082,10 @@ void AddAuthSheet::Build(XamlRoot const& root) {
   // ---- the method: the same options and order as every app and ur.io ----
   methodPicker_ = RadioButtons();
   methodPicker_.Header(winrt::box_value(Loc("method")));
-  methodPicker_.MaxColumns(add_sign_in::kMethodCount);
+  // Five options do not fit one row of radio buttons (each at least 120 wide)
+  // in the sheet. Two columns, filled down: the three providers, then a wallet
+  // and an email.
+  methodPicker_.MaxColumns(2);
   int selected = 0;
   for (int i = 0; i < add_sign_in::kMethodCount; ++i) {
     methodPicker_.Items().Append(
@@ -1038,7 +1103,7 @@ void AddAuthSheet::Build(XamlRoot const& root) {
   });
   content.Children().Append(methodPicker_);
 
-  // ---- Apple / Google: the provider's web flow in the browser ----
+  // ---- Apple / Google / Microsoft: the provider's web flow in the browser ----
   providerPanel_ = StackPanel();
   providerPanel_.Spacing(12);
   providerHint_ = Supporting(providerPanel_, hstring{});
@@ -1218,8 +1283,8 @@ void AddAuthSheet::StartWallet(add_sign_in::WalletChain chain, std::string const
 }
 
 void AddAuthSheet::Render() {
-  // Apple, Google and a wallet are added once addAuth accepts them (no code);
-  // an email or phone once its code is verified
+  // Apple, Google, Microsoft and a wallet are added once addAuth accepts them
+  // (no code); an email or phone once its code is verified
   const GuestConversionStep step =
       add_->Added() ? GuestConversionStep::Done : conversion_->Step();
   const bool busy = conversion_->Busy() || add_->Busy();
@@ -1295,6 +1360,469 @@ void AddAuthSheet::Render() {
       !busy && !GuestConversion::Trim(Narrow(codeBox_.Text().c_str())).empty());
   ShowSendNotice(noticeText_, conversion_->ShownNotice());
   RunCooldownTimer(cooldownTimer_, *conversion_);
+}
+
+// ---- EmailChangeSheet ------------------------------------------------------
+
+std::shared_ptr<EmailChangeSheet> EmailChangeSheet::Create(XamlRoot const& root, SdkHost& sdk,
+                                                           std::function<void()> onChanged) {
+  auto sheet = std::shared_ptr<EmailChangeSheet>(new EmailChangeSheet(sdk, std::move(onChanged)));
+  sheet->Build(root);
+  return sheet;
+}
+
+void EmailChangeSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeSheet(root, Loc("email_change_title"));
+  dialog_.DefaultButton(ContentDialogButton::Primary);
+
+  StackPanel content;
+  content.MinWidth(380);
+  content.Spacing(12);
+
+  // ---- step 1: the new address ----
+  newEmailPanel_ = StackPanel();
+  newEmailPanel_.Spacing(12);
+  Supporting(newEmailPanel_, Loc("email_change_body"));
+  emailBox_ = TextBox();
+  emailBox_.Style(Lookup(L"UrTextInputStyle"));
+  emailBox_.Header(winrt::box_value(Loc("email_change_new_email")));
+  {
+    winrt::Microsoft::UI::Xaml::Input::InputScope scope;
+    winrt::Microsoft::UI::Xaml::Input::InputScopeName email;
+    email.NameValue(winrt::Microsoft::UI::Xaml::Input::InputScopeNameValue::EmailSmtpAddress);
+    scope.Names().Append(email);
+    emailBox_.InputScope(scope);
+  }
+  emailBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  newEmailPanel_.Children().Append(emailBox_);
+  content.Children().Append(newEmailPanel_);
+
+  // ---- step 2: a code from each address ----
+  codesPanel_ = StackPanel();
+  codesPanel_.Spacing(12);
+  codesSentText_ = Supporting(codesPanel_, hstring{});
+  currentCodeBox_ = MakeCodeBox();
+  currentCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codesPanel_.Children().Append(currentCodeBox_);
+  newCodeBox_ = MakeCodeBox();
+  newCodeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codesPanel_.Children().Append(newCodeBox_);
+  content.Children().Append(codesPanel_);
+
+  // ---- done ----
+  donePanel_ = StackPanel();
+  donePanel_.Spacing(8);
+  doneText_ = TextBlock();
+  doneText_.FontSize(14);
+  doneText_.TextWrapping(TextWrapping::Wrap);
+  donePanel_.Children().Append(doneText_);
+  othersText_ = Supporting(donePanel_, hstring{});
+  content.Children().Append(donePanel_);
+
+  errorText_ = TextBlock();
+  errorText_.FontSize(12);
+  errorText_.TextWrapping(TextWrapping::Wrap);
+  errorText_.Foreground(colors::DangerBrush());
+  errorText_.Visibility(Visibility::Collapsed);
+  content.Children().Append(errorText_);
+
+  ScrollViewer scroller;
+  scroller.Content(content);
+  dialog_.Content(scroller);
+  dialog_.PrimaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);  // every step runs in this one dialog
+        auto self = weak.lock();
+        if (!self) return;
+        if (self->step_ == Step::NewEmail) {
+          self->SendCodes();
+        } else if (self->step_ == Step::Codes) {
+          self->Confirm();
+        }
+      });
+  // Closing it at the codes step (Cancel, Esc) ends the waiting change, so its
+  // codes stop working. Nothing waits on the answer: a change that ended
+  // already answers no_change.
+  dialog_.Closing([weak = weak_from_this()](auto const&, auto const&) {
+    auto self = weak.lock();
+    if (!self || self->step_ != Step::Codes) return;
+    if (!self->sdk_.IsLoggedIn() || !self->sdk_.apiReady()) return;
+    self->sdk_.api().authEmailChangeCancel(
+        [](std::optional<urnet::AuthEmailChangeCancelResult> result,
+           std::optional<std::string> err) {
+          if (err) {
+            LogWarn("email change: the cancel did not reach the server: {}", *err);
+          } else if (result && result->error) {
+            LogInfo("email change: the cancel answered {}", result->error->code);
+          }
+        });
+  });
+  Render();
+}
+
+void EmailChangeSheet::SendCodes() {
+  if (busy_) return;
+  const std::string email = Trim(Narrow(emailBox_.Text().c_str()));
+  if (email.empty()) return;
+  // the sdk's check of the address, before anything is sent
+  if (!urnet::validateEmailChangeAddress(email).empty()) {
+    error_ = Loc("email_change_invalid_email");
+    Render();
+    return;
+  }
+  // the sdk sends the change with the network credential and fails before
+  // sending without one
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady() || !sdk_.api().hasNetworkCredential()) {
+    error_ = Loc("email_change_sign_in_required");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  urnet::AuthEmailChangeArgs args;
+  args.new_email = email;
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().authEmailChange(args, [queue, weak = weak_from_this()](
+                                       std::optional<urnet::AuthEmailChangeResult> result,
+                                       std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplySendCodes(result, err);
+    });
+  });
+}
+
+void EmailChangeSheet::ApplySendCodes(std::optional<urnet::AuthEmailChangeResult> const& result,
+                                      std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("email change: the request failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    error_ = EmailChangeErrorText(*result->error);
+    Render();
+    return;
+  }
+  step_ = Step::Codes;
+  currentEmail_ = result->current_email.value_or(std::string());
+  newEmail_ = result->new_email.value_or(Trim(Narrow(emailBox_.Text().c_str())));
+  currentConfirmed_ = false;
+  newConfirmed_ = false;
+  error_ = hstring{};
+  currentCodeBox_.Text(hstring{});
+  newCodeBox_.Text(hstring{});
+  Render();
+  currentCodeBox_.Focus(FocusState::Programmatic);
+}
+
+void EmailChangeSheet::Confirm() {
+  if (busy_) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady() || !sdk_.api().hasNetworkCredential()) {
+    error_ = Loc("email_change_sign_in_required");
+    Render();
+    return;
+  }
+  // only the codes still to be entered; the sdk normalizes them
+  urnet::AuthEmailChangeConfirmArgs args;
+  if (!currentConfirmed_) args.current_code = Trim(Narrow(currentCodeBox_.Text().c_str()));
+  if (!newConfirmed_) args.new_code = Trim(Narrow(newCodeBox_.Text().c_str()));
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().authEmailChangeConfirm(args, [queue, weak = weak_from_this()](
+                                              std::optional<urnet::AuthEmailChangeConfirmResult> result,
+                                              std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplyConfirm(result, err);
+    });
+  });
+}
+
+void EmailChangeSheet::ApplyConfirm(std::optional<urnet::AuthEmailChangeConfirmResult> const& result,
+                                    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("email change: the confirm failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->complete) {
+    step_ = Step::Done;
+    email_ = result->email.value_or(newEmail_);
+    othersSignedOut_ = result->other_sessions_signed_out.value_or(false);
+    error_ = hstring{};
+    Render();
+    // the methods and the profile read the new email
+    if (onChanged_) onChanged_();
+    return;
+  }
+  if (urnet::authEmailChangeErrorEndsRequest(result->error)) {
+    // nothing waits any more (expired, too many wrong codes, the address
+    // taken): the new address again, with the reason
+    step_ = Step::NewEmail;
+    currentEmail_.clear();
+    newEmail_.clear();
+    currentConfirmed_ = false;
+    newConfirmed_ = false;
+    error_ = EmailChangeErrorText(*result->error);
+    currentCodeBox_.Text(hstring{});
+    newCodeBox_.Text(hstring{});
+    Render();
+    return;
+  }
+  // a side whose code was confirmed stays done (the sdk's NeedsCurrentCode and
+  // NeedsNewCode); a wrong code keeps the fields as they are
+  currentConfirmed_ = currentConfirmed_ || result->current_confirmed;
+  newConfirmed_ = newConfirmed_ || result->new_confirmed;
+  error_ = result->error ? EmailChangeErrorText(*result->error) : hstring{};
+  Render();
+}
+
+void EmailChangeSheet::Render() {
+  const bool newEmail = step_ == Step::NewEmail;
+  const bool codes = step_ == Step::Codes;
+  newEmailPanel_.Visibility(newEmail ? Visibility::Visible : Visibility::Collapsed);
+  codesPanel_.Visibility(codes ? Visibility::Visible : Visibility::Collapsed);
+  donePanel_.Visibility(step_ == Step::Done ? Visibility::Visible : Visibility::Collapsed);
+  emailBox_.IsEnabled(!busy_);
+  // each code field names the address its code went to; a confirmed one is done
+  auto codeHeader = [](std::string const& address, bool confirmed) {
+    std::wstring text = Format("email_change_code_sent_to", Widen(address));
+    if (confirmed) text += L" ✓";
+    return winrt::box_value(hstring{text});
+  };
+  currentCodeBox_.Header(codeHeader(currentEmail_, currentConfirmed_));
+  newCodeBox_.Header(codeHeader(newEmail_, newConfirmed_));
+  currentCodeBox_.IsEnabled(!busy_ && !currentConfirmed_);
+  newCodeBox_.IsEnabled(!busy_ && !newConfirmed_);
+  codesSentText_.Text(
+      hstring{Format("email_change_codes_sent", Widen(currentEmail_), Widen(newEmail_))});
+  doneText_.Text(hstring{Format("email_change_done", Widen(email_))});
+  othersText_.Text(
+      Loc(othersSignedOut_ ? "email_change_others_signed_out" : "email_change_others_hint"));
+  errorText_.Text(error_);
+  errorText_.Visibility(error_.empty() ? Visibility::Collapsed : Visibility::Visible);
+  if (newEmail) {
+    dialog_.PrimaryButtonText(Loc("email_change_send_codes"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && !Trim(Narrow(emailBox_.Text().c_str())).empty());
+    dialog_.CloseButtonText(Loc("cancel"));
+    dialog_.DefaultButton(ContentDialogButton::Primary);
+  } else if (codes) {
+    const bool ready =
+        (currentConfirmed_ || !Trim(Narrow(currentCodeBox_.Text().c_str())).empty()) &&
+        (newConfirmed_ || !Trim(Narrow(newCodeBox_.Text().c_str())).empty());
+    dialog_.PrimaryButtonText(Loc("email_change"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && ready);
+    dialog_.CloseButtonText(Loc("cancel"));
+    dialog_.DefaultButton(ContentDialogButton::Primary);
+  } else {
+    // done: nothing left to send
+    dialog_.PrimaryButtonText(hstring{});
+    dialog_.CloseButtonText(Loc("done"));
+    dialog_.DefaultButton(ContentDialogButton::Close);
+  }
+}
+
+// ---- WalletDisconnectSheet -------------------------------------------------
+
+std::shared_ptr<WalletDisconnectSheet> WalletDisconnectSheet::Create(XamlRoot const& root,
+                                                                     SdkHost& sdk) {
+  auto sheet = std::shared_ptr<WalletDisconnectSheet>(new WalletDisconnectSheet(sdk));
+  sheet->Build(root);
+  return sheet;
+}
+
+void WalletDisconnectSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeSheet(root, Loc("wallet_disconnect_title"));
+  dialog_.CloseButtonText(Loc("cancel"));
+
+  StackPanel content;
+  content.MinWidth(380);
+  content.Spacing(12);
+
+  // what having no payout wallet means, said plainly before anything is sent,
+  // and still there while the code is entered
+  TextBlock body;
+  body.Text(Loc("wallet_disconnect_body"));
+  body.FontSize(14);
+  body.TextWrapping(TextWrapping::Wrap);
+  content.Children().Append(body);
+
+  // ---- the code the server emailed ----
+  codePanel_ = StackPanel();
+  codePanel_.Spacing(12);
+  sentText_ = Supporting(codePanel_, hstring{});
+  codeBox_ = MakeCodeBox();
+  codeBox_.Header(winrt::box_value(Loc("code")));
+  codeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Render();
+  });
+  codePanel_.Children().Append(codeBox_);
+  content.Children().Append(codePanel_);
+
+  errorText_ = TextBlock();
+  errorText_.FontSize(12);
+  errorText_.TextWrapping(TextWrapping::Wrap);
+  errorText_.Foreground(colors::DangerBrush());
+  errorText_.Visibility(Visibility::Collapsed);
+  content.Children().Append(errorText_);
+
+  ScrollViewer scroller;
+  scroller.Content(content);
+  dialog_.Content(scroller);
+  dialog_.PrimaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);  // both steps run in this one dialog
+        auto self = weak.lock();
+        if (!self) return;
+        if (self->step_ == Step::Code) {
+          self->Disconnect();
+        } else {
+          self->SendCode();
+        }
+      });
+  Render();
+}
+
+void WalletDisconnectSheet::SendCode() {
+  if (busy_) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady()) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().snWalletDisconnectCode([queue, weak = weak_from_this()](
+                                        std::optional<urnet::SnWalletDisconnectCodeResult> result,
+                                        std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplySendCode(result, err);
+    });
+  });
+}
+
+void WalletDisconnectSheet::ApplySendCode(
+    std::optional<urnet::SnWalletDisconnectCodeResult> const& result,
+    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("wallet disconnect: the code request failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    // nothing to disconnect any more: the card reads the wallet again
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeNoWallet) {
+      outcome_ = Outcome::NoWallet;
+      dialog_.Hide();
+      return;
+    }
+    error_ = WalletDisconnectErrorText(*result->error);
+    Render();
+    return;
+  }
+  // the masked sign-in addresses the code went to
+  sentTo_.clear();
+  for (auto const& address : result->sent_to.value_or(urnet::StringList{})) {
+    if (!sentTo_.empty()) sentTo_ += ", ";
+    sentTo_ += address;
+  }
+  step_ = Step::Code;
+  error_ = hstring{};
+  codeBox_.Text(hstring{});
+  Render();
+  codeBox_.Focus(FocusState::Programmatic);
+}
+
+void WalletDisconnectSheet::Disconnect() {
+  if (busy_) return;
+  // the sdk normalizes the code as it sends it
+  const std::string typed = Trim(Narrow(codeBox_.Text().c_str()));
+  if (typed.empty()) return;
+  if (!sdk_.IsLoggedIn() || !sdk_.apiReady()) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  busy_ = true;
+  error_ = hstring{};
+  Render();
+  auto queue = dialog_.DispatcherQueue();
+  sdk_.api().snWalletDisconnect(typed, [queue, weak = weak_from_this()](
+                                           std::optional<urnet::SnWalletDisconnectResult> result,
+                                           std::optional<std::string> err) {
+    queue.TryEnqueue([weak, result, err] {
+      if (auto self = weak.lock()) self->ApplyDisconnect(result, err);
+    });
+  });
+}
+
+void WalletDisconnectSheet::ApplyDisconnect(
+    std::optional<urnet::SnWalletDisconnectResult> const& result,
+    std::optional<std::string> const& err) {
+  busy_ = false;
+  if (err || !result) {
+    LogWarn("wallet disconnect: the disconnect failed: {}", err ? *err : std::string("no result"));
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  if (result->error) {
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeNoWallet) {
+      outcome_ = Outcome::NoWallet;
+      dialog_.Hide();
+      return;
+    }
+    // no code waits any more: ask for a new one; a wrong code keeps the field
+    if (result->error->code == urnet::SnWalletDisconnectErrorCodeCodeExpired) {
+      step_ = Step::SendCode;
+      codeBox_.Text(hstring{});
+    }
+    error_ = WalletDisconnectErrorText(*result->error);
+    Render();
+    return;
+  }
+  if (!result->disconnected) {
+    error_ = Loc("something_went_wrong");
+    Render();
+    return;
+  }
+  outcome_ = Outcome::Disconnected;
+  dialog_.Hide();
+}
+
+void WalletDisconnectSheet::Render() {
+  const bool codeStep = step_ == Step::Code;
+  codePanel_.Visibility(codeStep ? Visibility::Visible : Visibility::Collapsed);
+  sentText_.Text(hstring{Format("wallet_disconnect_code_sent", Widen(sentTo_))});
+  codeBox_.IsEnabled(!busy_);
+  errorText_.Text(error_);
+  errorText_.Visibility(error_.empty() ? Visibility::Collapsed : Visibility::Visible);
+  if (codeStep) {
+    dialog_.PrimaryButtonText(Loc("wallet_disconnect"));
+    dialog_.IsPrimaryButtonEnabled(!busy_ && !Trim(Narrow(codeBox_.Text().c_str())).empty());
+    // destructive: Enter does not disconnect
+    dialog_.DefaultButton(ContentDialogButton::Close);
+  } else {
+    dialog_.PrimaryButtonText(Loc("wallet_disconnect_send_code"));
+    dialog_.IsPrimaryButtonEnabled(!busy_);
+    dialog_.DefaultButton(ContentDialogButton::Primary);
+  }
 }
 
 // ---- GuestConversionSheet --------------------------------------------------
