@@ -123,6 +123,10 @@
     <value>Agrega TAO para el gas</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Agregar a favoritos</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>La provisión está desactivada por defecto. Elige a continuación cuándo proporciona datos tu dispositivo.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -4500,9 +4504,21 @@ de la manera correcta</value>
     <value>Cada app que actives tendrá un segundo lanzador en tu menú de apps, con (fuera de la VPN) después de su nombre. Una app abierta desde ese lanzador evita la VPN y el kill switch. Una app que ya se esté ejecutando sigue en la VPN hasta que la cierres, y las apps de Flatpak y Snap no aparecen.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Excluir</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Excluidas</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Ubicaciones de salida excluidas</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Las conexiones no usarán salidas en estos lugares, a menos que elijas uno de ellos directamente.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Desplegado</value>
@@ -4759,6 +4775,14 @@ de la manera correcta</value>
   <data name="fast_dns_on_connect_description" xml:space="preserve">
     <value>Responde al DNS a través de la red local mientras se inicia el DNS del túnel. Esto puede revelar tus búsquedas a la red local y devolver respuestas que no coinciden con tu ubicación de salida. Si está desactivado, el DNS solo se resuelve a través del túnel.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
+  </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Es el dispositivo de un miembro. Puede desconectarse o dejar la red en cualquier momento.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Favoritos</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
   </data>
   <data name="feedback" xml:space="preserve">
     <value>Retroalimentación</value>
@@ -6060,6 +6084,10 @@ enviamos para verificar tu identidad.</value>
     <value>No se encontró ninguna billetera EthOs</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
   </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Aún no hay ubicaciones excluidas. Busca un país, región o ciudad para excluirlo.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
+  </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>No se encontraron apps instaladas. (Las apps de la Store no aparecen.)</value>
     <comment>App split rules: empty state when no installed apps were enumerated.</comment>
@@ -7272,6 +7300,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Quitar</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Quitar de favoritos</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Eliminar regla</value>
     <comment>A button to remove a split rule.</comment>
@@ -7390,6 +7422,10 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Buscar aplicaciones</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Buscar países, regiones y ciudades</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Buscar en todas las ubicaciones</value>

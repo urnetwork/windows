@@ -123,6 +123,10 @@
     <value>Додайте TAO на газ</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Додати до обраного</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Надання за замовчуванням вимкнено. Нижче виберіть, коли ваш пристрій надає дані.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -4556,9 +4560,21 @@
     <value>Кожен увімкнений застосунок отримує в меню застосунків другий ярлик із позначкою (поза VPN) після назви. Застосунок, відкритий із цього ярлика, обходить VPN і kill switch. Застосунок, який уже працює, залишається у VPN, доки ви його не закриєте, а застосунки Flatpak і Snap не показуються.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Виключити</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Виключено</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Виключені місця виходу</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Підключення не використовуватимуть виходи в цих місцях, якщо ви не виберете одне з них напряму.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Розгорнуто</value>
@@ -4815,6 +4831,14 @@
   <data name="fast_dns_on_connect_description" xml:space="preserve">
     <value>Відповідає на DNS-запити через локальну мережу, поки запускається DNS тунелю. Це може розкрити ваші запити локальній мережі й повернути відповіді, що не відповідають вашому місцю виходу. Якщо вимкнено, DNS розв'язується лише через тунель.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
+  </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Пристрій учасника. Він може будь-коли вийти з мережі або від’єднатися.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Обране</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
   </data>
   <data name="feedback" xml:space="preserve">
     <value>Зворотній зв'язок</value>
@@ -6189,6 +6213,10 @@
     <value>Гаманець EthOs не знайдено</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
   </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Виключених місць ще немає. Знайдіть країну, регіон або місто, щоб виключити їх.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
+  </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Установлених застосунків не знайдено. (Застосунки зі Store не відображаються.)</value>
     <comment>App split rules: empty state when no installed apps were enumerated.</comment>
@@ -7505,6 +7533,10 @@
     <value>Видалити</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Видалити з обраного</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Видалити правило</value>
     <comment>A button to remove a split rule.</comment>
@@ -7631,6 +7663,10 @@
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Пошук застосунків</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Пошук країн, регіонів і міст</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Шукати серед усіх локацій</value>

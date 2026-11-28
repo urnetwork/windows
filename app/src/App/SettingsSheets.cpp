@@ -21,6 +21,7 @@
 #include "BittensorWalletFlow.h"
 #include "DeleteAccountOutcome.h"
 #include "Localization.h"
+#include "LocationFeed.h"  // TrimLocationQuery
 #include "Log.h"
 #include "PageContext.h"
 #include "BittensorKeyStore.h"  // the one-tap key's warning, and its removal with the account
@@ -1975,6 +1976,164 @@ void BlockedLocationsSheet::Unblock(std::string const& locationId) {
 void BlockedLocationsSheet::ShowError(hstring const& message) {
   errorText_.Text(message);
   errorText_.Visibility(Visibility::Visible);
+}
+
+// ---- ExcludedExitLocationsSheet --------------------------------------------
+
+std::shared_ptr<ExcludedExitLocationsSheet> ExcludedExitLocationsSheet::Create(
+    XamlRoot const& root, SdkHost& sdk) {
+  auto sheet = std::shared_ptr<ExcludedExitLocationsSheet>(new ExcludedExitLocationsSheet(sdk));
+  sheet->Build(root);
+  sheet->RenderExcluded();
+  sheet->RenderResults();
+  return sheet;
+}
+
+void ExcludedExitLocationsSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeSheet(root, Loc("excluded_exit_locations"));
+
+  StackPanel content;
+  content.MinWidth(sheetfit::Width(root, 420));
+  content.Spacing(12);
+
+  TextBlock description;
+  description.Text(Loc("excluded_exit_locations_description"));
+  description.FontSize(12);
+  description.TextWrapping(TextWrapping::Wrap);
+  description.Foreground(colors::MutedBrush());
+  content.Children().Append(description);
+
+  excludedPanel_ = StackPanel();
+  excludedPanel_.Spacing(4);
+  content.Children().Append(excludedPanel_);
+  excludedEmpty_ = TextBlock();
+  excludedEmpty_.Text(Loc("no_excluded_exit_locations"));
+  excludedEmpty_.FontSize(12);
+  excludedEmpty_.TextWrapping(TextWrapping::Wrap);
+  excludedEmpty_.Foreground(colors::FaintBrush());
+  content.Children().Append(excludedEmpty_);
+
+  Divider(content);
+
+  search_ = TextBox();
+  search_.Style(Lookup(L"UrTextInputStyle"));
+  search_.PlaceholderText(Loc("search_exit_locations_placeholder"));
+  // a placeholder is not an accessible name
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      search_, Loc("search_exit_locations_placeholder"));
+  searchTimer_ = dialog_.DispatcherQueue().CreateTimer();
+  searchTimer_.Interval(std::chrono::milliseconds(300));
+  searchTimer_.IsRepeating(false);
+  searchTimer_.Tick([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Search();
+  });
+  search_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) {
+      self->searchTimer_.Stop();
+      self->searchTimer_.Start();
+    }
+  });
+  content.Children().Append(search_);
+
+  ScrollViewer scroll;
+  scroll.MaxHeight(sheetfit::Height(root, 240));
+  scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+  resultPanel_ = StackPanel();
+  resultPanel_.Spacing(2);
+  scroll.Content(resultPanel_);
+  content.Children().Append(scroll);
+
+  dialog_.Content(content);
+}
+
+namespace {
+
+// The country a region or a city is in, empty for a country: there is a
+// Georgia of each kind.
+hstring ExcludedLocationNote(urnet::ConnectLocation const& location) {
+  if (location.location_type && *location.location_type == urnet::LocationTypeCountry) return {};
+  return H(location.country.value_or(std::string()));
+}
+
+}  // namespace
+
+void ExcludedExitLocationsSheet::RenderExcluded() {
+  excludedPanel_.Children().Clear();
+  const auto excluded = sdk_.ExcludedExitLocations();
+  excludedEmpty_.Visibility(excluded.empty() ? Visibility::Visible : Visibility::Collapsed);
+  for (auto const& location : excluded) {
+    Button remove;
+    remove.Content(winrt::box_value(Loc("remove")));
+    remove.Foreground(colors::DangerBrush());
+    remove.Click([weak = weak_from_this(), location](auto const&, auto const&) {
+      if (auto self = weak.lock()) self->SetExcluded(location, false);
+    });
+    Row(excludedPanel_, H(location.name.value_or(std::string())), ExcludedLocationNote(location),
+        remove);
+  }
+}
+
+void ExcludedExitLocationsSheet::RenderResults() {
+  resultPanel_.Children().Clear();
+  const auto excluded = sdk_.ExcludedExitLocations();
+  for (auto const& location : results_) {
+    if (!urnet::canExcludeExitLocation(location)) continue;
+    const bool already =
+        std::any_of(excluded.begin(), excluded.end(), [&](urnet::ConnectLocation const& kept) {
+          return IsLocationSelected(kept, location);
+        });
+    if (already) continue;
+    Button exclude;
+    exclude.Content(winrt::box_value(Loc("exclude_exit_location")));
+    exclude.Click([weak = weak_from_this(), location](auto const&, auto const&) {
+      if (auto self = weak.lock()) self->SetExcluded(location, true);
+    });
+    Row(resultPanel_, H(location.name.value_or(std::string())), ExcludedLocationNote(location),
+        exclude);
+  }
+}
+
+void ExcludedExitLocationsSheet::Search() {
+  const std::string query = TrimLocationQuery(Narrow(search_.Text().c_str()));
+  const uint64_t sequence = ++searchSequence_;
+  if (query.empty()) {
+    results_.clear();
+    RenderResults();
+    return;
+  }
+  urnet::FindLocationsArgs args;
+  args.query = query;
+  auto queue = dialog_.DispatcherQueue();
+  auto weak = weak_from_this();
+  sdk_.api().findProviderLocations(
+      args, [queue, weak, sequence, query](std::optional<urnet::FindLocationsResult> result,
+                                           std::optional<std::string> err) {
+        std::vector<urnet::ConnectLocation> places;
+        if (result && !err) {
+          if (auto filtered = urnet::getFilteredLocationsFromResult(result, query)) {
+            for (auto const* list : {&filtered->BestMatches, &filtered->Countries,
+                                     &filtered->Regions, &filtered->Cities}) {
+              if (*list) places.insert(places.end(), (*list)->begin(), (*list)->end());
+            }
+          }
+        } else {
+          LogWarn("settings: findProviderLocations failed: {}",
+                  err ? *err : std::string("no result"));
+        }
+        queue.TryEnqueue([weak, sequence, places = std::move(places)]() mutable {
+          auto self = weak.lock();
+          if (!self || self->searchSequence_ != sequence) return;
+          self->results_ = std::move(places);
+          self->RenderResults();
+        });
+      });
+}
+
+void ExcludedExitLocationsSheet::SetExcluded(urnet::ConnectLocation const& location,
+                                             bool excluded) {
+  sdk_.SetExcludedExitLocation(location, excluded);
+  RenderExcluded();
+  RenderResults();
 }
 
 // ---- PostQuantumIdentitySheet ----------------------------------------------

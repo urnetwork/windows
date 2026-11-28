@@ -277,6 +277,11 @@ class ConnectPage {
   void OnDnsUseDefault();
   // the row's automation name: the label plus the provider it names
   void ApplyLocationRowName();
+  // The selected location's favorite star (sdk exit_location_preferences.go):
+  // filled when it is a favorite, hidden for best available. A stayed-on exit
+  // is kept this way too.
+  void ApplyFavoriteStar();
+  void ToggleFavorite();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
   // The extender row, its description and its switch, from extenderProvideView_:
@@ -614,6 +619,10 @@ class ConnectPage {
   // reconnect-tunnel affordance; NOT what the connect button reads -- see
   // ConnectActionIsDisconnect.
   bool connected_ = false;
+  // the selection the favorite star stands for (ApplyStats), and whether it
+  // showed it as a favorite
+  std::optional<urnet::ConnectLocation> starLocation_;
+  bool favoriteShown_ = false;
   // the SDK connect controller's own status (ApplyStats); see ConnectStatus
   ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
   // A start waits on its balance (OnStartWaitChanged): connectStatus_ and

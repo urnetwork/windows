@@ -132,6 +132,7 @@ class SettingsPage {
   // list is filtered by, so the list is where a user looks for them. Still
   // reachable from Settings' VPN group; one sheet, two entry points.
   winrt::fire_and_forget ShowBlockedLocationsSheet();
+  winrt::fire_and_forget ShowExcludedExitLocationsSheet();
 
  private:
   winrt::fire_and_forget ShowAppRulesSheet();
@@ -344,6 +345,7 @@ class SettingsPage {
   std::shared_ptr<urnw::AddAuthSheet> addAuthSheet_;
   std::shared_ptr<urnw::ReferralNetworkSheet> referralSheet_;
   std::shared_ptr<urnw::BlockedLocationsSheet> blockedSheet_;
+  std::shared_ptr<urnw::ExcludedExitLocationsSheet> excludedExitSheet_;
   std::shared_ptr<urnw::PostQuantumIdentitySheet> identitySheet_;
   std::shared_ptr<urnw::DeleteAccountSheet> deleteSheet_;
   std::shared_ptr<urnw::VlessSheet> vlessSheet_;

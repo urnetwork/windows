@@ -4437,9 +4437,9 @@ LiveStats SdkHost::ReadStats() {
     // thread. The selection is what SelectedLocation answers, without its lock:
     // the presented controller's, read lock-free like its status above, else
     // the device's location.
-    s.locationName = SelectedLocationName(
-        std::move(s.locationName), connectVc_ ? connectVc_->getSelectedLocation() : loc,
-        connectedPeers);
+    s.selectedLocation = connectVc_ ? connectVc_->getSelectedLocation() : loc;
+    s.locationName =
+        SelectedLocationName(std::move(s.locationName), s.selectedLocation, connectedPeers);
     // The window honesty diagnosis (track 2): the SDK's stall reason and the
     // terminal failed latch. One more rpc getter under the same serviceUp
     // gate as the five above; an old service simply omits the JSON keys and
@@ -7637,6 +7637,70 @@ std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {
 void SdkHost::KeepSelectedLocation(std::optional<urnet::ConnectLocation> location) {
   std::scoped_lock lock(selectedLocationMutex_);
   selectedLocation_ = std::move(location);
+}
+
+// ---- exit location preferences ---------------------------------------------
+
+std::vector<urnet::ConnectLocation> SdkHost::FavoriteLocations() {
+  try {
+    if (localState_) {
+      if (auto favorites = localState_->getFavoriteLocations()) return *favorites;
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read favorites failed: {}", e.what());
+  }
+  return {};
+}
+
+std::vector<urnet::ConnectLocation> SdkHost::ExcludedExitLocations() {
+  try {
+    if (localState_) {
+      if (auto excluded = localState_->getExcludedExitLocations()) return *excluded;
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read excluded exit locations failed: {}", e.what());
+  }
+  return {};
+}
+
+bool SdkHost::SetFavoriteLocation(const urnet::ConnectLocation& location, bool favorite) {
+  try {
+    if (!localState_) return false;
+    if (favorite) {
+      localState_->addFavoriteLocation(location);
+    } else {
+      localState_->removeFavoriteLocation(location);
+    }
+    return true;
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: change a favorite failed: {}", e.what());
+    return false;
+  }
+}
+
+bool SdkHost::SetExcludedExitLocation(const urnet::ConnectLocation& location, bool excluded) {
+  try {
+    if (!localState_) return false;
+    if (excluded) {
+      localState_->addExcludedExitLocation(location);
+    } else {
+      localState_->removeExcludedExitLocation(location);
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: change an excluded exit location failed: {}", e.what());
+    return false;
+  }
+  // a connection the change affects reconnects with the new list; the
+  // controller's device calls run off the UI thread, behind the session's lock
+  PostWrite("excluded exit locations changed", [this] {
+    std::scoped_lock lock(mutex_);
+    try {
+      if (connectVc_) connectVc_->excludedExitLocationsChanged();
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: apply the excluded exit locations failed: {}", e.what());
+    }
+  });
+  return true;
 }
 
 // ---- selection identity (shared: sheet, Network pane, row coalescer) -------
