@@ -68,9 +68,25 @@
     <value>{} (सत्यापित)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_code_expired" xml:space="preserve">
+    <value>यह कोड समाप्त हो गया है या पहले ही इस्तेमाल हो चुका है। नया कोड मँगाएँ।</value>
+    <comment>Payout wallet disconnect: no confirmation code is waiting (it expired, was used, or too many wrong tries ended it); the person asks for a new one.</comment>
+  </data>
+  <data name="account_code_invalid" xml:space="preserve">
+    <value>यह कोड गलत है। इसे जाँचें और फिर से कोशिश करें।</value>
+    <comment>Email change and payout wallet disconnect: a confirmation code the person entered is wrong; the request is still waiting.</comment>
+  </data>
+  <data name="account_code_send_failed" xml:space="preserve">
+    <value>कोड नहीं भेजा जा सका। कृपया फिर से कोशिश करें।</value>
+    <comment>Email change and payout wallet disconnect: the server could not send a confirmation code; the person asks again.</comment>
+  </data>
   <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
     <value>आपका खाता अभी खरीदारी के लिए तैयार नहीं है। ऐप को फिर से शुरू करें और दोबारा कोशिश करें।</value>
     <comment>Shown when a purchase is refused before contacting the store because the account is not ready: on apple the networkId is missing or unparseable (Shared/ViewModels/AppStoreSubscriptionManager.swift), on android the active network space has no api yet (the Stripe sheet and pay page purchasers). The purchase could never be credited to anyone. This used to be a silent no-op.</comment>
+  </data>
+  <data name="account_too_many_tries" xml:space="preserve">
+    <value>बहुत ज़्यादा कोशिशें हो गईं। कृपया बाद में फिर कोशिश करें।</value>
+    <comment>Email change and payout wallet disconnect: too many requests or codes were sent (rate limited); the person tries again later.</comment>
   </data>
   <data name="active_extenders" xml:space="preserve">
     <value>सक्रिय एक्सटेंडर</value>
@@ -4251,6 +4267,78 @@
     <value>स्प्लिट नियम संपादित करें</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="email_change" xml:space="preserve">
+    <value>ईमेल बदलें</value>
+    <comment>Account, sign-in methods: the action beside the email sign-in that starts a verified email change, and the confirm button of its sheet.</comment>
+  </data>
+  <data name="email_change_body" xml:space="preserve">
+    <value>अपना नया ईमेल दर्ज करें। हम आपके मौजूदा ईमेल पर एक कोड और नए ईमेल पर दूसरा कोड भेजेंगे। दोनों दर्ज करने पर आपका ईमेल बदल जाएगा। आपका पासवर्ड वही रहेगा।</value>
+    <comment>The email change sheet, first step: how the change works, above the new email field.</comment>
+  </data>
+  <data name="email_change_code_sent_to" xml:space="preserve">
+    <value>{} पर भेजा गया कोड</value>
+    <comment>The email change sheet, second step: the label of a code field. The argument is the address the code went to (the current email masked, or the new email).</comment>
+  </data>
+  <data name="email_change_codes_sent" xml:space="preserve">
+    <value>हमने {0} पर एक कोड और {1} पर दूसरा कोड भेजा है।</value>
+    <comment>The email change sheet, second step: where the two codes went. The arguments are the current email, masked (j…@example.com), and the new email.</comment>
+  </data>
+  <data name="email_change_done" xml:space="preserve">
+    <value>आपका ईमेल अब {} है।</value>
+    <comment>The email change sheet, once both codes were confirmed. The argument is the new email.</comment>
+  </data>
+  <data name="email_change_email_in_use" xml:space="preserve">
+    <value>यह ईमेल पहले से किसी दूसरे खाते में इस्तेमाल हो रहा है।</value>
+    <comment>Email change refused: another account signs in with the new email.</comment>
+  </data>
+  <data name="email_change_email_unverified" xml:space="preserve">
+    <value>बदलने से पहले अपने मौजूदा ईमेल को सत्यापित करें।</value>
+    <comment>Email change refused: the current email sign-in is not verified yet.</comment>
+  </data>
+  <data name="email_change_expired" xml:space="preserve">
+    <value>पुष्टि होने से पहले ही यह ईमेल बदलाव समाप्त हो गया। फिर से शुरू करें।</value>
+    <comment>Email change: no change is waiting any more (it expired, was cancelled or never started); the sheet goes back to its first step.</comment>
+  </data>
+  <data name="email_change_invalid_email" xml:space="preserve">
+    <value>एक मान्य ईमेल पता दर्ज करें।</value>
+    <comment>Email change: the new email is not an email address.</comment>
+  </data>
+  <data name="email_change_new_email" xml:space="preserve">
+    <value>नया ईमेल</value>
+    <comment>The email change sheet: the label of the new email field.</comment>
+  </data>
+  <data name="email_change_no_email" xml:space="preserve">
+    <value>आपके खाते में ईमेल से साइन-इन नहीं है। इसके बजाय इसे साइन-इन विधि के रूप में जोड़ें।</value>
+    <comment>Email change refused: the account has no email sign-in to change; the person adds one as a sign-in method instead.</comment>
+  </data>
+  <data name="email_change_others_hint" xml:space="preserve">
+    <value>अपने दूसरे डिवाइस साइन आउट करने के लिए “सत्र” खोलें।</value>
+    <comment>The email change sheet, once complete, when the server could not sign out the other sessions (the current sign-in has none to keep). Names the Sessions screen (sessions_title) exactly.</comment>
+  </data>
+  <data name="email_change_others_signed_out" xml:space="preserve">
+    <value>आपके दूसरे डिवाइस साइन आउट कर दिए गए।</value>
+    <comment>The email change sheet, once complete: the account's other sessions were signed out.</comment>
+  </data>
+  <data name="email_change_same_email" xml:space="preserve">
+    <value>यह पहले से ही आपका ईमेल है।</value>
+    <comment>Email change refused: the new email is the current email.</comment>
+  </data>
+  <data name="email_change_send_codes" xml:space="preserve">
+    <value>कोड भेजें</value>
+    <comment>The email change sheet, first step: the button that sends the two codes.</comment>
+  </data>
+  <data name="email_change_sign_in_required" xml:space="preserve">
+    <value>अपना ईमेल बदलने के लिए फिर से साइन इन करें।</value>
+    <comment>Email change: the app holds no network sign-in to send the change with (the sdk's network credential), or the server answered owner_only.</comment>
+  </data>
+  <data name="email_change_title" xml:space="preserve">
+    <value>अपना ईमेल बदलें</value>
+    <comment>The email change sheet: its title.</comment>
+  </data>
+  <data name="email_change_too_many_tries" xml:space="preserve">
+    <value>बहुत सारे गलत कोड। फिर से शुरू करें।</value>
+    <comment>Email change: too many wrong codes ended the request; the sheet goes back to its first step.</comment>
+  </data>
   <data name="email_e4_reason_not_needed" xml:space="preserve">
     <value>अभी तक इसकी ज़रूरत नहीं पड़ी</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
@@ -4466,6 +4554,10 @@
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Google से साइन इन करने में त्रुटि</value>
     <comment>Add sign-in method sheet (android): Google sign-in failed or was cancelled.</comment>
+  </data>
+  <data name="error_signing_in_with_microsoft" xml:space="preserve">
+    <value>Microsoft से साइन इन करने में त्रुटि</value>
+    <comment>Sign-in screen and the add sign-in method sheet: Microsoft sign-in failed (not a cancel, which shows nothing).</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>डिवाइस का नाम अपडेट करते समय त्रुटि हुई।</value>
@@ -5681,6 +5773,14 @@
   <data name="method" xml:space="preserve">
     <value>विधि</value>
     <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
+  <data name="microsoft_sign_in_method_added" xml:space="preserve">
+    <value>Microsoft साइन-इन विधि जोड़ी गई</value>
+    <comment>Snackbar message displayed when a Microsoft sign-in method is successfully added.</comment>
+  </data>
+  <data name="microsoft_sign_in_unavailable" xml:space="preserve">
+    <value>Microsoft से साइन इन अभी उपलब्ध नहीं है। साइन इन करने का कोई और तरीका आज़माएँ।</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the server has no Microsoft sign-in configured yet (not_configured).</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{} मि. पहले</value>
@@ -7881,6 +7981,14 @@
     <value>Google से साइन इन करें और उसे साइन-इन विधि के रूप में जोड़ें।</value>
     <comment>A description of how to sign in with Google.</comment>
   </data>
+  <data name="sign_in_with_microsoft" xml:space="preserve">
+    <value>Microsoft से साइन इन करें</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the Sign in with Microsoft button.</comment>
+  </data>
+  <data name="sign_in_with_microsoft_to_add_it" xml:space="preserve">
+    <value>Microsoft से साइन इन करें और उसे साइन-इन विधि के रूप में जोड़ें।</value>
+    <comment>Add sign-in method sheet: how to add Microsoft as a sign-in method.</comment>
+  </data>
   <data name="sign_in_with_seedphrase" xml:space="preserve">
     <value>सीड फ़्रेज़ से साइन इन करें</value>
   </data>
@@ -9776,6 +9884,38 @@
     <value>UR प्रोटोकॉल से कनेक्टेड। दावे यहीं आते हैं। Alpha कनेक्ट करने के बाद वाले एपोक से जमा होता है।</value>
     <comment>Line under the connected coldkey.</comment>
   </data>
+  <data name="wallet_disconnect" xml:space="preserve">
+    <value>वॉलेट डिस्कनेक्ट करें</value>
+    <comment>Earnings, Bittensor wallet card: the action that disconnects the connected payout wallet, and the confirm button of its dialog.</comment>
+  </data>
+  <data name="wallet_disconnect_body" xml:space="preserve">
+    <value>भुगतान वॉलेट के बिना आपकी कमाई का भुगतान नहीं हो सकता। जो कमाई पहले ही भेजी जा चुकी है, उसे वही वॉलेट क्लेम कर सकता है जिसमें वह भेजी गई थी। पुष्टि के लिए हम आपके खाते के ईमेल पर एक कोड भेजेंगे।</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: what happens with no payout wallet, said plainly, before the code is sent.</comment>
+  </data>
+  <data name="wallet_disconnect_code_sent" xml:space="preserve">
+    <value>हमने {} पर एक कोड भेजा है। वॉलेट डिस्कनेक्ट करने के लिए इसे दर्ज करें।</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet, once the code is sent. The argument is the masked sign-in email addresses it went to, joined with commas (j…@example.com).</comment>
+  </data>
+  <data name="wallet_disconnect_consent_in_force" xml:space="preserve">
+    <value>आपकी हस्ताक्षरित भुगतान सहमति आपकी कमाई इसी वॉलेट में भेजती है, और इसे केवल दूसरी हस्ताक्षरित सहमति ही बदल सकती है। इसके बजाय “वॉलेट बदलें” का उपयोग करें।</value>
+    <comment>Earnings, the payout wallet disconnect refused because a signed payout consent (or hotkey delegation) pays the network: only a signed replacement can end it. Names the Change wallet button (sn_consent_change) exactly.</comment>
+  </data>
+  <data name="wallet_disconnect_email_required" xml:space="preserve">
+    <value>पहले अपने खाते में ईमेल से साइन-इन जोड़ें। पुष्टि कोड उसी पर भेजा जाता है।</value>
+    <comment>Earnings, the payout wallet disconnect refused because the account has no sign-in email to send the confirmation code to.</comment>
+  </data>
+  <data name="wallet_disconnect_send_code" xml:space="preserve">
+    <value>मुझे ईमेल पर कोड भेजें</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: the button that emails the confirmation code to the account's sign-in addresses.</comment>
+  </data>
+  <data name="wallet_disconnect_title" xml:space="preserve">
+    <value>अपना भुगतान वॉलेट डिस्कनेक्ट करें?</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: its title.</comment>
+  </data>
+  <data name="wallet_disconnected" xml:space="preserve">
+    <value>वॉलेट डिस्कनेक्ट हो गया। जब तक आप भुगतान वॉलेट कनेक्ट नहीं करते, आपकी कमाई का भुगतान नहीं हो सकता।</value>
+    <comment>Earnings, after the payout wallet was disconnected: the confirmation, saying plainly that earnings can't be paid out now.</comment>
+  </data>
   <data name="wallet_looks_new_warning" xml:space="preserve">
     <value>इस पते पर अभी Bittensor चेन पर कोई गतिविधि नहीं है। यह नया वॉलेट लगता है। आगे बढ़ने से पहले पक्का कर लें कि यह आपका है।</value>
     <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
@@ -9783,6 +9923,10 @@
   <data name="wallet_needs_network" xml:space="preserve">
     <value>यह वॉलेट अभी किसी नेटवर्क से जुड़ा नहीं है। नेटवर्क बनाने के लिए एक नेटवर्क नाम चुनें।</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_none_no_payout" xml:space="preserve">
+    <value>कोई भुगतान वॉलेट नहीं है। जब तक आप एक वॉलेट कनेक्ट नहीं करते, आपकी कमाई का भुगतान नहीं हो सकता।</value>
+    <comment>Earnings, Bittensor wallet card with no wallet connected: says plainly that earnings can't be paid out without a payout wallet.</comment>
   </data>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>अगले एपोक से SN25α कमाने के लिए वॉलेट कनेक्ट करें। पिछले एपोक पिछली तारीख से सेटल नहीं होते।</value>

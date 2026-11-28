@@ -68,9 +68,25 @@
     <value>{}（已验证）</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_code_expired" xml:space="preserve">
+    <value>验证码已过期或已被使用。请重新获取。</value>
+    <comment>Payout wallet disconnect: no confirmation code is waiting (it expired, was used, or too many wrong tries ended it); the person asks for a new one.</comment>
+  </data>
+  <data name="account_code_invalid" xml:space="preserve">
+    <value>验证码不正确。请检查后重试。</value>
+    <comment>Email change and payout wallet disconnect: a confirmation code the person entered is wrong; the request is still waiting.</comment>
+  </data>
+  <data name="account_code_send_failed" xml:space="preserve">
+    <value>无法发送验证码。请重试。</value>
+    <comment>Email change and payout wallet disconnect: the server could not send a confirmation code; the person asks again.</comment>
+  </data>
   <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
     <value>您的账户暂时无法进行购买。请重启应用后重试。</value>
     <comment>Shown when a purchase is refused before contacting the store because the account is not ready: on apple the networkId is missing or unparseable (Shared/ViewModels/AppStoreSubscriptionManager.swift), on android the active network space has no api yet (the Stripe sheet and pay page purchasers). The purchase could never be credited to anyone. This used to be a silent no-op.</comment>
+  </data>
+  <data name="account_too_many_tries" xml:space="preserve">
+    <value>尝试次数过多。请稍后再试。</value>
+    <comment>Email change and payout wallet disconnect: too many requests or codes were sent (rate limited); the person tries again later.</comment>
   </data>
   <data name="active_extenders" xml:space="preserve">
     <value>活跃的扩展器</value>
@@ -4296,6 +4312,78 @@
     <value>编辑分流规则</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="email_change" xml:space="preserve">
+    <value>更改邮箱</value>
+    <comment>Account, sign-in methods: the action beside the email sign-in that starts a verified email change, and the confirm button of its sheet.</comment>
+  </data>
+  <data name="email_change_body" xml:space="preserve">
+    <value>输入您的新邮箱。我们会向您当前的邮箱和新邮箱各发送一个验证码。输入两个验证码后，邮箱即会更改。您的密码保持不变。</value>
+    <comment>The email change sheet, first step: how the change works, above the new email field.</comment>
+  </data>
+  <data name="email_change_code_sent_to" xml:space="preserve">
+    <value>发送到 {} 的验证码</value>
+    <comment>The email change sheet, second step: the label of a code field. The argument is the address the code went to (the current email masked, or the new email).</comment>
+  </data>
+  <data name="email_change_codes_sent" xml:space="preserve">
+    <value>我们已向 {0} 和 {1} 各发送了一个验证码。</value>
+    <comment>The email change sheet, second step: where the two codes went. The arguments are the current email, masked (j…@example.com), and the new email.</comment>
+  </data>
+  <data name="email_change_done" xml:space="preserve">
+    <value>您的邮箱现在是 {}。</value>
+    <comment>The email change sheet, once both codes were confirmed. The argument is the new email.</comment>
+  </data>
+  <data name="email_change_email_in_use" xml:space="preserve">
+    <value>该邮箱已被其他账户使用。</value>
+    <comment>Email change refused: another account signs in with the new email.</comment>
+  </data>
+  <data name="email_change_email_unverified" xml:space="preserve">
+    <value>请先验证您当前的邮箱，再进行更改。</value>
+    <comment>Email change refused: the current email sign-in is not verified yet.</comment>
+  </data>
+  <data name="email_change_expired" xml:space="preserve">
+    <value>此次邮箱更改在确认前已结束。请重新开始。</value>
+    <comment>Email change: no change is waiting any more (it expired, was cancelled or never started); the sheet goes back to its first step.</comment>
+  </data>
+  <data name="email_change_invalid_email" xml:space="preserve">
+    <value>请输入有效的邮箱地址。</value>
+    <comment>Email change: the new email is not an email address.</comment>
+  </data>
+  <data name="email_change_new_email" xml:space="preserve">
+    <value>新邮箱</value>
+    <comment>The email change sheet: the label of the new email field.</comment>
+  </data>
+  <data name="email_change_no_email" xml:space="preserve">
+    <value>您的账户没有邮箱登录。请改为将邮箱添加为登录方式。</value>
+    <comment>Email change refused: the account has no email sign-in to change; the person adds one as a sign-in method instead.</comment>
+  </data>
+  <data name="email_change_others_hint" xml:space="preserve">
+    <value>如需让其他设备退出登录，请打开“登录会话”。</value>
+    <comment>The email change sheet, once complete, when the server could not sign out the other sessions (the current sign-in has none to keep). Names the Sessions screen (sessions_title) exactly.</comment>
+  </data>
+  <data name="email_change_others_signed_out" xml:space="preserve">
+    <value>您的其他设备已退出登录。</value>
+    <comment>The email change sheet, once complete: the account's other sessions were signed out.</comment>
+  </data>
+  <data name="email_change_same_email" xml:space="preserve">
+    <value>这已经是您的邮箱。</value>
+    <comment>Email change refused: the new email is the current email.</comment>
+  </data>
+  <data name="email_change_send_codes" xml:space="preserve">
+    <value>发送验证码</value>
+    <comment>The email change sheet, first step: the button that sends the two codes.</comment>
+  </data>
+  <data name="email_change_sign_in_required" xml:space="preserve">
+    <value>请重新登录以更改邮箱。</value>
+    <comment>Email change: the app holds no network sign-in to send the change with (the sdk's network credential), or the server answered owner_only.</comment>
+  </data>
+  <data name="email_change_title" xml:space="preserve">
+    <value>更改您的邮箱</value>
+    <comment>The email change sheet: its title.</comment>
+  </data>
+  <data name="email_change_too_many_tries" xml:space="preserve">
+    <value>错误的验证码次数过多。请重新开始。</value>
+    <comment>Email change: too many wrong codes ended the request; the sheet goes back to its first step.</comment>
+  </data>
   <data name="email_e4_reason_not_needed" xml:space="preserve">
     <value>还没用上</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
@@ -4511,6 +4599,10 @@
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>使用 Google 登录时出错</value>
     <comment>Add sign-in method sheet (android): Google sign-in failed or was cancelled.</comment>
+  </data>
+  <data name="error_signing_in_with_microsoft" xml:space="preserve">
+    <value>使用 Microsoft 登录时出错</value>
+    <comment>Sign-in screen and the add sign-in method sheet: Microsoft sign-in failed (not a cancel, which shows nothing).</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>更新设备名称时出错。</value>
@@ -5699,6 +5791,14 @@
   <data name="method" xml:space="preserve">
     <value>方式</value>
     <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
+  <data name="microsoft_sign_in_method_added" xml:space="preserve">
+    <value>已添加 Microsoft 登录方式</value>
+    <comment>Snackbar message displayed when a Microsoft sign-in method is successfully added.</comment>
+  </data>
+  <data name="microsoft_sign_in_unavailable" xml:space="preserve">
+    <value>Microsoft 登录暂不可用。请尝试其他登录方式。</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the server has no Microsoft sign-in configured yet (not_configured).</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{}分钟前</value>
@@ -7827,6 +7927,14 @@
   <data name="sign_in_with_google_to_add_it" xml:space="preserve">
     <value>使用 Google 登录，将其添加为登录方式。</value>
     <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_microsoft" xml:space="preserve">
+    <value>使用 Microsoft 登录</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the Sign in with Microsoft button.</comment>
+  </data>
+  <data name="sign_in_with_microsoft_to_add_it" xml:space="preserve">
+    <value>使用 Microsoft 登录，将其添加为登录方式。</value>
+    <comment>Add sign-in method sheet: how to add Microsoft as a sign-in method.</comment>
   </data>
   <data name="sign_in_with_seedphrase" xml:space="preserve">
     <value>使用助记词登录</value>
@@ -10856,6 +10964,38 @@
     <value>已连接到 UR 协议。领取的收益将存入此处。Alpha 从连接后的下一个周期开始累积。</value>
     <comment>Line under the connected coldkey.</comment>
   </data>
+  <data name="wallet_disconnect" xml:space="preserve">
+    <value>断开钱包</value>
+    <comment>Earnings, Bittensor wallet card: the action that disconnects the connected payout wallet, and the confirm button of its dialog.</comment>
+  </data>
+  <data name="wallet_disconnect_body" xml:space="preserve">
+    <value>没有收款钱包，您的收益将无法支付。已支付的收益仍可由收款钱包领取。为确认此操作，我们会向您账户的邮箱发送验证码。</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: what happens with no payout wallet, said plainly, before the code is sent.</comment>
+  </data>
+  <data name="wallet_disconnect_code_sent" xml:space="preserve">
+    <value>我们已向 {} 发送验证码。输入验证码即可断开钱包。</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet, once the code is sent. The argument is the masked sign-in email addresses it went to, joined with commas (j…@example.com).</comment>
+  </data>
+  <data name="wallet_disconnect_consent_in_force" xml:space="preserve">
+    <value>您签署的收款授权会将收益发送到此钱包，只有另一份签署的授权才能替换它。请改用“更换钱包”。</value>
+    <comment>Earnings, the payout wallet disconnect refused because a signed payout consent (or hotkey delegation) pays the network: only a signed replacement can end it. Names the Change wallet button (sn_consent_change) exactly.</comment>
+  </data>
+  <data name="wallet_disconnect_email_required" xml:space="preserve">
+    <value>请先为您的账户添加邮箱登录。确认码会发送到该邮箱。</value>
+    <comment>Earnings, the payout wallet disconnect refused because the account has no sign-in email to send the confirmation code to.</comment>
+  </data>
+  <data name="wallet_disconnect_send_code" xml:space="preserve">
+    <value>通过邮件发送验证码</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: the button that emails the confirmation code to the account's sign-in addresses.</comment>
+  </data>
+  <data name="wallet_disconnect_title" xml:space="preserve">
+    <value>断开收款钱包？</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: its title.</comment>
+  </data>
+  <data name="wallet_disconnected" xml:space="preserve">
+    <value>已断开钱包。在您连接收款钱包之前，您的收益无法支付。</value>
+    <comment>Earnings, after the payout wallet was disconnected: the confirmation, saying plainly that earnings can't be paid out now.</comment>
+  </data>
   <data name="wallet_looks_new_warning" xml:space="preserve">
     <value>此地址在 Bittensor 链上尚无任何活动，看起来是一个新钱包。继续之前，请确认它属于您。</value>
     <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
@@ -10863,6 +11003,10 @@
   <data name="wallet_needs_network" xml:space="preserve">
     <value>此钱包尚未关联任何网络。请选择一个网络名称来创建。</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_none_no_payout" xml:space="preserve">
+    <value>没有收款钱包。在您连接钱包之前，您的收益无法支付。</value>
+    <comment>Earnings, Bittensor wallet card with no wallet connected: says plainly that earnings can't be paid out without a payout wallet.</comment>
   </data>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>连接钱包，即可从下一个周期开始赚取 SN25α。之前的周期不会追溯结算。</value>

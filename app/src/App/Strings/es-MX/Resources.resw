@@ -68,9 +68,25 @@
     <value>{} (verificado)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_code_expired" xml:space="preserve">
+    <value>Ese código venció o ya se usó. Solicita uno nuevo.</value>
+    <comment>Payout wallet disconnect: no confirmation code is waiting (it expired, was used, or too many wrong tries ended it); the person asks for a new one.</comment>
+  </data>
+  <data name="account_code_invalid" xml:space="preserve">
+    <value>Ese código no es correcto. Revísalo y vuelve a intentarlo.</value>
+    <comment>Email change and payout wallet disconnect: a confirmation code the person entered is wrong; the request is still waiting.</comment>
+  </data>
+  <data name="account_code_send_failed" xml:space="preserve">
+    <value>No se pudo enviar el código. Vuelve a intentarlo.</value>
+    <comment>Email change and payout wallet disconnect: the server could not send a confirmation code; the person asks again.</comment>
+  </data>
   <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
     <value>Tu cuenta todavía no está lista para compras. Reinicia la app e inténtalo de nuevo.</value>
     <comment>Shown when a purchase is refused before contacting the store because the account is not ready: on apple the networkId is missing or unparseable (Shared/ViewModels/AppStoreSubscriptionManager.swift), on android the active network space has no api yet (the Stripe sheet and pay page purchasers). The purchase could never be credited to anyone. This used to be a silent no-op.</comment>
+  </data>
+  <data name="account_too_many_tries" xml:space="preserve">
+    <value>Demasiados intentos. Vuelve a intentarlo más tarde.</value>
+    <comment>Email change and payout wallet disconnect: too many requests or codes were sent (rate limited); the person tries again later.</comment>
   </data>
   <data name="active_extenders" xml:space="preserve">
     <value>Extensores activos</value>
@@ -4252,6 +4268,78 @@ de la manera correcta</value>
     <value>Editar regla de división</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="email_change" xml:space="preserve">
+    <value>Cambiar correo</value>
+    <comment>Account, sign-in methods: the action beside the email sign-in that starts a verified email change, and the confirm button of its sheet.</comment>
+  </data>
+  <data name="email_change_body" xml:space="preserve">
+    <value>Ingresa tu nuevo correo. Enviaremos un código a tu correo actual y otro al nuevo. Tu correo cambia cuando ingresas los dos. Tu contraseña no cambia.</value>
+    <comment>The email change sheet, first step: how the change works, above the new email field.</comment>
+  </data>
+  <data name="email_change_code_sent_to" xml:space="preserve">
+    <value>Código enviado a {}</value>
+    <comment>The email change sheet, second step: the label of a code field. The argument is the address the code went to (the current email masked, or the new email).</comment>
+  </data>
+  <data name="email_change_codes_sent" xml:space="preserve">
+    <value>Enviamos un código a {0} y otro a {1}.</value>
+    <comment>The email change sheet, second step: where the two codes went. The arguments are the current email, masked (j…@example.com), and the new email.</comment>
+  </data>
+  <data name="email_change_done" xml:space="preserve">
+    <value>Tu correo ahora es {}.</value>
+    <comment>The email change sheet, once both codes were confirmed. The argument is the new email.</comment>
+  </data>
+  <data name="email_change_email_in_use" xml:space="preserve">
+    <value>Otra cuenta ya usa ese correo.</value>
+    <comment>Email change refused: another account signs in with the new email.</comment>
+  </data>
+  <data name="email_change_email_unverified" xml:space="preserve">
+    <value>Verifica tu correo actual antes de cambiarlo.</value>
+    <comment>Email change refused: the current email sign-in is not verified yet.</comment>
+  </data>
+  <data name="email_change_expired" xml:space="preserve">
+    <value>Este cambio de correo terminó antes de confirmarse. Vuelve a empezar.</value>
+    <comment>Email change: no change is waiting any more (it expired, was cancelled or never started); the sheet goes back to its first step.</comment>
+  </data>
+  <data name="email_change_invalid_email" xml:space="preserve">
+    <value>Ingresa un correo válido.</value>
+    <comment>Email change: the new email is not an email address.</comment>
+  </data>
+  <data name="email_change_new_email" xml:space="preserve">
+    <value>Nuevo correo</value>
+    <comment>The email change sheet: the label of the new email field.</comment>
+  </data>
+  <data name="email_change_no_email" xml:space="preserve">
+    <value>Tu cuenta no tiene inicio de sesión con correo. Agrega uno como método de inicio de sesión.</value>
+    <comment>Email change refused: the account has no email sign-in to change; the person adds one as a sign-in method instead.</comment>
+  </data>
+  <data name="email_change_others_hint" xml:space="preserve">
+    <value>Para cerrar la sesión en tus otros dispositivos, abre «Sesiones».</value>
+    <comment>The email change sheet, once complete, when the server could not sign out the other sessions (the current sign-in has none to keep). Names the Sessions screen (sessions_title) exactly.</comment>
+  </data>
+  <data name="email_change_others_signed_out" xml:space="preserve">
+    <value>Se cerró la sesión en tus otros dispositivos.</value>
+    <comment>The email change sheet, once complete: the account's other sessions were signed out.</comment>
+  </data>
+  <data name="email_change_same_email" xml:space="preserve">
+    <value>Ese ya es tu correo.</value>
+    <comment>Email change refused: the new email is the current email.</comment>
+  </data>
+  <data name="email_change_send_codes" xml:space="preserve">
+    <value>Enviar códigos</value>
+    <comment>The email change sheet, first step: the button that sends the two codes.</comment>
+  </data>
+  <data name="email_change_sign_in_required" xml:space="preserve">
+    <value>Vuelve a iniciar sesión para cambiar tu correo.</value>
+    <comment>Email change: the app holds no network sign-in to send the change with (the sdk's network credential), or the server answered owner_only.</comment>
+  </data>
+  <data name="email_change_title" xml:space="preserve">
+    <value>Cambia tu correo</value>
+    <comment>The email change sheet: its title.</comment>
+  </data>
+  <data name="email_change_too_many_tries" xml:space="preserve">
+    <value>Demasiados códigos incorrectos. Vuelve a empezar.</value>
+    <comment>Email change: too many wrong codes ended the request; the sheet goes back to its first step.</comment>
+  </data>
   <data name="email_e4_reason_not_needed" xml:space="preserve">
     <value>Todavía no lo necesitaba</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
@@ -4467,6 +4555,10 @@ de la manera correcta</value>
   <data name="error_signing_in_with_google" xml:space="preserve">
     <value>Error al iniciar sesión con Google</value>
     <comment>Add sign-in method sheet (android): Google sign-in failed or was cancelled.</comment>
+  </data>
+  <data name="error_signing_in_with_microsoft" xml:space="preserve">
+    <value>Error al iniciar sesión con Microsoft</value>
+    <comment>Sign-in screen and the add sign-in method sheet: Microsoft sign-in failed (not a cancel, which shows nothing).</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Se produjo un error al actualizar el nombre del dispositivo.</value>
@@ -5683,6 +5775,14 @@ enviamos para verificar tu identidad.</value>
   <data name="method" xml:space="preserve">
     <value>Método</value>
     <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
+  <data name="microsoft_sign_in_method_added" xml:space="preserve">
+    <value>Método de inicio de sesión de Microsoft agregado</value>
+    <comment>Snackbar message displayed when a Microsoft sign-in method is successfully added.</comment>
+  </data>
+  <data name="microsoft_sign_in_unavailable" xml:space="preserve">
+    <value>Iniciar sesión con Microsoft aún no está disponible. Prueba otra forma de iniciar sesión.</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the server has no Microsoft sign-in configured yet (not_configured).</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>hace {} min</value>
@@ -7884,6 +7984,14 @@ del mundo</value>
     <value>Inicia sesión con Google para agregarlo como método de inicio de sesión.</value>
     <comment>A description of how to sign in with Google.</comment>
   </data>
+  <data name="sign_in_with_microsoft" xml:space="preserve">
+    <value>Iniciar sesión con Microsoft</value>
+    <comment>Sign-in screen and the add sign-in method sheet: the Sign in with Microsoft button.</comment>
+  </data>
+  <data name="sign_in_with_microsoft_to_add_it" xml:space="preserve">
+    <value>Inicia sesión con Microsoft para agregarlo como método de inicio de sesión.</value>
+    <comment>Add sign-in method sheet: how to add Microsoft as a sign-in method.</comment>
+  </data>
   <data name="sign_in_with_seedphrase" xml:space="preserve">
     <value>Iniciar sesión con la frase semilla</value>
   </data>
@@ -9780,6 +9888,38 @@ como debería ser.</value>
     <value>Conectado al protocolo UR. Lo que reclames llega aquí. El Alpha se acumula a partir de la siguiente época después de conectarte.</value>
     <comment>Line under the connected coldkey.</comment>
   </data>
+  <data name="wallet_disconnect" xml:space="preserve">
+    <value>Desconectar cartera</value>
+    <comment>Earnings, Bittensor wallet card: the action that disconnects the connected payout wallet, and the confirm button of its dialog.</comment>
+  </data>
+  <data name="wallet_disconnect_body" xml:space="preserve">
+    <value>Sin una cartera de pagos, tus ganancias no se pueden pagar. Las ganancias ya pagadas las sigue pudiendo reclamar la cartera a la que se pagaron. Para confirmar, enviaremos un código al correo de tu cuenta.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: what happens with no payout wallet, said plainly, before the code is sent.</comment>
+  </data>
+  <data name="wallet_disconnect_code_sent" xml:space="preserve">
+    <value>Enviamos un código a {}. Ingrésalo para desconectar la cartera.</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet, once the code is sent. The argument is the masked sign-in email addresses it went to, joined with commas (j…@example.com).</comment>
+  </data>
+  <data name="wallet_disconnect_consent_in_force" xml:space="preserve">
+    <value>Tu consentimiento de pago firmado envía tus ganancias a esta cartera, y solo otro consentimiento firmado puede reemplazarlo. Usa «Cambiar cartera».</value>
+    <comment>Earnings, the payout wallet disconnect refused because a signed payout consent (or hotkey delegation) pays the network: only a signed replacement can end it. Names the Change wallet button (sn_consent_change) exactly.</comment>
+  </data>
+  <data name="wallet_disconnect_email_required" xml:space="preserve">
+    <value>Primero agrega un inicio de sesión con correo a tu cuenta. El código de confirmación se envía a ese correo.</value>
+    <comment>Earnings, the payout wallet disconnect refused because the account has no sign-in email to send the confirmation code to.</comment>
+  </data>
+  <data name="wallet_disconnect_send_code" xml:space="preserve">
+    <value>Enviarme un código por correo</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: the button that emails the confirmation code to the account's sign-in addresses.</comment>
+  </data>
+  <data name="wallet_disconnect_title" xml:space="preserve">
+    <value>¿Desconectar tu cartera de pagos?</value>
+    <comment>Earnings, the dialog that disconnects the payout wallet: its title.</comment>
+  </data>
+  <data name="wallet_disconnected" xml:space="preserve">
+    <value>Cartera desconectada. Tus ganancias no se pueden pagar hasta que conectes una cartera de pagos.</value>
+    <comment>Earnings, after the payout wallet was disconnected: the confirmation, saying plainly that earnings can't be paid out now.</comment>
+  </data>
   <data name="wallet_looks_new_warning" xml:space="preserve">
     <value>Esta dirección todavía no tiene actividad en la cadena de Bittensor. Parece una cartera nueva. Asegúrate de que es tuya antes de continuar.</value>
     <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
@@ -9787,6 +9927,10 @@ como debería ser.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Esta cartera aún no está vinculada a una red. Elige un nombre de red para crear una.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_none_no_payout" xml:space="preserve">
+    <value>No hay cartera de pagos. Tus ganancias no se pueden pagar hasta que conectes una.</value>
+    <comment>Earnings, Bittensor wallet card with no wallet connected: says plainly that earnings can't be paid out without a payout wallet.</comment>
   </data>
   <data name="wallet_not_retroactive" xml:space="preserve">
     <value>Conecta una cartera para ganar SN25α a partir de la próxima época. Las épocas anteriores no se liquidan de forma retroactiva.</value>
