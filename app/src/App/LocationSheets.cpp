@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include "ConnectionRegionSheet.h"  // RegionDisplayName: a country's name in the reader's language
 #include "LocationFeed.h"
 #include "Localization.h"
 #include "Log.h"
@@ -49,6 +50,17 @@ constexpr std::wstring_view kPrivacyGlyph = L"\uE72E";    // Lock (strong privac
 constexpr std::wstring_view kProvidingGlyph = L"\uE774";  // Globe (providing peer)
 
 hstring H(std::string const& s) { return winrt::to_hstring(s); }
+
+// The name a location row shows (connection_region::LocationDisplayName): a
+// country in the app's language, the connection region picker's name for its
+// code; the server's name otherwise.
+hstring LocationName(const urnet::ConnectLocation& location) {
+  const bool isCountry =
+      location.location_type && *location.location_type == urnet::LocationTypeCountry;
+  return hstring{connection_region::LocationDisplayName(
+      isCountry, location.country_code.value_or(std::string()),
+      Widen(location.name.value_or(std::string())), RegionDisplayName)};
+}
 
 // A UI string from the shared localization store, by key id (Localization.h).
 hstring Loc(std::string_view key) { return hstring{Localized(key)}; }
@@ -354,7 +366,7 @@ Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& locatio
   StackPanel text;
   text.Spacing(2);
   text.VerticalAlignment(VerticalAlignment::Center);
-  text.Children().Append(MakeName(H(location.name.value_or(std::string()))));
+  text.Children().Append(MakeName(LocationName(location)));
   const int providerCount = location.provider_count.value_or(0);
   if (!note.empty()) {
     text.Children().Append(MakeText(note, 12, MutedBrush(), true));
@@ -858,7 +870,7 @@ void NetworkPage::AppendLocationSpecs(std::vector<LocationListSpec>& specs,
     const int providers = location.provider_count.value_or(0);
     LocationListSpec spec;
     spec.key = LocationRowKey(location);
-    spec.title = H(location.name.value_or(std::string()));
+    spec.title = LocationName(location);
     spec.meta = 0 < providers
                     ? hstring{Plural("provider_count", static_cast<int64_t>(providers))}
                     : hstring{};
@@ -1146,7 +1158,7 @@ void NetworkPage::RenderDetail() {
       for (int64_t i = 0; i < shown; ++i) {
         auto const& location = (*locations_->Countries)[static_cast<size_t>(i)];
         const int providers = location.provider_count.value_or(0);
-        auto row = MakeRow(H(location.name.value_or(std::string())),
+        auto row = MakeRow(LocationName(location),
                            0 < providers
                                ? hstring{Plural("provider_count",
                                                 static_cast<int64_t>(providers))}
@@ -1163,7 +1175,7 @@ void NetworkPage::RenderDetail() {
     }
   } else {
     const auto& location = *selected;
-    const hstring name = H(location.name.value_or(std::string()));
+    const hstring name = LocationName(location);
     value("name_label", name);
     w_.NetworkPaneBMeta().Text(name);
     const int providers = location.provider_count.value_or(0);
@@ -1174,7 +1186,11 @@ void NetworkPage::RenderDetail() {
               hstring{Plural("provider_count", static_cast<int64_t>(providers))})
               .root);
     }
-    value("country", H(location.country.value_or(std::string())));
+    // a city's or region's country, in the app's language as the list names it
+    value("country", hstring{connection_region::LocationDisplayName(
+                         true, location.country_code.value_or(std::string()),
+                         Widen(location.country.value_or(std::string())),
+                         RegionDisplayName)});
     // "Regions"/"Cities" are the store's bucket headers, not field labels, and
     // there is no singular key for either. Used here rather than inventing
     // "Region"/"City" - reported for the store.

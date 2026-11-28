@@ -89,6 +89,20 @@ inline std::vector<Row> PickerRows(const std::vector<std::string>& sdkCodes,
   return rows;
 }
 
+// The name the location list shows for a location (support inbox 8621). A
+// country reads in the app's language: `nameOf` its code, the platform's name
+// the picker rows use, so the list and the picker name a country alike. The
+// server's name stays the fallback, for a code the platform does not name
+// (`nameOf` answers "") and for every region, city, group and device, which
+// the platform cannot name.
+inline std::wstring LocationDisplayName(bool isCountry, std::string_view countryCode,
+                                        const std::wstring& serverName,
+                                        const std::function<std::wstring(const std::string&)>& nameOf) {
+  if (!isCountry || countryCode.size() != 2 || !nameOf) return serverName;
+  std::wstring name = nameOf(Lower(countryCode));
+  return name.empty() ? serverName : name;
+}
+
 // The row a stored value selects; a value the picker does not list (a region
 // whose recommendation a later sdk dropped) shows as Other / Undisclosed, row 0.
 inline size_t SelectedRow(const std::vector<Row>& rows, std::string_view stored) {
