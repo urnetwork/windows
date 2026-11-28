@@ -4781,6 +4781,18 @@ void SdkHost::SubscribeDrawer() {
       [this](std::optional<urnet::ExtenderProvideStatus> status) {
         PublishExtenderProvideStatus(std::move(status));
       }));
+  // The sharing limits under the provide group (sdk provide_share.go; owner,
+  // 2026-11-28): the device's status, the limits in force with this month's
+  // data against them. Relayed by the DeviceRemote through the rpc listener
+  // registry like the client limit status, and pushed at once for a change of
+  // the limits, the month or the budget, at most once a second while the data
+  // grows, never on registration, so the seed below is the first reading. A
+  // device process too old to have the listener keeps its session and answers
+  // the getter.
+  presentationSubs_.push_back(device_->addProvideShareStatusChangeListener(
+      [this](std::optional<urnet::ProvideShareStatus> status) {
+        if (onProvideShareStatus_) onProvideShareStatus_(std::move(status));
+      }));
   // The view controller behind the account section (K6, K7). Opened with the
   // rest of the drawer so its lifetime is the session's, and deliberately NOT
   // started: start() only subscribes it to the device's extender status -- a
@@ -4822,6 +4834,11 @@ void SdkHost::SubscribeDrawer() {
     PublishExtenderProvideStatus(
         ReadSdkList(loggedExtenderProvideStatus, "getExtenderProvideStatus",
                     [&] { return device_->getExtenderProvideStatus(); }));
+  }
+  if (onProvideShareStatus_) {
+    static std::atomic<bool> loggedProvideShareStatus{false};
+    onProvideShareStatus_(ReadSdkList(loggedProvideShareStatus, "getProvideShareStatus",
+                                      [&] { return device_->getProvideShareStatus(); }));
   }
 }
 
@@ -5753,6 +5770,10 @@ void SdkHost::ClearDrawer(bool sessionEnding) {
   // the next presentation's reads confirm them. The charts and the bar empty
   // either way, and refill from the next tick.
   if (sessionEnding && onExtenderProvideStatus_) onExtenderProvideStatus_({});
+  // The sharing limits the same way: with no session there is no device to
+  // read or write them, and a window that only hid keeps the last status until
+  // the next presentation's seed replaces it.
+  if (sessionEnding && onProvideShareStatus_) onProvideShareStatus_(std::nullopt);
   if (onProviderThroughput_) {
     ProviderThroughputSnapshot empty;
     empty.providerDistribution = TransportDistributionSnapshot{};
@@ -6676,6 +6697,32 @@ void SdkHost::SetProvideExtenderPortMapping(bool on) {
     // replaces it, even one equal to the last published.
     std::scoped_lock drawerLock(drawerMutex_);
     extenderProvideRepublish_ = true;
+  });
+}
+
+void SdkHost::SetProvideShareLimits(std::optional<int64_t> maxBytesPerSecond,
+                                    std::optional<int64_t> monthlyByteCount) {
+  PostWrite("set provide share limits", [this, maxBytesPerSecond, monthlyByteCount] {
+    std::scoped_lock lock(mutex_);
+    // no session, no device to keep them: the pickers are hidden then
+    if (!device_) return;
+    try {
+      // Both limits go in one write, so the one not chosen is the device's,
+      // read here after every write before this one (a write still queued for
+      // the device process reads back as its value), never the page's copy.
+      std::optional<urnet::ProvideShareLimits> limits = device_->getProvideShareLimits();
+      if (!limits) limits = urnet::ProvideShareLimits{};
+      if (maxBytesPerSecond) limits->max_bytes_per_second = *maxBytesPerSecond;
+      if (monthlyByteCount) limits->monthly_byte_count = *monthlyByteCount;
+      // The device keeps them in its space and applies them at once, and its
+      // status listener tells the page; detached, the DeviceRemote queues them
+      // for the next sync.
+      device_->setProvideShareLimits(limits);
+      LogInfo("sdkhost: provide share limits set: {} bytes per second, {} bytes a month",
+              limits->max_bytes_per_second, limits->monthly_byte_count);
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: set provide share limits failed: {}", e.what());
+    }
   });
 }
 

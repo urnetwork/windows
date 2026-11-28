@@ -1048,6 +1048,17 @@ provide_mode
 provide_mode_always_description
 provide_mode_auto_description
 provide_mode_network_description
+provide_share_limit_reached
+provide_share_limits
+provide_share_limits_help
+provide_share_max_speed
+provide_share_monthly_limit
+provide_share_no_limit
+provide_share_speed_mbps
+provide_share_used
+provide_share_used_of_limit
+provided_in_epoch
+provided_not_paid_no_wallet
 provider_connected_duration_hours
 provider_connected_duration_minutes
 provider_connected_duration_seconds
@@ -1463,6 +1474,8 @@ unclaimed
 unencrypted_dns
 unknown
 unlink_referral_network
+unpaid_data_provided
+unpaid_data_provided_help
 unstable_providers_warning
 upd_auto_check
 upd_auto_check_note

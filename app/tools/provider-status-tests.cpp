@@ -3,9 +3,10 @@
 // histogram's bars, total and empty state; the states table (loading,
 // unavailable, hidden, empty, bars, and when Why? and the server's reason
 // join); the line under the provide mode row, local reason first; every Why?
-// row's label, value, help and tint; the locale percent; and the readings a
-// status read on the api keeps for the provider-only device (Readings), which
-// apply each answer as the sdk's controller applies a poll.
+// row's label, value, help and tint; the SN25 data, this device's lines and
+// when the network's unpaid data provided shows; the locale percent; and the
+// readings a status read on the api keeps for the provider-only device
+// (Readings), which apply each answer as the sdk's controller applies a poll.
 //
 //   c++ -std=c++20 -I ../src/App provider-status-tests.cpp -o /tmp/provider-status-tests && /tmp/provider-status-tests
 //
@@ -66,6 +67,7 @@ using ReasonLine = urnet::ProviderStatusReasonLine;
 using Number = urnet::ProviderRankingNumber;
 using Country = urnet::ProviderStatusCountry;
 using Appearances = urnet::ProviderAppearanceHistogram;
+using Provided = urnet::ProviderStatusProvided;
 using Status = urnet::ProviderStatus;
 #else
 // The fields of the sdk's structs, by the generated wrapper's names and types.
@@ -102,6 +104,11 @@ struct Appearances {
   int64_t bucket_seconds = 0;
   std::optional<std::vector<int64_t>> appearances_per_minute;
 };
+struct Provided {
+  int64_t epoch = 0;
+  int64_t usage_byte_count = 0;
+  std::string payout;
+};
 struct Status {
   std::optional<std::string> client_id;
   std::string reason;
@@ -110,15 +117,24 @@ struct Status {
   std::optional<Country> country;
   std::optional<std::string> evaluate_time;
   std::optional<Appearances> appearances;
+  std::optional<Provided> provided;
 };
 #endif
 
 #if defined(URNW_PROVIDER_STATUS_TESTS_SDK)
+using NetworkProvided = urnet::ProviderStatusNetworkProvided;
 using Result = urnet::GetProviderStatusResult;
 #else
+struct NetworkProvided {
+  int64_t epoch = 0;
+  int64_t usage_byte_count = 0;
+  int64_t unpaid_byte_count = 0;
+  std::optional<bool> truncated;
+};
 struct Result {
   std::optional<std::vector<Status>> providers;
   std::optional<bool> truncated;
+  std::optional<NetworkProvided> provided;
 };
 #endif
 
@@ -179,6 +195,25 @@ Status WithCounts(Status status, std::vector<int64_t> counts) {
   appearances.appearances_per_minute = std::move(counts);
   status.appearances = appearances;
   return status;
+}
+
+// the device's data in the newest settled SN25 epoch, as the server sends it
+Status WithProvided(Status status, int64_t epoch, int64_t byteCount, const std::string& payout) {
+  Provided provided;
+  provided.epoch = epoch;
+  provided.usage_byte_count = byteCount;
+  provided.payout = payout;
+  status.provided = provided;
+  return status;
+}
+
+// the network's data in the same epoch, as the api's answer carries it
+NetworkProvided MakeNetworkProvided(int64_t epoch, int64_t byteCount, int64_t unpaidByteCount) {
+  NetworkProvided provided;
+  provided.epoch = epoch;
+  provided.usage_byte_count = byteCount;
+  provided.unpaid_byte_count = unpaidByteCount;
+  return provided;
 }
 
 // the English store values the values read, with {0} and {1} placeholders
@@ -275,6 +310,17 @@ void CheckSections(ps::Sections want, ps::Sections got, const std::string& what)
 void CheckLine(const ps::Line& want, const ps::Line& got, const std::string& what) {
   Check(want == got, what + ": want {" + want.key + "|" + want.text + "}, got {" + got.key + "|" +
                          got.text + "}");
+}
+
+std::string ProvidedName(const ps::ProvidedLines& lines) {
+  if (!lines.shown) return "nothing";
+  return "epoch " + std::to_string(lines.epoch) + ", " + std::to_string(lines.byteCount) + " B" +
+         (lines.notPaid ? ", not paid" : "");
+}
+
+void CheckProvided(const ps::ProvidedLines& want, const ps::ProvidedLines& got,
+                   const std::string& what) {
+  Check(want == got, what + ": want " + ProvidedName(want) + ", got " + ProvidedName(got));
 }
 
 // the twelve reason codes (urnet::ProviderStatusReason*)
@@ -637,6 +683,66 @@ int main() {
           "api: a callback with a result applies it");
   }
 
+  // ---- the SN25 data (owner decision 2026-11-28, feature 14) ----
+  {
+    const auto lines = [](const Status& status) {
+      return ps::ProvidedLinesFor(std::optional<Status>(status));
+    };
+    CheckProvided({}, ps::ProvidedLinesFor(std::optional<Status>{}), "provided: no status");
+    CheckProvided({}, lines(MakeStatus("none", "")),
+                  "provided: a status without the figures (a server before them)");
+    CheckProvided({}, lines(WithProvided(MakeStatus("none", ""), 0, 0, "none")),
+                  "provided: no settled epoch yet");
+    CheckProvided({}, lines(WithProvided(MakeStatus("none", ""), 0, 4096, "unpaid")),
+                  "provided: epoch 0 says nothing, whatever else it carries");
+    CheckProvided({true, 1234, 5'368'709'120, false},
+                  lines(WithProvided(MakeStatus("none", ""), 1234, 5'368'709'120, "paid")),
+                  "provided: paid to the payout wallet");
+    CheckProvided({true, 1234, 42, false}, lines(WithProvided(MakeStatus("slow", ""), 1234, 42, "head")),
+                  "provided: earned through the Top 200 seat");
+    CheckProvided({true, 1234, 0, false}, lines(WithProvided(MakeStatus("none", ""), 1234, 0, "none")),
+                  "provided: an epoch that counted nothing for the device");
+    // past 2^53, where a double would round the figure
+    CheckProvided({true, 1235, 9'007'199'254'740'993, true},
+                  lines(WithProvided(MakeStatus("none", ""), 1235, 9'007'199'254'740'993, "unpaid")),
+                  "provided: not paid, no payout wallet");
+    CheckProvided({true, 1235, 7, false}, lines(WithProvided(MakeStatus("none", ""), 1235, 7, "Unpaid")),
+                  "provided: the payout is the sdk's exact value");
+
+    Check(!ps::UnpaidShown(0), "unpaid: nothing without a settled epoch");
+    Check(!ps::UnpaidShown(-1), "unpaid: nothing for a negative epoch");
+    Check(ps::UnpaidShown(1) && ps::UnpaidShown(1234), "unpaid: shown for a settled epoch, even at 0 B");
+
+    // the provider-only device's readings take the answer's figures as the
+    // controller takes a poll's
+    const std::string self = "018f2b1e-0000-7000-8000-00000000c0de";
+    Status own = MakeStatus("none", "");
+    own.client_id = self;
+    Result answered;
+    answered.providers = std::vector<Status>{WithProvided(own, 1235, 1024, "unpaid")};
+    answered.provided = MakeNetworkProvided(1235, 80'000, 9'007'199'254'740'993);
+    ps::Readings<Status> readings;
+    CheckEq(0, readings.providedEpoch, "api: no figures before an answer");
+    CheckEq(0, readings.unpaidByteCount, "api: no unpaid data before an answer");
+    readings.Answered(answered, self);
+    CheckEq(1235, readings.providedEpoch, "api: the answer's epoch");
+    CheckEq(9'007'199'254'740'993, readings.unpaidByteCount, "api: the answer's unpaid data");
+    CheckProvided({true, 1235, 1024, true}, ps::ProvidedLinesFor(readings.status),
+                  "api: this device's figure rides its row");
+    readings.Failed("timeout");
+    CheckEq(1235, readings.providedEpoch, "api: a failed poll keeps the figures");
+    CheckEq(9'007'199'254'740'993, readings.unpaidByteCount, "api: a failed poll keeps the unpaid data");
+    Result without;
+    without.providers = std::vector<Status>{own};
+    readings.Answered(without, self);
+    CheckEq(0, readings.providedEpoch, "api: a later answer without the figures clears them");
+    CheckEq(0, readings.unpaidByteCount, "api: and its unpaid data");
+    readings.Answered(answered, self);
+    readings.Answered(answered, "018f2b1e-0000-7000-8000-00000000ffff");
+    Check(!readings.status && readings.providedEpoch == 1235,
+          "api: the network's figures do not need a row for this device");
+  }
+
   // ---- the locale percent ----
   {
     CheckText("82%", ps::FormatPercent(0.82, 1, "%"), "pattern 1 (en)");
@@ -734,6 +840,35 @@ int main() {
                   "sdk: a row with an empty histogram");
   }
   {
+    // the SN25 data as the api hands it over, each row's and the network's,
+    // through the header's own GetProviderStatusResult, past 2^53
+    const std::string self = "018f2b1e-0000-7000-8000-00000000c0de";
+    const urnet::GetProviderStatusResult result = nlohmann::json::parse(R"({
+      "providers": [
+        {"client_id": "018f2b1e-0000-7000-8000-000000000001", "reason": "none", "reason_text": "",
+         "provided": {"epoch": 1235, "usage_byte_count": 2048, "payout": "paid"}},
+        {"client_id": "018f2b1e-0000-7000-8000-00000000c0de", "reason": "none", "reason_text": "",
+         "provided": {"epoch": 1235, "usage_byte_count": 9007199254740993, "payout": "unpaid"}}
+      ],
+      "provided": {"epoch": 1235, "usage_byte_count": 9007199254743041,
+                   "unpaid_byte_count": 9007199254740993}
+    })").get<urnet::GetProviderStatusResult>();
+    ps::Readings<urnet::ProviderStatus> readings;
+    readings.Fetched(std::optional<urnet::GetProviderStatusResult>{result}, std::nullopt, self);
+    CheckEq(1235, readings.providedEpoch, "sdk: the network's epoch");
+    CheckEq(9'007'199'254'740'993, readings.unpaidByteCount, "sdk: the network's unpaid data");
+    CheckProvided({true, 1235, 9'007'199'254'740'993, true}, ps::ProvidedLinesFor(readings.status),
+                  "sdk: this device's figure, not paid");
+    // a server before the figures
+    const urnet::GetProviderStatusResult older = nlohmann::json::parse(R"({
+      "providers": [{"client_id": "018f2b1e-0000-7000-8000-00000000c0de", "reason": "none",
+                     "reason_text": ""}]
+    })").get<urnet::GetProviderStatusResult>();
+    readings.Fetched(std::optional<urnet::GetProviderStatusResult>{older}, std::nullopt, self);
+    CheckEq(0, readings.providedEpoch, "sdk: a server before the figures reads as none");
+    CheckProvided({}, ps::ProvidedLinesFor(readings.status), "sdk: and has no figure for the device");
+  }
+  {
     // the sdk's constants are the codes and names the presentation knows
     const std::vector<std::string> sdkReasons = {
         urnet::ProviderStatusReasonNotProviding,   urnet::ProviderStatusReasonNotConnected,
@@ -757,6 +892,14 @@ int main() {
     }
     Check(urnw::provideridle::kProvideModePublic == urnet::ProvideModePublic,
           "the idle reason's public tier is urnet::ProvideModePublic");
+    Check(ps::kProvidedPayoutUnpaid == urnet::ProviderStatusProvidedUnpaid,
+          "not paid is the sdk's urnet::ProviderStatusProvidedUnpaid");
+    for (const char* payout : {urnet::ProviderStatusProvidedPaid, urnet::ProviderStatusProvidedHead,
+                               urnet::ProviderStatusProvidedNone}) {
+      Check(!ps::ProvidedLinesFor(std::optional<Status>(WithProvided(MakeStatus("none", ""), 1, 1, payout)))
+                 .notPaid,
+            std::string("the sdk's payout ") + payout + " is not the not-paid line");
+    }
   }
 #endif
 

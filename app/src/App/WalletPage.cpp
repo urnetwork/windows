@@ -590,6 +590,9 @@ void WalletPage::Initialize() {
   w_.WalletProviderWhyButton().Click([weak](auto const&, auto const&) {
     if (auto self = weak.get()) self->wallet().ToggleProviderWhy();
   });
+  // SN25 did not pay for this device's data: amber, as Why? tints what holds
+  // the device back (the markup has no amber brush)
+  w_.WalletProviderNotPaidText().Foreground(colors::MakeBrush(colors::kUrAmber));
   // Seed the read-only row, the running role and the provider gate from
   // SdkHost's caches, so a window built long after the session bootstrapped
   // paints what is known on its first frame. Cache reads only: no rpc, no mutex_.
@@ -702,6 +705,9 @@ void WalletPage::ApplyStrings() {
   w_.WalletProviderWhyLabel().Text(Loc("provider_status_why"));
   automation::AutomationProperties::SetName(w_.WalletProviderWhyButton(),
                                             Loc("provider_status_why"));
+  // the SN25 data's label; its lines and figure follow the language through
+  // ApplyProviderStatus, which the sections' repaint below runs
+  w_.WalletUnpaidProvidedLabel().Text(Loc("unpaid_data_provided"));
   ApplyStatsSections(/*force=*/true);
   w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
   w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
@@ -5438,6 +5444,8 @@ void WalletPage::ReconcileProviderStatus() {
     providerStatusLoaded_ = false;
     providerStatusError_.clear();
     providerStatus_.reset();
+    providedEpoch_ = 0;
+    unpaidByteCount_ = 0;
     if (providerOnly) TakeProviderOnlyReadings(Sdk().CurrentProviderOnlyStatus());
     changed = true;
   }
@@ -5502,6 +5510,8 @@ void WalletPage::CloseProviderStatus(bool deviceAlive) {
   providerStatusLoaded_ = false;
   providerStatusError_.clear();
   providerStatus_.reset();
+  providedEpoch_ = 0;
+  unpaidByteCount_ = 0;
 }
 
 void WalletPage::ReadProviderStatus() {
@@ -5515,6 +5525,9 @@ void WalletPage::ReadProviderStatus() {
     }
     providerStatusError_ = std::move(error);
     providerStatus_ = providerStatusVc_->getProviderStatus();
+    // the network's data in the newest settled SN25 epoch, 0 without one
+    providedEpoch_ = providerStatusVc_->getProvidedEpoch();
+    unpaidByteCount_ = providerStatusVc_->getUnpaidByteCount();
   } catch (std::exception const& e) {
     // a malformed document must never take the page down
     urnw::LogError("provider status: reading the controller failed: {}", e.what());
@@ -5541,6 +5554,8 @@ void WalletPage::TakeProviderOnlyReadings(urnw::ProviderOnlyStatus const& status
   providerStatusLoaded_ = status.loaded;
   providerStatusError_ = status.error;
   providerStatus_ = status.status;
+  providedEpoch_ = status.providedEpoch;
+  unpaidByteCount_ = status.unpaidByteCount;
 }
 
 providerstatus::View WalletPage::ProviderStatusView() const {
@@ -5587,6 +5602,37 @@ void WalletPage::ApplyProviderStatus() {
   }
   if (providerWhyOpen_) RebuildProviderWhy();
   ApplyProvideReason();
+  ApplyProviderProvided();
+}
+
+void WalletPage::ApplyProviderProvided() {
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  const auto shown = [](bool visible) {
+    return visible ? Visibility::Visible : Visibility::Collapsed;
+  };
+  // This device's data in the newest settled SN25 epoch, from its status, and
+  // under it whether SN25 paid for it. Data, never an amount.
+  const providerstatus::ProvidedLines lines = providerstatus::ProvidedLinesFor(providerStatus_);
+  if (lines.shown) {
+    w_.WalletProviderProvidedText().Text(hstring{urnw::Format(
+        "provided_in_epoch", lines.epoch, urnw::Widen(urnw::FormatByteCountCompact(lines.byteCount)))});
+  }
+  kit::SetTextOrCollapse(w_.WalletProviderNotPaidText(),
+                         lines.notPaid ? Loc("provided_not_paid_no_wallet") : hstring{});
+  w_.WalletProviderProvidedRow().Visibility(shown(lines.shown));
+  // The network's unpaid data provided, over all its devices, once there is a
+  // settled epoch: the label, the figure and what it is. One fact, read once:
+  // "Unpaid data provided, 1.20 GiB".
+  const bool unpaid = providerstatus::UnpaidShown(providedEpoch_);
+  if (unpaid) {
+    const hstring value{urnw::Widen(urnw::FormatByteCountCompact(unpaidByteCount_))};
+    w_.WalletUnpaidProvidedValue().Text(value);
+    automation::AutomationProperties::SetName(w_.WalletUnpaidProvidedValue(),
+                                              Loc("unpaid_data_provided") + L", " + value);
+    w_.WalletUnpaidProvidedHelp().Text(
+        hstring{urnw::Format("unpaid_data_provided_help", providedEpoch_)});
+  }
+  w_.WalletUnpaidProvidedRow().Visibility(shown(unpaid));
 }
 
 void WalletPage::RebuildProviderWhy() {

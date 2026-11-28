@@ -292,6 +292,17 @@ class ConnectPage {
   // switch, and only where its own write has a taker (PortMappingRowModelFor).
   // Hidden, never disabled (N1).
   void ApplyPortMappingRow();
+  // The sharing limits under the provide group (sdk provide_share.go; owner,
+  // 2026-11-28): the group, its two pickers and the line under them, from
+  // provideShareStatus_, the one writer of all of them. Hidden, never disabled,
+  // as the extender rows are (N1), while there is no session's status: the
+  // limits are read and written through the session's device. `restring`
+  // rebuilds the pickers' choices in a new language.
+  void ApplyProvideShareRows(bool restring);
+  // A picker's choice: written through SdkHost with the other limit as the
+  // device holds it, and kept as the page's guess until the next pushed status.
+  void OnProvideShareSpeedChanged();
+  void OnProvideShareMonthlyChanged();
   // R3: the activity pane's list vs its empty state. The empty state is a
   // centred line INSIDE the full-height pane, not a card, so this only swaps
   // which of the two is drawn in that same area.
@@ -786,6 +797,14 @@ class ConnectPage {
   urnw::ExtenderProvideStatusView extenderProvideView_;
   // whether the device is providing (LiveStats), which the switch's guess reads
   bool provideEnabled_ = false;
+  // ---- the sharing limits (sdk provide_share.go) ----
+  // The device's last pushed status, or a picker's guess over it until the next
+  // push; nullopt with no session, which hides the group.
+  std::optional<urnet::ProvideShareStatus> provideShareStatus_;
+  // the values each picker lists, in its order (provideshare::SpeedChoices,
+  // MonthlyChoices); empty while the group is hidden, so a shown group rebuilds
+  std::vector<int64_t> provideShareSpeedChoices_;
+  std::vector<int64_t> provideShareMonthlyChoices_;
   bool drawerAnimated_ = false;    // entrance plays once per window
   // ---- the fold-gated sheet doors (the fold rule; BuildFoldDoors) -----------
   // One row of the pane A section, kept for re-stringing: the rows are built
