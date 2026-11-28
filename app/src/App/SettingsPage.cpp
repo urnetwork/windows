@@ -621,6 +621,9 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
   TextBlock unused{nullptr};
   auto blockedButton = NavRow(card, Loc("blocked_locations_2"), unused);
   blockedButton.Click([this](auto const&, auto const&) { ShowBlockedLocationsSheet(); });
+  // the places a connection's picks avoid
+  auto excludedButton = NavRow(card, Loc("excluded_exit_locations"), unused);
+  excludedButton.Click([this](auto const&, auto const&) { ShowExcludedExitLocationsSheet(); });
 
   // VLESS: a server of the user's own that the client strategy also dials
   // through, for networks that block direct connections. A value of the
@@ -1782,6 +1785,20 @@ winrt::fire_and_forget SettingsPage::ShowBlockedLocationsSheet() {
   } catch (...) {
   }
   blockedSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+winrt::fire_and_forget SettingsPage::ShowExcludedExitLocationsSheet() {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    excludedExitSheet_ =
+        urnw::ExcludedExitLocationsSheet::Create(self->Content().XamlRoot(), Sdk());
+    co_await excludedExitSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  excludedExitSheet_.reset();
   w_.SetSheetOpen(false);
 }
 

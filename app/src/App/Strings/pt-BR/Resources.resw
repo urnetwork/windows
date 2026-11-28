@@ -4542,7 +4542,7 @@ maneira certa</value>
   </data>
   <data name="export_logs" xml:space="preserve">
     <value>Exportar logs</value>
-    <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
+    <comment>Settings: on android and apple the row that shares the app's and the tunnel's recent logs through the share sheet; on windows and linux the note under Save logs, and the title of the dialog that saves them.</comment>
   </data>
   <data name="extender" xml:space="preserve">
     <value>Extensor</value>
@@ -6158,7 +6158,7 @@ enviamos para você verificar sua identidade.</value>
   </data>
   <data name="no_log_files_found" xml:space="preserve">
     <value>Nenhum arquivo de log encontrado</value>
-    <comment>Call to action</comment>
+    <comment>Shown when there is no log file: after Save logs on windows and linux, and after Export Logs and in View Logs on android and apple.</comment>
   </data>
   <data name="no_open_contracts" xml:space="preserve">
     <value>Nenhum contrato aberto</value>
@@ -9649,6 +9649,10 @@ como ela deveria ser.</value>
     <value>E-mail ou telefone</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>Verifique o formato do número de telefone. Use o código do país e apenas dígitos, como em +15551234567.</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>Digite seu número de telefone ou e-mail</value>
     <comment>Login initial</comment>
@@ -9730,6 +9734,10 @@ como ela deveria ser.</value>
   <data name="via_exit" xml:space="preserve">
     <value>via {}</value>
     <comment>Android app string: via exit.</comment>
+  </data>
+  <data name="view_logs" xml:space="preserve">
+    <value>Ver logs</value>
+    <comment>Settings on android and apple: the row that opens a read-only view of the last lines of the app's and the tunnel's logs, and the title of that view.</comment>
   </data>
   <data name="vless_allow_insecure" xml:space="preserve">
     <value>Permitir um certificado inseguro</value>

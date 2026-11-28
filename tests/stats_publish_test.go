@@ -335,7 +335,10 @@ func TestStatsPushReadsNothingOnTheUiThread(t *testing.T) {
 	sdkHost := stripComments(readAppSource(t, "SdkHost.cpp"))
 	read := definitionBody(t, "SdkHost.cpp", sdkHost, "LiveStats SdkHost::ReadStats()")
 	for _, pattern := range []string{
-		`s\.locationName = SelectedLocationName\(\s*std::move\(s\.locationName\), connectVc_ \? connectVc_->getSelectedLocation\(\) : loc,\s*connectedPeers\);`,
+		// the selection, read once: the connect page's name and its favorite
+		// star are both of it
+		`s\.selectedLocation = connectVc_ \? connectVc_->getSelectedLocation\(\) : loc;`,
+		`s\.locationName =\s*SelectedLocationName\(std::move\(s\.locationName\), s\.selectedLocation, connectedPeers\);`,
 		`s\.remoteConnected = device_->getRemoteConnected\(\);`,
 		`s\.connectedPeerCount = `,
 	} {

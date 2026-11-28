@@ -291,6 +291,24 @@ void LocationChooserSheet::Render() {
     sections_.Children().Append(box);
   }
 
+  // 1a. favorites (sdk exit_location_preferences.go), while not searching. A
+  //     favorite exit is one member's device, and its row says so.
+  if (!searching) {
+    const auto favorites = sdk_.FavoriteLocations();
+    if (!favorites.empty()) {
+      sections_.Children().Append(SectionHeader(Loc("favorites")));
+      StackPanel box;
+      box.Spacing(4);
+      for (const auto& favorite : favorites) {
+        box.Children().Append(MakeLocationRow(favorite, IsLocationSelected(selected, favorite),
+                                              urnet::isFavoriteExit(favorite)
+                                                  ? Loc("favorite_exit_note")
+                                                  : hstring{}));
+      }
+      sections_.Children().Append(box);
+    }
+  }
+
   // 2. searching -> best search matches; idle -> the single best-available row
   //    (both apps ignore the SDK Promoted list; the header is just a label)
   if (searching) {
@@ -337,7 +355,8 @@ void LocationChooserSheet::Render() {
   status_.Visibility(notice.empty() ? Visibility::Collapsed : Visibility::Visible);
 }
 
-Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& location, bool selected) {
+Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& location, bool selected,
+                                           hstring const& note) {
   Grid row = MakeRowGrid();
 
   auto dot = MakeDot(LocationColor(location), 10);
@@ -349,7 +368,9 @@ Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& locatio
   text.VerticalAlignment(VerticalAlignment::Center);
   text.Children().Append(MakeName(LocationName(location)));
   const int providerCount = location.provider_count.value_or(0);
-  if (0 < providerCount) {
+  if (!note.empty()) {
+    text.Children().Append(MakeText(note, 12, MutedBrush(), true));
+  } else if (0 < providerCount) {
     // CLDR plural from the store; never inflect the count here
     text.Children().Append(MakeText(
         hstring{Plural("provider_count", static_cast<int64_t>(providerCount))}, 12, MutedBrush()));

@@ -4514,7 +4514,7 @@
   </data>
   <data name="export_logs" xml:space="preserve">
     <value>匯出日誌</value>
-    <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
+    <comment>Settings: on android and apple the row that shares the app's and the tunnel's recent logs through the share sheet; on windows and linux the note under Save logs, and the title of the dialog that saves them.</comment>
   </data>
   <data name="extender" xml:space="preserve">
     <value>擴展器</value>
@@ -6095,7 +6095,7 @@
   </data>
   <data name="no_log_files_found" xml:space="preserve">
     <value>找不到日誌檔案</value>
-    <comment>Call to action</comment>
+    <comment>Shown when there is no log file: after Save logs on windows and linux, and after Export Logs and in View Logs on android and apple.</comment>
   </data>
   <data name="no_open_contracts" xml:space="preserve">
     <value>沒有進行中的合約</value>
@@ -9502,6 +9502,10 @@
     <value>電郵或電話</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>請檢查電話號碼格式。請使用國家代碼，並且只輸入數字，例如 +15551234567。</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>輸入你的電話號碼或電郵</value>
     <comment>Login initial</comment>
@@ -9579,6 +9583,10 @@
   <data name="via_exit" xml:space="preserve">
     <value>經由 {}</value>
     <comment>Android app string: via exit.</comment>
+  </data>
+  <data name="view_logs" xml:space="preserve">
+    <value>查看日誌</value>
+    <comment>Settings on android and apple: the row that opens a read-only view of the last lines of the app's and the tunnel's logs, and the title of that view.</comment>
   </data>
   <data name="vless_allow_insecure" xml:space="preserve">
     <value>允許不安全的憑證</value>

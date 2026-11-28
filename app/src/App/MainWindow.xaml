@@ -977,28 +977,44 @@
                                               AutomationProperties.AccessibilityView="Raw" />
                                     </Button>
                                 </Border>
-                                <!-- the selected provider; the whole row opens the chooser -->
-                                <Button x:Name="LocationRow" MinHeight="48"
-                                        Style="{StaticResource UrPaneRowButtonStyle}"
-                                        Click="OnLocationRowClick">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Spacing="1"
-                                                    VerticalAlignment="Center">
-                                            <TextBlock x:Name="SelectedProviderLabel" FontSize="11"
-                                                       AutomationProperties.AccessibilityView="Raw"
-                                                       Foreground="{StaticResource UrTextMutedBrush}" />
-                                            <TextBlock x:Name="LocationText" FontSize="14"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       AutomationProperties.AccessibilityView="Raw" />
-                                        </StackPanel>
-                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;"
-                                                  Style="{StaticResource UrChevronIconStyle}" />
-                                    </Grid>
-                                </Button>
+                                <!-- the selected provider; the whole row opens the chooser.
+                                     Beside it, its favorite star
+                                     (ConnectPage::ApplyFavoriteStar). -->
+                                <Grid ColumnSpacing="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="LocationRow" MinHeight="48"
+                                            Style="{StaticResource UrPaneRowButtonStyle}"
+                                            Click="OnLocationRowClick">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="1"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock x:Name="SelectedProviderLabel" FontSize="11"
+                                                           AutomationProperties.AccessibilityView="Raw"
+                                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                                <TextBlock x:Name="LocationText" FontSize="14"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           AutomationProperties.AccessibilityView="Raw" />
+                                            </StackPanel>
+                                            <FontIcon Grid.Column="1" Glyph="&#xE76C;"
+                                                      Style="{StaticResource UrChevronIconStyle}" />
+                                        </Grid>
+                                    </Button>
+                                    <Button x:Name="FavoriteStarButton" Grid.Column="1"
+                                            Width="36" Height="36" Padding="0"
+                                            Background="Transparent" BorderThickness="0"
+                                            VerticalAlignment="Center" Visibility="Collapsed">
+                                        <FontIcon x:Name="FavoriteStarIcon"
+                                                  FontFamily="{StaticResource UrIconFontFamily}"
+                                                  FontSize="16" Glyph="&#xE734;" />
+                                    </Button>
+                                </Grid>
                                 <!-- THE primary action. Its STYLE is assigned from
                                      ConnectPage::ApplyConnectStatus, not fixed here: the
                                      disconnected state is a filled blue Connect and the

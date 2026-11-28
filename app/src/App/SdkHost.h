@@ -165,6 +165,8 @@ struct LiveStats {
   // selected connect location (empty = best available); a selected network
   // peer by its device's name (PeerLocation.h SelectedLocationName)
   std::string locationName;
+  // the selection locationName names (the connect page's favorite star)
+  std::optional<urnet::ConnectLocation> selectedLocation;
   // The connect page's peers line (req1), read here so a stats push makes no
   // SdkHost read on the UI thread: the device's rpc to the service is
   // attached (RemoteConnected), and how many devices are connected, providing
@@ -1328,6 +1330,20 @@ class SdkHost {
   // worker holds through a whole connect. Best available (nullopt) before the
   // first presentation and once the session ends.
   std::optional<urnet::ConnectLocation> SelectedLocation();
+  // ---- exit location preferences (sdk exit_location_preferences.go) ----
+  // The favorite places, collections and exits, and the excluded exit
+  // locations (countries, regions and cities a connection's picks avoid), the
+  // newest first; empty while signed out. A LocalState file, not a device
+  // call: read on the UI thread, as StoredProvideControlMode is.
+  std::vector<urnet::ConnectLocation> FavoriteLocations();
+  std::vector<urnet::ConnectLocation> ExcludedExitLocations();
+  // Keeps or forgets a favorite; false when the sdk refused it (best
+  // available, or past its bound).
+  bool SetFavoriteLocation(const urnet::ConnectLocation& location, bool favorite);
+  // Excludes or includes a place, then has the connect controller apply the
+  // change to a connection in place, on writer_ (excludedExitLocationsChanged).
+  // False when the sdk refused it.
+  bool SetExcludedExitLocation(const urnet::ConnectLocation& location, bool excluded);
   // Connect to a chosen provider location as-is: the chooser holds the typed
   // ConnectLocation (an SDK one, or one it built from a peer), so skip the json
   // round-trip that Connect(const std::string&) does.

@@ -4514,7 +4514,7 @@ cách đúng đắn</value>
   </data>
   <data name="export_logs" xml:space="preserve">
     <value>Xuất nhật ký</value>
-    <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
+    <comment>Settings: on android and apple the row that shares the app's and the tunnel's recent logs through the share sheet; on windows and linux the note under Save logs, and the title of the dialog that saves them.</comment>
   </data>
   <data name="extender" xml:space="preserve">
     <value>Bộ mở rộng</value>
@@ -6095,7 +6095,7 @@ Nhận thưởng bằng cách tạo mạng!</value>
   </data>
   <data name="no_log_files_found" xml:space="preserve">
     <value>Không tìm thấy tệp nhật ký</value>
-    <comment>Call to action</comment>
+    <comment>Shown when there is no log file: after Save logs on windows and linux, and after Export Logs and in View Logs on android and apple.</comment>
   </data>
   <data name="no_open_contracts" xml:space="preserve">
     <value>Không có hợp đồng đang mở</value>
@@ -9502,6 +9502,10 @@ như nó vốn phải thế.</value>
     <value>Email hoặc số điện thoại</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>Hãy kiểm tra định dạng số điện thoại. Dùng mã quốc gia và chỉ chữ số, ví dụ +15551234567.</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>Nhập số điện thoại hoặc email của bạn</value>
     <comment>Login initial</comment>
@@ -9579,6 +9583,10 @@ như nó vốn phải thế.</value>
   <data name="via_exit" xml:space="preserve">
     <value>qua {}</value>
     <comment>Android app string: via exit.</comment>
+  </data>
+  <data name="view_logs" xml:space="preserve">
+    <value>Xem nhật ký</value>
+    <comment>Settings on android and apple: the row that opens a read-only view of the last lines of the app's and the tunnel's logs, and the title of that view.</comment>
   </data>
   <data name="vless_allow_insecure" xml:space="preserve">
     <value>Cho phép chứng chỉ không an toàn</value>

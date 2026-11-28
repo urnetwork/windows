@@ -4514,7 +4514,7 @@
   </data>
   <data name="export_logs" xml:space="preserve">
     <value>로그 내보내기</value>
-    <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
+    <comment>Settings: on android and apple the row that shares the app's and the tunnel's recent logs through the share sheet; on windows and linux the note under Save logs, and the title of the dialog that saves them.</comment>
   </data>
   <data name="extender" xml:space="preserve">
     <value>익스텐더</value>
@@ -6094,7 +6094,7 @@
   </data>
   <data name="no_log_files_found" xml:space="preserve">
     <value>로그 파일을 찾을 수 없습니다</value>
-    <comment>Call to action</comment>
+    <comment>Shown when there is no log file: after Save logs on windows and linux, and after Export Logs and in View Logs on android and apple.</comment>
   </data>
   <data name="no_open_contracts" xml:space="preserve">
     <value>진행 중인 계약 없음</value>
@@ -9501,6 +9501,10 @@
     <value>이메일 또는 전화번호</value>
     <comment>Login initial</comment>
   </data>
+  <data name="user_auth_phone_format" xml:space="preserve">
+    <value>전화번호 형식을 확인하세요. 국가 번호를 포함해 숫자만 입력하세요(예: +15551234567).</value>
+    <comment>Login screen, under the email or phone number field (user_auth_input_label): shown when the user continues with a phone number in a format the app does not send (dashes, dots, parentheses, a leading 0, a + in the middle, another script's digits, too few or too many digits). Android shows it in a snackbar, Apple above the field. Keep the example +15551234567 exactly as written, in these digits.</comment>
+  </data>
   <data name="user_auth_placeholder" xml:space="preserve">
     <value>전화번호 또는 이메일을 입력하세요</value>
     <comment>Login initial</comment>
@@ -9578,6 +9582,10 @@
   <data name="via_exit" xml:space="preserve">
     <value>{} 경유</value>
     <comment>Android app string: via exit.</comment>
+  </data>
+  <data name="view_logs" xml:space="preserve">
+    <value>로그 보기</value>
+    <comment>Settings on android and apple: the row that opens a read-only view of the last lines of the app's and the tunnel's logs, and the title of that view.</comment>
   </data>
   <data name="vless_allow_insecure" xml:space="preserve">
     <value>안전하지 않은 인증서 허용</value>
