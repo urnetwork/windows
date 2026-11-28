@@ -123,6 +123,10 @@
     <value>Lägg till TAO för gas</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Lägg till i favoriter</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Tillhandahållande är av som standard. Välj nedan när din enhet ska tillhandahålla.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -668,6 +672,14 @@
   <data name="app_included_toast" xml:space="preserve">
     <value>{} kommer att gå via VPN</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_language" xml:space="preserve">
+    <value>Språk</value>
+    <comment>Settings, General (Android 13 and later): the row that opens the app language picker, and the picker's title. The row's value is the language the app shows, written in that language, or System default.</comment>
+  </data>
+  <data name="app_language_system_default" xml:space="preserve">
+    <value>Systemspråk</value>
+    <comment>Settings, app language picker (Android 13 and later): the first choice, and the Language row's value when it is chosen. The app follows the phone's language; every other choice is a language's own name.</comment>
   </data>
   <data name="app_pinned_toast" xml:space="preserve">
     <value>{} kommer att använda en enda leverantör</value>
@@ -4500,9 +4512,21 @@ rätt sätt</value>
     <value>Varje app du slår på får en andra startare i appmenyn, med (utanför VPN) efter namnet. En app som öppnas från den startaren kringgår VPN och kill switch. En app som redan körs stannar i VPN tills du avslutar den, och Flatpak- och Snap-appar visas inte.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Uteslut</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Exkluderad</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Uteslutna utgångsplatser</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Anslutningar använder inte utgångar på de här platserna, om du inte väljer en av dem direkt.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Utökad</value>
@@ -4760,6 +4784,14 @@ rätt sätt</value>
     <value>Besvarar DNS via det lokala nätverket medan tunnelns DNS startar. Det kan avslöja dina uppslag för det lokala nätverket och ge svar som inte stämmer med din utgångsplats. När det är av sker DNS-uppslag endast genom tunneln.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>En medlems enhet. Den kan när som helst gå offline eller lämna nätverket.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Favoriter</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>Feedback</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -4962,6 +4994,54 @@ rätt sätt</value>
   <data name="host_count.other" xml:space="preserve">
     <value>{} värdar</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>Proxy för surfzon</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>Kopiera anslutningsuppgifter</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>Enheter i din wifi-surfzon eller via USB-internetdelning kan använda URnetwork via en HTTP- eller SOCKS5-proxy på den här telefonen. Deras trafik går bara via URnetwork, så inget delas när du inte är ansluten.</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>HTTP-proxy</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>Proxyn kunde inte starta i din surfzon. En annan app kanske använder dess portar.</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>Nytt lösenord</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>Ett nytt lösenord kopplar från enheterna som använder det gamla.</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>Dela URnetwork med enheterna i din surfzon.</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>Dela med enheter i surfzonen</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>SOCKS5-proxy</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>Användarnamn</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>Slå på din wifi-surfzon eller USB-internetdelning för att börja dela.</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>för {} h sedan</value>
@@ -6060,6 +6140,10 @@ Hämta din bonus genom att skapa ett nätverk!</value>
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>Ingen EthOs-plånbok hittades</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Inga uteslutna platser ännu. Sök efter ett land, en region eller en stad för att utesluta den.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Inga installerade appar hittades. (Store-appar visas inte.)</value>
@@ -7273,6 +7357,10 @@ som körs på communityns enheter i ett stort urval av länder.</value>
     <value>Ta bort</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Ta bort från favoriter</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Ta bort regel</value>
     <comment>A button to remove a split rule.</comment>
@@ -7391,6 +7479,10 @@ som körs på communityns enheter i ett stort urval av länder.</value>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Sök appar</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Sök länder, regioner och städer</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Sök bland alla platser</value>

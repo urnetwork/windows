@@ -123,6 +123,10 @@
     <value>TAO für Gas hinzufügen</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Zu Favoriten hinzufügen</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Du kannst die Einstellung auf „Immer“ setzen, um die kostenlosen Daten schneller zu füllen.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -668,6 +672,14 @@
   <data name="app_included_toast" xml:space="preserve">
     <value>{} wird über das VPN geleitet</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_language" xml:space="preserve">
+    <value>Sprache</value>
+    <comment>Settings, General (Android 13 and later): the row that opens the app language picker, and the picker's title. The row's value is the language the app shows, written in that language, or System default.</comment>
+  </data>
+  <data name="app_language_system_default" xml:space="preserve">
+    <value>Systemsprache</value>
+    <comment>Settings, app language picker (Android 13 and later): the first choice, and the Language row's value when it is chosen. The app follows the phone's language; every other choice is a language's own name.</comment>
   </data>
   <data name="app_pinned_toast" xml:space="preserve">
     <value>{} nutzt einen einzigen Anbieter</value>
@@ -4572,9 +4584,21 @@ richtig auf</value>
     <value>Jede App, die du einschaltest, erhält im App-Menü einen zweiten Starter mit (außerhalb des VPN) hinter ihrem Namen. Eine über diesen Starter geöffnete App umgeht das VPN und den Kill switch. Eine bereits laufende App bleibt im VPN, bis du sie beendest, und Flatpak- und Snap-Apps werden nicht aufgeführt.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Ausschließen</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Ausgeschlossen</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Ausgeschlossene Exit-Standorte</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Verbindungen nutzen keine Exits an diesen Orten, außer du wählst einen davon direkt.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Ausgeklappt</value>
@@ -4832,6 +4856,14 @@ richtig auf</value>
     <value>Beantwortet DNS-Anfragen über das lokale Netzwerk, während das DNS des Tunnels startet. Dadurch können deine Abfragen im lokalen Netzwerk sichtbar werden, und die Antworten passen möglicherweise nicht zu deinem Exit-Standort. Wenn aus, wird DNS nur über den Tunnel aufgelöst.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Das Gerät eines Mitglieds. Es kann jederzeit offline gehen oder das Netzwerk verlassen.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Favoriten</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>Feedback</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -5034,6 +5066,54 @@ richtig auf</value>
   <data name="host_count.other" xml:space="preserve">
     <value>{} Hosts</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>Hotspot-Proxy</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>Verbindungsdaten kopieren</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>Geräte in deinem WLAN-Hotspot oder per USB-Tethering können URnetwork über einen HTTP- oder SOCKS5-Proxy auf diesem Telefon nutzen. Ihr Datenverkehr läuft nur über URnetwork, daher wird nichts geteilt, solange du nicht verbunden bist.</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>HTTP-Proxy</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>Der Proxy konnte auf deinem Hotspot nicht starten. Möglicherweise verwendet eine andere App seine Ports.</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>Neues Passwort</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>Ein neues Passwort trennt die Geräte, die das alte verwenden.</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>Teile URnetwork mit den Geräten in deinem Hotspot.</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>Mit Hotspot-Geräten teilen</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>SOCKS5-Proxy</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>Benutzername</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>Schalte deinen WLAN-Hotspot oder USB-Tethering ein, um mit dem Teilen zu beginnen.</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>vor {} Std.</value>
@@ -6131,6 +6211,10 @@ gesendet haben, um deine Identität zu überprüfen.</value>
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>Keine EthOs-Wallet gefunden</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Noch keine ausgeschlossenen Orte. Suche nach einem Land, einer Region oder einer Stadt, um sie auszuschließen.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Keine installierten Apps gefunden. (Store-Apps werden nicht aufgeführt.)</value>
@@ -7344,6 +7428,10 @@ das auf Community-Geräten in einer großen Auswahl an Ländern läuft.</value>
     <value>Entferne</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Aus Favoriten entfernen</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Regel entfernen</value>
     <comment>A button to remove a split rule.</comment>
@@ -7462,6 +7550,10 @@ das auf Community-Geräten in einer großen Auswahl an Ländern läuft.</value>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Apps suchen</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Länder, Regionen und Städte suchen</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Alle Standorte durchsuchen</value>

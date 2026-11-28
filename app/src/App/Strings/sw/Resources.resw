@@ -123,6 +123,10 @@
     <value>Ongeza TAO kwa ajili ya gas</value>
     <comment>State when the gas key has no TAO.</comment>
   </data>
+  <data name="add_to_favorites" xml:space="preserve">
+    <value>Ongeza kwenye vipendwa</value>
+    <comment>Accessible name and tooltip of the star button beside the selected location when it is not a favorite: keeps the location (or the exit the user stays on) in Favorites.</comment>
+  </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Unaweza kuweka chaguo kuwa "Daima" ili kujaza data ya bure haraka zaidi.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
@@ -668,6 +672,14 @@
   <data name="app_included_toast" xml:space="preserve">
     <value>{} itapitia VPN</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_language" xml:space="preserve">
+    <value>Lugha</value>
+    <comment>Settings, General (Android 13 and later): the row that opens the app language picker, and the picker's title. The row's value is the language the app shows, written in that language, or System default.</comment>
+  </data>
+  <data name="app_language_system_default" xml:space="preserve">
+    <value>Lugha ya mfumo</value>
+    <comment>Settings, app language picker (Android 13 and later): the first choice, and the Language row's value when it is chosen. The app follows the phone's language; every other choice is a language's own name.</comment>
   </data>
   <data name="app_pinned_toast" xml:space="preserve">
     <value>{} itatumia mtoa huduma mmoja</value>
@@ -4500,9 +4512,21 @@ kwa njia sahihi</value>
     <value>Kila programu unayowasha inapata kizindua cha pili kwenye menyu ya programu, chenye (nje ya VPN) baada ya jina lake. Programu inayofunguliwa kutoka kwa kizindua hicho inaepuka VPN na kill switch. Programu ambayo tayari inaendeshwa inabaki kwenye VPN hadi uifunge, na programu za Flatpak na Snap hazionyeshwi.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
+  <data name="exclude_exit_location" xml:space="preserve">
+    <value>Ondoa</value>
+    <comment>Button beside a search result on the Excluded exit locations screen: adds that country, region or city to the excluded list. Short.</comment>
+  </data>
   <data name="excluded" xml:space="preserve">
     <value>Imetengwa</value>
     <comment>transfer stats and split rules; Linux: the header over the apps already excluded in Settings &gt; Exclude apps from the VPN.</comment>
+  </data>
+  <data name="excluded_exit_locations" xml:space="preserve">
+    <value>Maeneo ya kutoka yaliyoondolewa</value>
+    <comment>Title of the settings row and screen that list the places (countries, regions such as US states, cities) whose exits the user's connections avoid. Use the app's own word for exit (as in 'Stay on this exit').</comment>
+  </data>
+  <data name="excluded_exit_locations_description" xml:space="preserve">
+    <value>Miunganisho haitatumia njia za kutoka katika maeneo haya, isipokuwa uchague mojawapo moja kwa moja.</value>
+    <comment>Explanation at the top of the Excluded exit locations screen: best available, collections and larger places skip exits in these places; picking one of the places itself still connects there.</comment>
   </data>
   <data name="expanded" xml:space="preserve">
     <value>Imepanuliwa</value>
@@ -4760,6 +4784,14 @@ kwa njia sahihi</value>
     <value>Hujibu DNS kupitia mtandao wa ndani wakati DNS ya tuneli inaanza. Hii inaweza kufichua utafutaji wako kwa mtandao wa ndani na kurudisha majibu yasiyolingana na eneo lako la kutokea. Ikizimwa, DNS husuluhishwa kupitia tuneli pekee.</value>
     <comment>DNS settings: description under the Fast DNS on connect toggle. Explains that it answers DNS over the local network while the tunnel's DNS starts, which can reveal lookups to the local network and can return answers that don't match the exit location (DNS answers depend on where the lookup comes from, so host-network answers can point to servers meant for the user's real location instead of the exit).</comment>
   </data>
+  <data name="favorite_exit_note" xml:space="preserve">
+    <value>Kifaa cha mwanachama. Kinaweza kwenda nje ya mtandao au kuondoka kwenye mtandao wakati wowote.</value>
+    <comment>Note under a favorite that is one specific exit (another member's device), not a place. Honest: the device can disappear.</comment>
+  </data>
+  <data name="favorites" xml:space="preserve">
+    <value>Vipendwa</value>
+    <comment>Title of the section at the top of the location list that holds the user's favorite locations and exits. Short.</comment>
+  </data>
   <data name="feedback" xml:space="preserve">
     <value>Maoni</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -4962,6 +4994,54 @@ kwa njia sahihi</value>
   <data name="host_count.other" xml:space="preserve">
     <value>{} vikoa</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="hotspot_proxy" xml:space="preserve">
+    <value>Proksi ya hotspot</value>
+    <comment>The hotspot proxy: its row in Settings and the title of its screen. The android app runs an HTTP and a SOCKS5 proxy on the phone so the devices on its Wi-Fi hotspot or USB tethering can use URnetwork.</comment>
+  </data>
+  <data name="hotspot_proxy_copy_details" xml:space="preserve">
+    <value>Nakili maelezo ya muunganisho</value>
+    <comment>Button on the Hotspot proxy screen that copies the proxy addresses with their credentials, as HTTP and SOCKS5 proxy URLs, for another device.</comment>
+  </data>
+  <data name="hotspot_proxy_description" xml:space="preserve">
+    <value>Vifaa vilivyo kwenye hotspot yako ya Wi-Fi au vilivyounganishwa kwa USB vinaweza kutumia URnetwork kupitia proksi ya HTTP au SOCKS5 kwenye simu hii. Trafiki yao hupita kwenye URnetwork pekee, kwa hivyo hakuna kinachoshirikiwa ukiwa hujaunganishwa.</value>
+    <comment>Muted text under the switch on the Hotspot proxy screen: who can use the proxy, how, and that their traffic only goes through the tunnel.</comment>
+  </data>
+  <data name="hotspot_proxy_http" xml:space="preserve">
+    <value>Proksi ya HTTP</value>
+    <comment>Label of the HTTP proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its HTTP proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_listen_failed" xml:space="preserve">
+    <value>Proksi haikuweza kuanza kwenye hotspot yako. Huenda programu nyingine inatumia milango yake.</value>
+    <comment>Error on the Hotspot proxy screen when the proxy could not listen on the hotspot, usually because another app holds its ports.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password" xml:space="preserve">
+    <value>Nenosiri jipya</value>
+    <comment>Button on the Hotspot proxy screen that replaces the proxy's user name and password with new generated ones.</comment>
+  </data>
+  <data name="hotspot_proxy_new_password_note" xml:space="preserve">
+    <value>Nenosiri jipya hukata muunganisho wa vifaa vinavyotumia la zamani.</value>
+    <comment>Muted note under the New password button on the Hotspot proxy screen: new credentials disconnect the devices signed in with the old ones.</comment>
+  </data>
+  <data name="hotspot_proxy_row_note" xml:space="preserve">
+    <value>Shiriki URnetwork na vifaa vilivyo kwenye hotspot yako.</value>
+    <comment>Muted note under the Hotspot proxy row in Settings: what the screen it opens does.</comment>
+  </data>
+  <data name="hotspot_proxy_share" xml:space="preserve">
+    <value>Shiriki na vifaa vya hotspot</value>
+    <comment>Label of the switch that turns the hotspot proxy on, on the Hotspot proxy screen. Off by default.</comment>
+  </data>
+  <data name="hotspot_proxy_socks" xml:space="preserve">
+    <value>Proksi ya SOCKS5</value>
+    <comment>Label of the SOCKS5 proxy address (host:port) on the Hotspot proxy screen, which a shared device enters as its SOCKS proxy.</comment>
+  </data>
+  <data name="hotspot_proxy_username" xml:space="preserve">
+    <value>Jina la mtumiaji</value>
+    <comment>Label of the generated user name a shared device signs in to the hotspot proxy with.</comment>
+  </data>
+  <data name="hotspot_proxy_waiting_for_hotspot" xml:space="preserve">
+    <value>Washa hotspot yako ya Wi-Fi au muunganisho wa USB ili uanze kushiriki.</value>
+    <comment>Status on the Hotspot proxy screen while the proxy is on and the phone has no Wi-Fi hotspot or USB tethering to listen on.</comment>
   </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>saa {} zilizopita</value>
@@ -6059,6 +6139,10 @@ kutumia ili kuthibitisha utambulisho wako.</value>
   <data name="no_ethos_wallet_found" xml:space="preserve">
     <value>Hakuna pochi ya EthOs iliyopatikana</value>
     <comment>Sign-in screen (android, ethOS build): no ethOS system wallet is available.</comment>
+  </data>
+  <data name="no_excluded_exit_locations" xml:space="preserve">
+    <value>Bado hakuna maeneo yaliyoondolewa. Tafuta nchi, eneo au jiji ili kuliondoa.</value>
+    <comment>Empty state of the Excluded exit locations screen, above its search field.</comment>
   </data>
   <data name="no_installed_apps_found" xml:space="preserve">
     <value>Hakuna programu zilizosakinishwa zilizopatikana. (Programu za Store haziorodheshwi.)</value>
@@ -7272,6 +7356,10 @@ inayoendeshwa kwenye vifaa vya jamii katika nchi nyingi.</value>
     <value>Ondoa</value>
     <comment>A label for a button that removes a rule.</comment>
   </data>
+  <data name="remove_from_favorites" xml:space="preserve">
+    <value>Ondoa kwenye vipendwa</value>
+    <comment>Accessible name and tooltip of the filled star button beside the selected location when it is a favorite: removes it from Favorites.</comment>
+  </data>
   <data name="remove_rule" xml:space="preserve">
     <value>Ondoa sheria</value>
     <comment>A button to remove a split rule.</comment>
@@ -7390,6 +7478,10 @@ inayoendeshwa kwenye vifaa vya jamii katika nchi nyingi.</value>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Tafuta programu</value>
     <comment>App split rules: placeholder in the search field that filters the installed apps by name or package id.</comment>
+  </data>
+  <data name="search_exit_locations_placeholder" xml:space="preserve">
+    <value>Tafuta nchi, maeneo na miji</value>
+    <comment>Placeholder of the search field on the Excluded exit locations screen, which finds countries, regions (such as US states) and cities to exclude.</comment>
   </data>
   <data name="search_placeholder" xml:space="preserve">
     <value>Tafuta maeneo yote</value>
