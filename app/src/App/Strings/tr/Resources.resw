@@ -4542,7 +4542,7 @@ inşa edin</value>
   </data>
   <data name="export_logs" xml:space="preserve">
     <value>Günlükleri dışa aktar</value>
-    <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
+    <comment>Settings: on android and apple the row that shares the app's and the tunnel's recent logs through the share sheet; on windows and linux the note under Save logs, and the title of the dialog that saves them.</comment>
   </data>
   <data name="extender" xml:space="preserve">
     <value>Genişletici</value>
@@ -6159,7 +6159,7 @@ Bir ağ oluşturarak bonusunuzu alın!</value>
   </data>
   <data name="no_log_files_found" xml:space="preserve">
     <value>Günlük dosyası bulunamadı</value>
-    <comment>Call to action</comment>
+    <comment>Shown when there is no log file: after Save logs on windows and linux, and after Export Logs and in View Logs on android and apple.</comment>
   </data>
   <data name="no_open_contracts" xml:space="preserve">
     <value>Açık sözleşme yok</value>
@@ -9735,6 +9735,10 @@ bir internete adım atın.</value>
   <data name="via_exit" xml:space="preserve">
     <value>{} üzerinden</value>
     <comment>Android app string: via exit.</comment>
+  </data>
+  <data name="view_logs" xml:space="preserve">
+    <value>Günlükleri görüntüle</value>
+    <comment>Settings on android and apple: the row that opens a read-only view of the last lines of the app's and the tunnel's logs, and the title of that view.</comment>
   </data>
   <data name="vless_allow_insecure" xml:space="preserve">
     <value>Güvenli olmayan sertifikaya izin ver</value>
