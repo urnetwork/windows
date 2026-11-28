@@ -167,6 +167,13 @@ winrt::Microsoft::UI::Xaml::FrameworkElement MakeEmptyStateCard(winrt::hstring c
 // The markup equivalent is UrDividerStyle in App.xaml; keep the two in step.
 winrt::Microsoft::UI::Xaml::Controls::Border MakeDivider();
 
+// The '?' beside a term the app uses without explaining it (Provide, Pending,
+// Extenders): a borderless help glyph in the muted token, 28 px like the kill
+// switch's info button, whose flyout says what the term means. `title` is also
+// its tooltip and its accessible name. Help only: it changes nothing.
+winrt::Microsoft::UI::Xaml::Controls::Button MakeHelpButton(winrt::hstring const& title,
+                                                           winrt::hstring const& body);
+
 // A section header above a card: Segoe Fluent glyph + the display face at 16
 // SemiBold. The glyph is marked Raw so it is not announced beside the label
 // that already says the same word.
