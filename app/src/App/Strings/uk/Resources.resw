@@ -677,6 +677,14 @@
     <value>{} працюватиме через VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_language" xml:space="preserve">
+    <value>Мова</value>
+    <comment>Settings, General (Android 13 and later): the row that opens the app language picker, and the picker's title. The row's value is the language the app shows, written in that language, or System default.</comment>
+  </data>
+  <data name="app_language_system_default" xml:space="preserve">
+    <value>Мова системи</value>
+    <comment>Settings, app language picker (Android 13 and later): the first choice, and the Language row's value when it is chosen. The app follows the phone's language; every other choice is a language's own name.</comment>
+  </data>
   <data name="app_pinned_toast" xml:space="preserve">
     <value>{} використовуватиме одного провайдера</value>
     <comment>Android app string: app pinned toast.</comment>

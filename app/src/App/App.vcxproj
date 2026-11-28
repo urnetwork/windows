@@ -224,6 +224,7 @@
     <PRIResource Include="Strings\es\Resources.resw" />
     <PRIResource Include="Strings\es-419\Resources.resw" />
     <PRIResource Include="Strings\es-MX\Resources.resw" />
+    <PRIResource Include="Strings\fa\Resources.resw" />
     <PRIResource Include="Strings\fr\Resources.resw" />
     <PRIResource Include="Strings\he\Resources.resw" />
     <PRIResource Include="Strings\hi\Resources.resw" />
@@ -240,6 +241,7 @@
     <PRIResource Include="Strings\sv\Resources.resw" />
     <PRIResource Include="Strings\sw\Resources.resw" />
     <PRIResource Include="Strings\th\Resources.resw" />
+    <PRIResource Include="Strings\tr\Resources.resw" />
     <PRIResource Include="Strings\uk\Resources.resw" />
     <PRIResource Include="Strings\vi\Resources.resw" />
     <PRIResource Include="Strings\zh-Hans\Resources.resw" />
@@ -432,6 +434,7 @@
     <ClInclude Include="SettingsPage.h" />
     <ClInclude Include="Onboarding.h" />
     <ClInclude Include="PlanPicker.h" />
+    <ClInclude Include="PluralCategory.h" />
     <ClInclude Include="ProCelebration.h" />
     <ClInclude Include="TapSequenceGate.h" />
     <ClInclude Include="SettingsSheets.h" />

@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "../Common/Strings.h"
+#include "PluralCategory.h"
 
 namespace urnw {
 namespace {
@@ -73,58 +74,6 @@ std::string PrimaryLanguage() {
   }();
   return lang;
 }
-
-namespace {
-
-// CLDR cardinal categories, for the languages the store ships. Keep in step with
-// CLDR_CATEGORIES in localizations/gen/store.mjs.
-std::string_view PluralCategory(std::string_view lang, int64_t n) {
-  const auto is = [&](std::string_view p) {
-    return lang.size() >= p.size() && lang.compare(0, p.size(), p) == 0;
-  };
-  const int64_t i = n < 0 ? -n : n;
-  const int64_t mod10 = i % 10, mod100 = i % 100;
-
-  // one category only
-  if (is("ja") || is("ko") || is("zh") || is("th") || is("vi") || is("id"))
-    return "other";
-
-  if (is("ar")) {
-    if (i == 0) return "zero";
-    if (i == 1) return "one";
-    if (i == 2) return "two";
-    if (mod100 >= 3 && mod100 <= 10) return "few";
-    if (mod100 >= 11) return "many";
-    return "other";
-  }
-  if (is("he")) {
-    if (i == 1) return "one";
-    if (i == 2) return "two";
-    if (mod10 == 0 && i != 0) return "many";
-    return "other";
-  }
-  if (is("ru") || is("uk")) {
-    if (mod10 == 1 && mod100 != 11) return "one";
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "few";
-    return "many";
-  }
-  if (is("pl")) {
-    if (i == 1) return "one";
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "few";
-    return "many";
-  }
-  if (is("cs")) {
-    if (i == 1) return "one";
-    if (i >= 2 && i <= 4) return "few";
-    return "other";
-  }
-  if (is("fr") || is("pt")) return i > 1 ? "other" : "one";
-
-  // en, de, el, es, it, nl, sv, sw, hi, ...
-  return i == 1 ? "one" : "other";
-}
-
-}  // namespace
 
 std::wstring Localized(std::string_view key) {
   auto& loader = Loader();

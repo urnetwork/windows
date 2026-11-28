@@ -116,6 +116,24 @@ int main(int argc, char** argv) {
     if (region::StoredValueForSelection("IR") != "ir") Fail("stored value not lower case");
   }
 
+  Case("the location list names a country as the picker does, the server's name the fallback");
+  {
+    if (region::LocationDisplayName(true, "TR", L"Turkey", NameOf) != L"Türkiye") {
+      Fail("a country is not named with the picker's name for its code");
+    }
+    if (region::LocationDisplayName(true, "kz", L"Kazakhstan", NameOf) != L"Kazakhstan") {
+      Fail("a code the platform does not name lost the server's name");
+    }
+    if (region::LocationDisplayName(true, "", L"Iran", NameOf) != L"Iran" ||
+        region::LocationDisplayName(true, "irn", L"Iran", NameOf) != L"Iran") {
+      Fail("a country without a two-letter code lost the server's name");
+    }
+    // a city or region carries its country's code, which must not rename it
+    if (region::LocationDisplayName(false, "cn", L"Shanghai", NameOf) != L"Shanghai") {
+      Fail("a city was renamed after its country");
+    }
+  }
+
   Case("the stored value selects its row; an unlisted one shows Undisclosed");
   if (region::SelectedRow(rows, "") != 0) Fail("\"\" not row 0");
   if (rows[region::SelectedRow(rows, "RU")].code != "ru") Fail("ru not selected");
@@ -166,6 +184,22 @@ int main(int argc, char** argv) {
   for (const char* call : {"urnet::ingressCountryCodes()", "urnet::ingressDohUrls(",
                            "urnet::ingressPlainDnsServers("}) {
     if (!Contains(sdkHost, call)) Fail(std::string("SdkHost does not call ") + call);
+  }
+
+  Case("the location list names its rows with the picker's country lookup");
+  {
+    const std::string sheets = ReadFile(src + "LocationSheets.cpp");
+    if (!Contains(sheets, "connection_region::LocationDisplayName(") ||
+        !Contains(sheets, "RegionDisplayName)")) {
+      Fail("LocationSheets does not name a country with RegionDisplayName");
+    }
+    if (Contains(sheets, "H(location.name.value_or(std::string()))")) {
+      Fail("a location row still shows the server's name");
+    }
+    for (const char* row : {"MakeName(LocationName(location))", "spec.title = LocationName(location);",
+                            "MakeRow(LocationName(location),", "const hstring name = LocationName(location);"}) {
+      if (!Contains(sheets, row)) Fail(std::string("LocationSheets does not use ") + row);
+    }
   }
 
   Case("both doors and the prompt use the one picker over SdkHost");
