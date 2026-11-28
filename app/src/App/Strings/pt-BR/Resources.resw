@@ -6841,6 +6841,50 @@ executado em dispositivos da comunidade em uma grande seleção de países.</val
     <value>Pausar no Modo Pouca Energia</value>
     <comment>Settings, provide power choice under "When on battery" on iOS and macOS (the default): pause providing while Low Power Mode is on. Use the system's own name for Low Power Mode.</comment>
   </data>
+  <data name="provide_share_limit_reached" xml:space="preserve">
+    <value>Limite mensal atingido. O compartilhamento com outras pessoas volta em {}.</value>
+    <comment>Provide settings: the monthly data limit is reached, so this device stopped sharing with other people until the next month. The argument is the date the next month starts, such as Dec 1.</comment>
+  </data>
+  <data name="provide_share_limits" xml:space="preserve">
+    <value>Limites de compartilhamento</value>
+    <comment>Provide settings: the title of the section with the owner's limits on how much this device shares.</comment>
+  </data>
+  <data name="provide_share_limits_help" xml:space="preserve">
+    <value>Um limite reduz o quanto este dispositivo compartilha, o que pode diminuir a classificação de confiabilidade e os ganhos dele.</value>
+    <comment>Provide settings: what a sharing limit costs the device's owner, shown under the limits.</comment>
+  </data>
+  <data name="provide_share_max_speed" xml:space="preserve">
+    <value>Velocidade máxima de compartilhamento</value>
+    <comment>Provide settings: the label of the fastest speed this device shares at, for others using the network through it.</comment>
+  </data>
+  <data name="provide_share_monthly_limit" xml:space="preserve">
+    <value>Limite mensal de dados</value>
+    <comment>Provide settings: the label of the most data this device shares with others in a calendar month.</comment>
+  </data>
+  <data name="provide_share_no_limit" xml:space="preserve">
+    <value>Sem limite</value>
+    <comment>Provide settings: the choice of no sharing speed or monthly data limit.</comment>
+  </data>
+  <data name="provide_share_speed_mbps" xml:space="preserve">
+    <value>{} Mbps</value>
+    <comment>Provide settings: a sharing speed choice in megabits per second. The argument is the number of megabits.</comment>
+  </data>
+  <data name="provide_share_used" xml:space="preserve">
+    <value>{} compartilhados este mês</value>
+    <comment>Provide settings: the data this device shared with others this calendar month, with no monthly limit set. The argument is an amount of data such as 12.3 GiB.</comment>
+  </data>
+  <data name="provide_share_used_of_limit" xml:space="preserve">
+    <value>{0} de {1} compartilhados este mês</value>
+    <comment>Provide settings: the data this device shared with others this calendar month against its monthly limit. The arguments are amounts of data such as 12.3 GiB and 50 GiB.</comment>
+  </data>
+  <data name="provided_in_epoch" xml:space="preserve">
+    <value>Fornecido na época {0}: {1}</value>
+    <comment>Provider status: the data a device provided that SN25 counted in a settled epoch. The arguments are the epoch number and an amount of data such as 12.3 GiB.</comment>
+  </data>
+  <data name="provided_not_paid_no_wallet" xml:space="preserve">
+    <value>Não pago: sem carteira de pagamento</value>
+    <comment>Provider status: SN25 did not pay for a device's provided data because the device had no payout wallet.</comment>
+  </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0} h {1} min</value>
     <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
@@ -9528,6 +9572,14 @@ como ela deveria ser.</value>
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Desbloquear velocidades ainda mais rápidas e ter acesso antecipado a novos recursos.</value>
     <comment>Settings</comment>
+  </data>
+  <data name="unpaid_data_provided" xml:space="preserve">
+    <value>Dados não pagos fornecidos</value>
+    <comment>Provider status: the data SN25 counted for the account's devices in the newest settled epoch but did not pay, because the device had no payout wallet.</comment>
+  </data>
+  <data name="unpaid_data_provided_help" xml:space="preserve">
+    <value>Dados que a SN25 contou na época {} mas não pagou, porque não havia uma carteira de pagamento conectada. São dados, não dinheiro devido.</value>
+    <comment>Provider status: what the unpaid data provided is, under that figure. The argument is the settled epoch number.</comment>
   </data>
   <data name="unstable_connection" xml:space="preserve">
     <value>Conexão instável</value>

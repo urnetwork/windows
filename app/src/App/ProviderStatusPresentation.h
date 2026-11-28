@@ -3,9 +3,11 @@
 // total and whether it is empty; which of loading, unavailable, empty and bars
 // the demand area shows and whether Why? does; the line under the provide mode
 // row, which merges the local idle reason (ProviderIdleReason.h) with the
-// server's; and the Why? rows, each ranking number as a label, a value and a
+// server's; the Why? rows, each ranking number as a label, a value and a
 // help line, with the lines of the reason the network checks downgraded the
-// device (server FP2-PROTOCOL.md §5.5).
+// device (server FP2-PROTOCOL.md §5.5); and the SN25 data under the line,
+// this device's in the newest settled epoch and the network's unpaid data
+// provided (owner decision 2026-11-28, feature 14).
 //
 // The data is the sdk's ProviderStatusViewController's, which reads
 // GET /network/provider-status about once a minute: how often the network
@@ -166,15 +168,21 @@ View ViewFor(bool loaded, bool fetchFailed, const std::optional<Status>& status)
 // SdkHost reads the same GET /network/provider-status on the api and keeps the
 // readings here, applying each answer exactly as the controller applies a poll
 // (fetchDone): a failure keeps the last snapshot and records the error; an
-// answer marks the readings loaded, clears the error and takes the first row
-// whose client id is this device's, or none when the network's list has no
-// row for it. A template over the sdk's result and status, like ViewFor.
+// answer marks the readings loaded, clears the error, takes the network's SN25
+// figures, or none, and takes the first row whose client id is this device's,
+// or none when the network's list has no row for it. A template over the
+// sdk's result and status, like ViewFor.
 template <typename Status>
 struct Readings {
   bool loaded = false;
   // the last failed poll's error, "" once a poll succeeds
   std::string error;
   std::optional<Status> status;
+  // the network's data in the newest settled SN25 epoch, as the answer's
+  // `provided` has it: its epoch, 0 for none, and the part of it SN25 did not
+  // pay (the controller's getProvidedEpoch and getUnpaidByteCount)
+  int64_t providedEpoch = 0;
+  int64_t unpaidByteCount = 0;
 
   // A failure always reads as one, even with no message.
   void Failed(std::string_view message) {
@@ -186,6 +194,9 @@ struct Readings {
     loaded = true;
     error.clear();
     status.reset();
+    // an answer without the figures reads as none, as the controller reads one
+    providedEpoch = result.provided ? result.provided->epoch : 0;
+    unpaidByteCount = result.provided ? result.provided->unpaid_byte_count : 0;
     if (!result.providers || clientId.empty()) return;
     for (const auto& candidate : *result.providers) {
       if (candidate.client_id && *candidate.client_id == clientId) {
@@ -250,6 +261,42 @@ inline Line LineFor(provideridle::ProviderIdleReason idle, std::string_view serv
   }
   return {};
 }
+
+// ---- the SN25 data -----------------------------------------------------------
+
+// How SN25 paid for a device's data in its epoch (urnet::ProviderStatusProvided*):
+// not at all, because the device had no payout wallet.
+inline constexpr std::string_view kProvidedPayoutUnpaid = "unpaid";
+
+// This device's data in the newest settled SN25 epoch, from its status's
+// `provided`: nothing before the server has read a settled epoch (no
+// `provided`, or epoch 0); then provided_in_epoch with the epoch and the data,
+// and provided_not_paid_no_wallet under it when SN25 did not pay for the data.
+// Data, never an amount.
+struct ProvidedLines {
+  bool shown = false;
+  int64_t epoch = 0;
+  int64_t byteCount = 0;
+  bool notPaid = false;
+
+  bool operator==(const ProvidedLines&) const = default;
+};
+
+template <typename Status>
+ProvidedLines ProvidedLinesFor(const std::optional<Status>& status) {
+  ProvidedLines lines;
+  if (!status || !status->provided || status->provided->epoch <= 0) return lines;
+  lines.shown = true;
+  lines.epoch = status->provided->epoch;
+  lines.byteCount = status->provided->usage_byte_count;
+  lines.notPaid = status->provided->payout == kProvidedPayoutUnpaid;
+  return lines;
+}
+
+// The network's unpaid data provided, unpaid_data_provided with its help
+// under it, shows once there is a settled epoch (getProvidedEpoch, 0 for
+// none), even when SN25 paid for all of it.
+constexpr bool UnpaidShown(int64_t providedEpoch) { return 0 < providedEpoch; }
 
 // ---- the Why? rows -----------------------------------------------------------
 

@@ -61,7 +61,7 @@ func TestProviderStatusPresentation(t *testing.T) {
 // presentation's. The header is git-ignored (fetch-deps unpacks it into
 // app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE names another
 // directory) and needs nlohmann/json, so a host without them skips this, and
-// so does a copy from before the provider status API.
+// so does a copy from before the provider status API or its SN25 data.
 func TestProviderStatusPresentationAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
 	sdkDir := providerStatusSdkHeaderDir(t, root)
@@ -81,7 +81,8 @@ func TestProviderStatusPresentationAgainstSdkHeader(t *testing.T) {
 	runProviderStatusTests(t, buildProviderStatusTests(t, extra...))
 }
 
-// The directory of a urnetwork_sdk.hpp that has the provider status API, or "".
+// The directory of a urnetwork_sdk.hpp that has the provider status API with
+// its SN25 data, or "".
 func providerStatusSdkHeaderDir(t *testing.T, root string) string {
 	t.Helper()
 	explicit := os.Getenv("URNETWORK_SDK_INCLUDE")
@@ -100,11 +101,12 @@ func providerStatusSdkHeaderDir(t *testing.T, root string) string {
 			}
 			continue
 		}
-		if !strings.Contains(string(header), "class ProviderStatusViewController final") {
+		if !strings.Contains(string(header), "class ProviderStatusViewController final") ||
+			!strings.Contains(string(header), "struct ProviderStatusProvided {") {
 			if dir == explicit {
-				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no provider status API", explicit)
+				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no provider status API with its SN25 data", explicit)
 			}
-			t.Logf("%s: urnetwork_sdk.hpp predates the provider status API", dir)
+			t.Logf("%s: urnetwork_sdk.hpp predates the provider status API or its SN25 data", dir)
 			continue
 		}
 		return dir
@@ -334,8 +336,10 @@ func TestProviderStatusWiring(t *testing.T) {
 
 // The provider-only device's status read on the api applies an answer as the
 // controller applies a poll: a failed poll that dropped the snapshot would
-// blank Demand on every 404 or timeout, and a reading that took the network's
-// first provider row would show another device's demand as this one's.
+// blank Demand on every 404 or timeout, a reading that took the network's
+// first provider row would show another device's demand as this one's, and
+// the network's SN25 figures follow the same rule, kept through a failed poll
+// and gone with an answer that has none.
 func TestProviderStatusReadingsRejectBrokenApply(t *testing.T) {
 	// Run the spec against a rewritten copy of ProviderStatusPresentation.h and
 	// require that it fails, naming want. The rest of the header's includes
@@ -372,4 +376,87 @@ func TestProviderStatusReadingsRejectBrokenApply(t *testing.T) {
 		return strings.Replace(source, "if (candidate.client_id && *candidate.client_id == clientId) {",
 			"if (candidate.client_id) {", 1)
 	}, "api: the first row whose client id is this device's")
+	requireProviderStatusFailure(func(source string) string {
+		return strings.Replace(source,
+			"    error = message.empty() ? std::string(\"no provider status\") : std::string(message);\n",
+			"    error = message.empty() ? std::string(\"no provider status\") : std::string(message);\n    providedEpoch = 0;\n", 1)
+	}, "api: a failed poll keeps the figures")
+	requireProviderStatusFailure(func(source string) string {
+		return strings.Replace(source, "providedEpoch = result.provided ? result.provided->epoch : 0;",
+			"providedEpoch = result.provided ? result.provided->epoch : providedEpoch;", 1)
+	}, "api: a later answer without the figures clears them")
+}
+
+// The SN25 data under the line (owner decision 2026-11-28, feature 14), which
+// cannot be built off Windows: the page reads the controller's figures with
+// its status, takes the provider-only device's from SdkHost's readings, forgets
+// them with the controller, and paints both rows from the presentation's
+// decisions in the store's words, between the idle reason row and the
+// extender row.
+func TestProviderStatusProvidedWiring(t *testing.T) {
+	root := repositoryRoot(t)
+	wallet := stripLineComments(readAppSource(t, "WalletPage.cpp"))
+	body := func(signature string) string {
+		return definitionBody(t, "WalletPage.cpp", wallet, signature)
+	}
+	provideRequire(t, "WalletPage::ReadProviderStatus", body("void WalletPage::ReadProviderStatus() {"),
+		"providedEpoch_ = providerStatusVc_->getProvidedEpoch();",
+		"unpaidByteCount_ = providerStatusVc_->getUnpaidByteCount();")
+	provideRequire(t, "WalletPage::TakeProviderOnlyReadings",
+		body("void WalletPage::TakeProviderOnlyReadings(urnw::ProviderOnlyStatus const& status) {"),
+		"providedEpoch_ = status.providedEpoch;", "unpaidByteCount_ = status.unpaidByteCount;")
+	for _, signature := range []string{
+		"void WalletPage::CloseProviderStatus(bool deviceAlive) {",
+		"void WalletPage::ReconcileProviderStatus() {",
+	} {
+		provideRequire(t, signature, body(signature), "providedEpoch_ = 0;", "unpaidByteCount_ = 0;")
+	}
+	provideRequireOrder(t, "WalletPage::ApplyProviderStatus", body("void WalletPage::ApplyProviderStatus() {"),
+		"ApplyProvideReason();", "ApplyProviderProvided();")
+	provideRequire(t, "WalletPage::ApplyProviderProvided", body("void WalletPage::ApplyProviderProvided() {"),
+		"providerstatus::ProvidedLinesFor(providerStatus_)",
+		`"provided_in_epoch", lines.epoch, urnw::Widen(urnw::FormatByteCountCompact(lines.byteCount))`,
+		`lines.notPaid ? Loc("provided_not_paid_no_wallet") : hstring{}`,
+		"w_.WalletProviderProvidedRow().Visibility(shown(lines.shown));",
+		"providerstatus::UnpaidShown(providedEpoch_)",
+		"urnw::FormatByteCountCompact(unpaidByteCount_)",
+		`urnw::Format("unpaid_data_provided_help", providedEpoch_)`,
+		"w_.WalletUnpaidProvidedRow().Visibility(shown(unpaid));")
+	provideRequire(t, "WalletPage::ApplyStrings", body("void WalletPage::ApplyStrings() {"),
+		`w_.WalletUnpaidProvidedLabel().Text(Loc("unpaid_data_provided"));`)
+
+	// the rows: under the idle reason row, ahead of the extender row
+	markup := readAppSource(t, "MainWindow.xaml")
+	reason := strings.Index(markup, `<Border x:Name="WalletProvideReasonRow"`)
+	provided := strings.Index(markup, `<Border x:Name="WalletProviderProvidedRow"`)
+	unpaid := strings.Index(markup, `<Border x:Name="WalletUnpaidProvidedRow"`)
+	extender := strings.Index(markup, `<Border x:Name="WalletExtenderRow"`)
+	if reason < 0 || provided < reason || unpaid < provided || extender < unpaid {
+		t.Error("MainWindow.xaml: the SN25 rows must sit between the idle reason row and the extender row, the device's first")
+	}
+	for _, pattern := range []string{
+		`<Border x:Name="WalletProviderProvidedRow" Visibility="Collapsed"[^>]*Style="\{StaticResource UrPaneRowStyle\}"`,
+		`<TextBlock x:Name="WalletProviderProvidedText"[^>]*Style="\{StaticResource UrRowNoteStyle\}"`,
+		`<TextBlock x:Name="WalletProviderNotPaidText" Visibility="Collapsed"`,
+		`<Border x:Name="WalletUnpaidProvidedRow" Visibility="Collapsed"[^>]*Style="\{StaticResource UrPaneRowStyle\}"`,
+		`<TextBlock x:Name="WalletUnpaidProvidedLabel"[^>]*AutomationProperties.AccessibilityView="Raw"`,
+		`<TextBlock x:Name="WalletUnpaidProvidedValue"`,
+		`<TextBlock x:Name="WalletUnpaidProvidedHelp"[^>]*Style="\{StaticResource UrRowNoteStyle\}"`,
+	} {
+		if !regexp.MustCompile(pattern).MatchString(markup) {
+			t.Errorf("MainWindow.xaml: missing %s", pattern)
+		}
+	}
+
+	// the strings, as the spec words them
+	for key, want := range map[string]string{
+		"unpaid_data_provided":        "Unpaid data provided",
+		"unpaid_data_provided_help":   "Data SN25 counted in epoch {} but did not pay, because no payout wallet was connected. This is data, not money owed.",
+		"provided_in_epoch":           "Provided in epoch {0}: {1}",
+		"provided_not_paid_no_wallet": "Not paid: no payout wallet",
+	} {
+		if got := reswValue(t, root, "en", key); got != want {
+			t.Errorf("en resw %s = %q, want %q", key, got, want)
+		}
+	}
 }

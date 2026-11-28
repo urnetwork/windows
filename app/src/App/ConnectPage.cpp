@@ -26,6 +26,7 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "ProvideSharePresentation.h"  // the sharing limits' pickers and line
 #include "Strings.h"
 #include "StatsFormat.h"
 #include "UpdateResult.h"
@@ -113,6 +114,14 @@ void ConnectPage::Initialize() {
   // reason as the bar and the toggle above.
   w_.ConnectionsClearFilters().Click([weak = w_.get_weak()](auto const&, auto const&) {
     if (auto self = weak.get()) self->connect().OnConnectionsClearFilters();
+  });
+  // The sharing limits' two pickers under the provide group, wired here for
+  // the same reason: XAML event handlers live on MainWindow.
+  w_.ProvideShareSpeedPicker().SelectionChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnProvideShareSpeedChanged();
+  });
+  w_.ProvideShareMonthlyPicker().SelectionChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnProvideShareMonthlyChanged();
   });
   // The verdict ratio bar's segments wear the SAME three verdict colours the
   // row dots print (UpdateConnectionRow), painted once here: green tunnelled,
@@ -297,6 +306,14 @@ void ConnectPage::ApplyStrings() {
   w_.PortMappingLabel().Text(Loc("extender_port_mapping"));
   w_.PortMappingDescription().Text(Loc("extender_port_mapping_description"));
   ApplyExtenderProvideRow();
+  // the sharing limits under them (sdk provide_share.go): the group's title,
+  // the two pickers' titles, which also name the pickers (LabeledBy in the
+  // markup), what a limit costs, and the pickers' choices and the line again
+  w_.ProvideShareLabel().Text(Loc("provide_share_limits"));
+  w_.ProvideShareSpeedLabel().Text(Loc("provide_share_max_speed"));
+  w_.ProvideShareMonthlyLabel().Text(Loc("provide_share_monthly_limit"));
+  w_.ProvideShareHelpText().Text(Loc("provide_share_limits_help"));
+  ApplyProvideShareRows(/*restring=*/true);
   w_.FixedIpLabel().Text(Loc("fixed_ip"));
   w_.FixedIpNote().Text(Loc("fixed_ip_subtitle"));
   w_.StrongAnonLabel().Text(Loc("strong_anonymization"));
@@ -2009,6 +2026,18 @@ void ConnectPage::WireDrawerFeeds() {
       }
     });
   });
+  // the sharing limits' status (sdk provide_share.go): the limits in force and
+  // this month's data, applied as pushed; nullopt, the session's end, hides
+  // the group
+  sdk.SetProvideShareStatusHandler([queue, weak](std::optional<urnet::ProvideShareStatus> status) {
+    queue.TryEnqueue([weak, status = std::move(status)] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        page.provideShareStatus_ = status;
+        page.ApplyProvideShareRows(/*restring=*/false);
+      }
+    });
+  });
   // The device-only settings a built or signed-in window shows, read off this
   // thread (ResyncDrawer): each applies unless its listener pushed a newer
   // value since the read was asked for (SeedOrder.h).
@@ -2413,6 +2442,116 @@ void ConnectPage::OnPortMappingToggled(IInspectable const&, RoutedEventArgs cons
   // carries the setting, replaces the guess.
   extenderProvideView_ = urnw::PortMappingGuessFor(extenderProvideView_, on);
   ApplyPortMappingRow();
+}
+
+// ---- the sharing limits (sdk provide_share.go; owner, 2026-11-28) -------------
+
+namespace {
+// A picker's label for one of its values: No limit for 0, else the value in
+// its unit, a speed in whole Mbps and a monthly limit in the app's byte count.
+hstring ProvideShareSpeedLabel(int64_t bytesPerSecond) {
+  if (bytesPerSecond <= 0) return Loc("provide_share_no_limit");
+  return hstring{urnw::Format("provide_share_speed_mbps", provideshare::SpeedMbps(bytesPerSecond))};
+}
+
+hstring ProvideShareMonthlyLabel(int64_t byteCount) {
+  if (byteCount <= 0) return Loc("provide_share_no_limit");
+  return H(urnw::FormatByteCountCompact(byteCount));
+}
+
+// Fills a picker with `choices` when they are not the values it holds
+// (`held`), or for `restring`, and selects `value`. Only a changed list
+// rebuilds the items: the status comes every second while the device shares,
+// and a rebuild would close a dropdown the user has open.
+void FillProvideSharePicker(ComboBox const& picker, std::vector<int64_t>& held,
+                            std::vector<int64_t> choices, int64_t value, bool restring,
+                            hstring (*label)(int64_t)) {
+  if (restring || held != choices) {
+    picker.Items().Clear();
+    for (const int64_t choice : choices) picker.Items().Append(winrt::box_value(label(choice)));
+    held = std::move(choices);
+  }
+  const auto index = static_cast<int32_t>(provideshare::IndexOf(held, value));
+  if (picker.SelectedIndex() != index) picker.SelectedIndex(index);
+}
+}  // namespace
+
+void ConnectPage::ApplyProvideShareRows(bool restring) {
+  // Hidden, never disabled, as the extender rows are (N1): the limits are read
+  // and written through the session's device, so with no session's status
+  // there is nothing to show and nowhere to write. A hidden group forgets the
+  // lists its pickers hold, so it rebuilds them, in the language of the
+  // moment, when it shows again.
+  const bool shown = provideShareStatus_.has_value();
+  w_.ProvideShareGroup().Visibility(shown ? Visibility::Visible : Visibility::Collapsed);
+  if (!shown) {
+    provideShareSpeedChoices_.clear();
+    provideShareMonthlyChoices_.clear();
+    return;
+  }
+  const urnet::ProvideShareStatus& status = *provideShareStatus_;
+  // the pickers are the limits in force, with a limit the cli set as a choice
+  // of its own; the echo guard keeps the repaint from writing them back
+  updatingControls_ = true;
+  FillProvideSharePicker(w_.ProvideShareSpeedPicker(), provideShareSpeedChoices_,
+                         provideshare::SpeedChoices(status.max_bytes_per_second),
+                         status.max_bytes_per_second, restring, ProvideShareSpeedLabel);
+  FillProvideSharePicker(w_.ProvideShareMonthlyPicker(), provideShareMonthlyChoices_,
+                         provideshare::MonthlyChoices(status.monthly_byte_count),
+                         status.monthly_byte_count, restring, ProvideShareMonthlyLabel);
+  updatingControls_ = false;
+  // How the month stands: the limit reached, and the date sharing with others
+  // resumes in the reader's own date format and time zone; else this month's
+  // data, against the monthly limit when there is one.
+  const std::wstring shared = urnw::Widen(urnw::FormatByteCountCompact(status.byte_count));
+  std::wstring line;
+  switch (provideshare::StatusLineFor(status)) {
+    case provideshare::StatusLine::LimitReached:
+      line = urnw::Format("provide_share_limit_reached",
+                          urnw::Widen(urnw::FormatLocalDate(status.period_end_millis)));
+      break;
+    case provideshare::StatusLine::UsedOfLimit:
+      line = urnw::Format("provide_share_used_of_limit", shared,
+                          urnw::Widen(urnw::FormatByteCountCompact(status.monthly_byte_count)));
+      break;
+    case provideshare::StatusLine::Used:
+      line = urnw::Format("provide_share_used", shared);
+      break;
+  }
+  w_.ProvideShareStatusText().Text(hstring{line});
+  // amber while the limit holds sharing back, as Why? tints what holds the
+  // device back
+  w_.ProvideShareStatusText().Foreground(status.budget_reached
+                                             ? urnw::colors::MakeBrush(urnw::colors::kUrAmber)
+                                             : urnw::colors::MutedBrush());
+}
+
+void ConnectPage::OnProvideShareSpeedChanged() {
+  if (updatingControls_) return;
+  // never written while hidden
+  if (!provideShareStatus_) return;
+  const int32_t index = w_.ProvideShareSpeedPicker().SelectedIndex();
+  if (index < 0 || static_cast<size_t>(index) >= provideShareSpeedChoices_.size()) return;
+  const int64_t maxBytesPerSecond = provideShareSpeedChoices_[static_cast<size_t>(index)];
+  // the monthly limit stays as the device holds it
+  Sdk().SetProvideShareLimits(maxBytesPerSecond, std::nullopt);
+  // The picker holds the choice until the next pushed status, which carries
+  // the limits, replaces the guess. Nothing is rebuilt inside the picker's own
+  // selection change: that push repaints the group.
+  provideShareStatus_->max_bytes_per_second = maxBytesPerSecond;
+}
+
+void ConnectPage::OnProvideShareMonthlyChanged() {
+  if (updatingControls_) return;
+  // never written while hidden
+  if (!provideShareStatus_) return;
+  const int32_t index = w_.ProvideShareMonthlyPicker().SelectedIndex();
+  if (index < 0 || static_cast<size_t>(index) >= provideShareMonthlyChoices_.size()) return;
+  const int64_t monthlyByteCount = provideShareMonthlyChoices_[static_cast<size_t>(index)];
+  // the speed limit stays as the device holds it
+  Sdk().SetProvideShareLimits(std::nullopt, monthlyByteCount);
+  // the guess, until the next pushed status, as the speed picker keeps it
+  provideShareStatus_->monthly_byte_count = monthlyByteCount;
 }
 
 void ConnectPage::OnFixedIpToggled(IInspectable const&, RoutedEventArgs const&) {

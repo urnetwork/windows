@@ -616,6 +616,12 @@ class SdkHost {
   // state, its verification or the selection it describes changes, never for
   // the blocked lookups count, which RequestDnsBlockedCount reads.
   using DnsStatusHandler = std::function<void(std::optional<urnet::DnsResolverStatus>)>;
+  // The sharing limits' feed (sdk provide_share.go; owner, 2026-11-28): the
+  // session device's provide share status, the limits in force with this
+  // month's data against them, pushed by its listener and read once as the
+  // drawer subscribes; nullopt once the session ends.
+  using ProvideShareStatusHandler =
+      std::function<void(std::optional<urnet::ProvideShareStatus>)>;
   // RequestDnsBlockedCount's answer, on the reader's thread.
   using DnsBlockedCountHandler = std::function<void(int64_t)>;
   using BlockerEnabledHandler = std::function<void(bool)>;
@@ -1433,6 +1439,9 @@ class SdkHost {
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
   void SetDnsStatusHandler(DnsStatusHandler h) { onDnsStatus_ = std::move(h); }
+  void SetProvideShareStatusHandler(ProvideShareStatusHandler h) {
+    onProvideShareStatus_ = std::move(h);
+  }
   // The DNS editor's blocked lookups count (connect ADBLOCK3RD I3), read while
   // the editor shows it: off the caller's thread, by the session's device
   // handle through the c abi, and answered through the handler. Requests
@@ -1842,6 +1851,18 @@ class SdkHost {
   // (PortMappingWriteRouteFor). No app-side mirror; callers never write while
   // the switch is hidden (N1).
   void SetProvideExtenderPortMapping(bool on);
+  // The sharing limits (sdk provide_share.go; owner, 2026-11-28), the provide
+  // group's two pickers: the maximum sharing speed in bytes per second and the
+  // monthly data limit in bytes, 0 for no limit. Written together through the
+  // session's device, which keeps them in its space, where the provider-only
+  // device reads them too, and applies them at once; while the device process
+  // is out of contact the DeviceRemote queues them for the next sync. A limit
+  // passed as nullopt stays as the device holds it, read on the write worker
+  // just before the write, so a limit the cli set since the page's last status
+  // is kept. With no session nothing is written: the pickers show only over a
+  // session's status.
+  void SetProvideShareLimits(std::optional<int64_t> maxBytesPerSecond,
+                             std::optional<int64_t> monthlyByteCount);
   // The DNS editor's Update: written only while the device's settings are
   // still `opened`, the reading the editor opened on (EditorApply.h); the
   // views take the device's reading either way.
@@ -3511,6 +3532,7 @@ class SdkHost {
 
   DnsSettingsHandler onDnsSettings_;
   DnsStatusHandler onDnsStatus_;
+  ProvideShareStatusHandler onProvideShareStatus_;
   BlockerEnabledHandler onBlockerEnabled_;
   TransportDistributionHandler onTransportDistribution_;
   ExtenderStatusHandler onExtenderStatus_;
